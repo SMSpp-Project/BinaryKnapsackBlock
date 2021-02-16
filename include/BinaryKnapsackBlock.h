@@ -48,7 +48,7 @@ namespace SMSpp_di_unipi_it
 * i and P[ i ] is the profit of item i. Finally C is the total capacity of 
 * the Knapsack.
 *
-* The formulation of the problem is:
+* A formulation of the problem is:
 * \f[
 *  \max \sum_{ i = 1 }^{ n } P[ i ] X[ i ]
 * \f]
@@ -71,6 +71,20 @@ class BinaryKnapsackBlock : public Block {
 
 public:
 
+/*--------------------------------------------------------------------------*/
+/*---------------------------- PUBLIC TYPES --------------------------------*/
+/*--------------------------------------------------------------------------*/
+/** @name Public types
+ @{ */
+
+typedef double WNumber;                         ///< type of weights
+typedef std::vector< WNumber > Vec_WNumber;     ///< a vector of WNumber
+typedef Vec_WNumber::iterator Vec_WNumber_it;   ///< iterator in Vec_WNumber
+
+typedef double PNumber;                         ///< type of profits
+typedef std::vector< PNumber > Vec_PNumber;     ///< a vector of PNumber
+typedef Vec_PNumber::iterator Vec_PNumber_it;   ///< iterator in Vec_WNumber
+
 /**@} ----------------------------------------------------------------------*/
 /*------------------------------- FRIENDS ----------------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -91,7 +105,7 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
   * also be used as the void constructor. */
 
 explicit BinaryKnapsackBlock( Block * father = nullptr )
-  : Block( father ) , NItems( 0 ) , C( 0 ), W( {} ) , P( {} ) , AR( 0 ) , 
+  : Block( father ) , NItems( 0 ) , C( 0 ) , AR( 0 ) , 
     f_cond_lower( - Inf<double>() ) , f_cond_upper( + Inf<double>() ) { }
 
 /*--------------------------------------------------------------------------*/
@@ -120,8 +134,8 @@ virtual ~BinaryKnapsackBlock(){ guts_of_destructor(); }
   * BinaryKnapsackBlock then a NBModification (the "nuclear option") is 
   * issued. */
 
-void load( Index n , double Capacity , std::vector< double > & weights , 
-           std::vector< double > & Profits );
+void load( Index n , double Capacity , const Vec_WNumber & Weights , 
+           const Vec_PNumber & Profits );
 
 /*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
@@ -253,7 +267,7 @@ double get_Capacity() const { return( C ); }
 /*--------------------------------------------------------------------------*/
  /// given an index i return the weight of item i 
 
-double get_Weight( c_Index i ) const { 
+WNumber get_Weight( c_Index i ) const { 
  if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid item " ) );
  return( W[ i ] ); 
@@ -262,12 +276,12 @@ double get_Weight( c_Index i ) const {
 /*--------------------------------------------------------------------------*/
  /// get the vector of Weights
 
-const std::vector< double > & get_Weights() const { return( W ); }
+const Vec_WNumber & get_Weights() const { return( W ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index i return the profit of item i 
 
-double get_Profit( c_Index i ) const { 
+PNumber get_Profit( c_Index i ) const { 
  if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid item " ) );
  return( P[ i ] ); 
@@ -276,7 +290,7 @@ double get_Profit( c_Index i ) const {
 /*--------------------------------------------------------------------------*/
  /// get the vector of Profits
 
-const std::vector< double > & get_Profits() const { return( P ); }
+const Vec_PNumber & get_Profits() const { return( P ); }
 
 /*--------------------------------------------------------------------------*/
  /// get a pointer to the Constraint
@@ -381,12 +395,12 @@ bool get_x( c_Index i );
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution
 
-void get_x(std::vector<int> & xSol , Range rng = Range(0 , Inf<Index>()));
+void get_x(std::vector< bool > & xSol , Range rng = Range(0 , Inf<Index>()));
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the solution for an arbitrary subset of items
 
-void get_x( std::vector<int> & xSol , c_Subset & nms );
+void get_x( std::vector< bool > & xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, set the solution of the corresponding item
@@ -396,12 +410,12 @@ void set_x( c_Index i , bool value );
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set a contiguous interval of the solution
 
-void set_x(std::vector<int> & xSol , Range rng = Range(0 , Inf<Index>()));
+void set_x(std::vector< bool > & xSol , Range rng = Range(0 , Inf<Index>()));
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the solution for an arbitrary subset of items
 
-void set_x( std::vector<int> & xSol , c_Subset & nms );
+void set_x( std::vector< bool > & xSol , c_Subset & nms );
 
 /**@} ----------------------------------------------------------------------*/
 /*-------------------- Methods for handling Modification -------------------*/
@@ -488,7 +502,7 @@ void serialize( netCDF::NcGroup & group ) const override;
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index and a value fix the variable of the corresponding item
 
-void fix_x( const bool value, c_Index item , 
+void fix_x( bool value, c_Index item , 
             c_ModParam issueMod = eNoBlck ,
             c_ModParam issueAMod = eNoBlck ); 
 
@@ -502,14 +516,14 @@ void unfix_x( c_Index item ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the weight of item i
 
-void chg_weight( const double NWeight , c_Index item , 
+void chg_weight( WNumber NWeight , c_Index item , 
                  c_ModParam issueMod = eNoBlck ,
                  c_ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of a contiguous interval of items
 
-void chg_weights( const std::vector<double>::iterator NWeight , 
+void chg_weights( const Vec_WNumber_it NWeight , 
                   Range rng = Range( 0 , Inf< Index >() ) , 
                   c_ModParam issueMod = eNoBlck ,
                   c_ModParam issueAMod = eNoBlck ); 
@@ -517,7 +531,7 @@ void chg_weights( const std::vector<double>::iterator NWeight ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
-void chg_weights( const std::vector<double>::iterator NWeight , 
+void chg_weights( const Vec_WNumber_it NWeight , 
                   Subset && nms , const bool ordered = false ,  
                   c_ModParam issueMod = eNoBlck ,
                   c_ModParam issueAMod = eNoBlck ); 
@@ -525,14 +539,14 @@ void chg_weights( const std::vector<double>::iterator NWeight ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the profit of item i 
 
-void chg_profit( const double NProfit , c_Index item , 
+void chg_profit( PNumber NProfit , c_Index item , 
                  c_ModParam issueMod = eNoBlck ,
                  c_ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of a contiguous interval of items
 
-void chg_profits( const std::vector<double>::iterator NProfit , 
+void chg_profits( const Vec_PNumber_it NProfit , 
                   Range rng = Range( 0 , Inf< Index >() ) , 
                   c_ModParam issueMod = eNoBlck ,
                   c_ModParam issueAMod = eNoBlck ); 
@@ -540,7 +554,7 @@ void chg_profits( const std::vector<double>::iterator NProfit ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of an arbitrary subsets of items
 
-void chg_profits( const std::vector<double>::iterator NProfit , 
+void chg_profits( const Vec_PNumber_it NProfit , 
                   Subset && nms , const bool ordered = false ,  
                   c_ModParam issueMod = eNoBlck ,
                   c_ModParam issueAMod = eNoBlck ); 
@@ -548,7 +562,7 @@ void chg_profits( const std::vector<double>::iterator NProfit ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the capacity of the Knapsack
 
-void chg_capacity( const double NC ,
+void chg_capacity( double NC ,
                    c_ModParam issueMod = eNoBlck ,
                    c_ModParam issueAMod = eNoBlck ); 
 
@@ -585,8 +599,8 @@ void load( std::istream & input ) override;
 
 Index NItems;                   ///< the number of Items 
 double C;                       ///< the Capacity of the Knapsack
-std::vector< double > W;        ///< vector of Weights          
-std::vector< double > P;        ///< vector of Profits
+Vec_WNumber W;                  ///< vector of Weights          
+Vec_PNumber P;                  ///< vector of Profits
 
 unsigned char AR;               ///< bit-wise coded: what abstract is there
 
