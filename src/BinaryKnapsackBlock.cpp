@@ -70,7 +70,7 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlock );
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-               std::vector<double> & Weights , std::vector<double> & Profits )
+               const Vec_WNumber & Weights , const Vec_PNumber & Profits )
 {
  
  // sanity checks 
@@ -283,7 +283,7 @@ bool BinaryKnapsackBlock::get_x( c_Index item ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::get_x( std::vector<int> & xSol , Range rng ){
+void BinaryKnapsackBlock::get_x( std::vector<bool> & xSol , Range rng ){
  
  rng.second = std::min( rng.second , get_NItems() );
 
@@ -295,7 +295,7 @@ void BinaryKnapsackBlock::get_x( std::vector<int> & xSol , Range rng ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::get_x( std::vector<int> & xSol , c_Subset & nms ){
+void BinaryKnapsackBlock::get_x( std::vector<bool> & xSol , c_Subset & nms ){
  
  auto xSoli = xSol.begin();
  for( auto i : nms ){
@@ -315,7 +315,7 @@ void BinaryKnapsackBlock::set_x( c_Index item , bool value ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( std::vector<int> & xSol , Range rng ){
+void BinaryKnapsackBlock::set_x( std::vector<bool> & xSol , Range rng ){
  
  rng.second = std::min( rng.second , get_NItems() );
 
@@ -327,7 +327,7 @@ void BinaryKnapsackBlock::set_x( std::vector<int> & xSol , Range rng ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( std::vector<int> & xSol , c_Subset & nms ){
+void BinaryKnapsackBlock::set_x( std::vector<bool> & xSol , c_Subset & nms ){
  
  auto xSoli = xSol.begin();
  for( auto i : nms ){
@@ -377,7 +377,7 @@ void BinaryKnapsackBlock::serialize( netCDF::NcGroup & group ) const {
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::fix_x( const bool value, c_Index item , 
+void BinaryKnapsackBlock::fix_x( bool value, c_Index item , 
                                  c_ModParam issueMod, c_ModParam issueAMod ){
 
  if( item >= get_NItems() )
@@ -431,7 +431,7 @@ void BinaryKnapsackBlock::unfix_x( c_Index item , c_ModParam issueMod,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weight( const double NWeight , c_Index item , 
+void BinaryKnapsackBlock::chg_weight( WNumber NWeight , c_Index item , 
                           c_ModParam issueMod , c_ModParam issueAMod ){
 
  if( item >= get_NItems() )
@@ -463,7 +463,7 @@ void BinaryKnapsackBlock::chg_weight( const double NWeight , c_Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weights( const std::vector<double>::iterator NWeight,
+void BinaryKnapsackBlock::chg_weights( const Vec_WNumber_it NWeight,
                                        Range rng , 
                                        c_ModParam issueMod ,
                                        c_ModParam issueAMod ){
@@ -508,7 +508,7 @@ void BinaryKnapsackBlock::chg_weights( const std::vector<double>::iterator NWeig
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weights( const std::vector<double>::iterator NWeight,
+void BinaryKnapsackBlock::chg_weights( const Vec_WNumber_it NWeight,
                                        Subset && nms , const bool ordered ,  
                                        c_ModParam issueMod ,
                                        c_ModParam issueAMod ){
@@ -554,7 +554,7 @@ void BinaryKnapsackBlock::chg_weights( const std::vector<double>::iterator NWeig
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profit( const double NProfit , c_Index item , 
+void BinaryKnapsackBlock::chg_profit( PNumber NProfit , c_Index item , 
                           c_ModParam issueMod , c_ModParam issueAMod ){
 
  if( item >= get_NItems() )
@@ -591,7 +591,7 @@ void BinaryKnapsackBlock::chg_profit( const double NProfit , c_Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profits( const std::vector<double>::iterator NProfit ,
+void BinaryKnapsackBlock::chg_profits( const Vec_PNumber_it NProfit ,
                                        Range rng , 
                                        c_ModParam issueMod ,
                                        c_ModParam issueAMod ){
@@ -635,7 +635,7 @@ void BinaryKnapsackBlock::chg_profits( const std::vector<double>::iterator NProf
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profits( const std::vector<double>::iterator NProfit,
+void BinaryKnapsackBlock::chg_profits( const Vec_PNumber_it NProfit,
                                        Subset && nms , const bool ordered ,  
                                        c_ModParam issueMod ,
                                        c_ModParam issueAMod ){
@@ -680,7 +680,7 @@ void BinaryKnapsackBlock::chg_profits( const std::vector<double>::iterator NProf
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_capacity( const double NC , 
+void BinaryKnapsackBlock::chg_capacity( double NC , 
                           c_ModParam issueMod , c_ModParam issueAMod ){
 
  if( C == NC ) // nothing to do
