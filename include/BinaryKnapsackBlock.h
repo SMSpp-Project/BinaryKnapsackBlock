@@ -591,9 +591,9 @@ static constexpr unsigned char HasCns = 4;
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
-std::vector< ColVariable > v_x; ///< the static binary variables
-FRowConstraint cnst;            ///< the static constraint 
-FRealObjective f;               ///< the (linear) objective function
+std::vector< ColVariable > v_x; 		///< the static binary variables
+std::vector< FRowConstraint> v_cnst;	///< the static constraint 
+FRealObjective f;               		///< the (linear) objective function
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PRIVATE PART OF THE CLASS --------------------------*/

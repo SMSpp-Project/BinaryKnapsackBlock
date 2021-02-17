@@ -70,7 +70,8 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlock );
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-               const std::vector<double> & Weights , const std::vector<double> & Profits )
+               const std::vector<double> & Weights , 
+               const std::vector<double> & Profits )
 {
  
  // sanity checks 
@@ -180,17 +181,19 @@ void BinaryKnapsackBlock::generate_abstract_constraints( Configuration * stcc )
  if( AR & HasCns )  // the constraint is there already
   return;           // nothing to do
 
+ v_cnst.resize( 1 );
+
  LinearFunction::v_coeff_pair w( get_NItems() );
  for( Index i = 0 ; i < get_NItems() ; i++ ){
   w[ i ].first = &v_x[i];
   w[ i ].second = v_W[i];
  }
 
- cnst.set_function( new LinearFunction( std::move( w ) , 0 ) , eNoBlck );
- cnst.set_rhs( f_C );
- cnst.set_lhs( - Inf<double>() );
+ v_cnst[ 0 ].set_function( new LinearFunction( std::move( w ) , 0 ) , eNoBlck );
+ v_cnst[ 0 ].set_rhs( f_C );
+ v_cnst[ 0 ].set_lhs( - Inf<double>() );
  
- add_static_constraint( cnst );
+ add_static_constraint( v_cnst[ 0 ] );
 
  AR |= HasCns;
 }
@@ -227,7 +230,7 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
   if( ! ( AR & HasCns ) )
    throw( std::logic_error( "Constraint required for is_feasible( true , )") );
    
-  return( cnst.rel_viol() > 0 ? false : true );
+  return( v_cnst[ 0 ].rel_viol() > 0 ? false : true );
 }
 
 // do it using the physical representation
@@ -446,9 +449,9 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( cnst.get_function() );
+  LinearFunction *lf = dynamic_cast<LinearFunction*>(v_cnst[0].get_function());
   lf->modify_coefficient( item , NWeight , issueAMod ); // AR
-  v_W[ item ] = NWeight;                                  // PR
+  v_W[ item ] = NWeight;                                // PR
  } 
  else if( not_dry_run( issueMod ) ) // otherwise only physical representation
   v_W[ item ] = NWeight; 
@@ -488,7 +491,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
              v_W.begin() + rng.first );
   
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( cnst.get_function() );
+  LinearFunction *lf = dynamic_cast<LinearFunction*>(v_cnst[0].get_function());
   lf->modify_coefficients( std::vector<double>( NWeight , 
                   NWeight + ( rng.second - rng.first ) ) , rng , issueAMod );
  } 
@@ -530,7 +533,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
   copyidx( v_W , nms , NWeight );
   
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( cnst.get_function() );
+  LinearFunction *lf = dynamic_cast<LinearFunction*>(v_cnst[0].get_function());
   lf->modify_coefficients( std::vector<double>( NWeight , 
                   NWeight + nms.size() ) , 
                   Subset( nms ) , issueAMod );
@@ -693,7 +696,7 @@ void BinaryKnapsackBlock::chg_capacity( double NC ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
   f_C = NC; 
-  cnst.set_rhs( NC , issueAMod );
+  v_cnst[0].set_rhs( NC , issueAMod );
  } 
  else if( not_dry_run( issueMod ) ) // otherwise only physical representation 
   f_C = NC;
@@ -768,7 +771,9 @@ for( Index i = 0 ; i < f_NItems ; i++ ){
 void BinaryKnapsackBlock::guts_of_destructor(){
 
  // clear the constraint
- cnst.clear();
+ for( auto & c : v_cnst )
+  c.clear();
+ v_cnst.clear();
  // clear the objective function
  f.clear();
  // clear all variables
@@ -824,7 +829,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   // if the AR of the constraint exists
   if( AR & HasCns ){ 
    // get the constraint 
-   auto lfc = dynamic_cast< LinearFunction * >( cnst.get_function() ); 
+   auto lfc = dynamic_cast< LinearFunction * >( v_cnst[0].get_function() ); 
    // and check if the modification is on the constraint  
     if( lf == lfc ){ 
      // vector of new weights 
@@ -876,7 +881,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   // if the AR of the constraint exists
   if( AR & HasCns ){
    // get the constraint 
-   auto lfc = dynamic_cast< LinearFunction * >( cnst.get_function() ); 
+   auto lfc = dynamic_cast< LinearFunction * >( v_cnst[0].get_function() ); 
    // and check if the modification is on the constraint  
     if( lf == lfc ){
      // vector of new weights 
