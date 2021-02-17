@@ -709,6 +709,34 @@ void BinaryKnapsackBlock::chg_capacity( double NC ,
 
  } // end( BinaryKnapsackBlock::chg_capacity )
 
+ /*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackBlock::set_sense( bool sense , 
+                          c_ModParam issueMod , c_ModParam issueAMod ){
+
+ if( f_sense == sense ) // nothing to do
+  return;
+
+ // reset conditional bounds
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = +Inf< double >();
+
+ // change both physical and abstract representation (if it exists)
+ if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
+  f_sense = sense; 
+  f.set_sense( sense , issueAMod );
+ } 
+ else if( not_dry_run( issueMod ) ) // otherwise only physical representation 
+  f_sense = sense;
+ 
+
+ if( issue_pmod( issueMod ) ) // issue physical Modification 
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockMod >( this ,
+                           BinaryKnapsackBlockMod::eChgSense ) , 
+                           Observer::par2chnl( issueMod ) );
+
+ } // end( BinaryKnapsackBlock::set_sense )
+
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- PROTECTED METHODS -----------------------------*/
@@ -937,6 +965,23 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   return;
 }
 
+}
+
+// ObjectiveMod - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+{
+ const auto tmod = dynamic_cast< ObjectiveMod * >( mod );
+ if( tmod ){ 
+  if( !( AR & HasObj ) ) // check if the objective exists
+   throw(std::invalid_argument("Modification to non-constructed objective"));
+
+   auto obj = dynamic_cast< Objective * >( & f );
+   if( tmod->of() == obj ){ 
+   	bool sense = tmod->type() == Objective::eMax ? 1 : 0;
+   	set_sense( sense , make_par( eNoBlck , chnl ) , eDryRun );
+   	return;
+   }
+   throw( std::invalid_argument("Modification to the wrong objective") );
+  }
 }
 
 throw(std::invalid_argument( "unsupported Modification to BinaryKnapsackBlock"));

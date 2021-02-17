@@ -59,6 +59,9 @@ namespace SMSpp_di_unipi_it
 *   X[ i ] \in \{ 0 , 1 \} \quad i = 1, \dots, n  (2)
 * \f]
 * 
+* By default it is a maximization problem, but it is possible to change the 
+* sense of the objective with set_sense() and obtain a minimization problem.
+* 
 * The set of items is assumed not to be changed (save for changing weights and
 * profits, and for items to be fixed or unfixed). */
 
@@ -100,7 +103,8 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
 
 explicit BinaryKnapsackBlock( Block * father = nullptr )
   : Block( father ) , f_NItems( 0 ) , f_C( 0 ) , AR( 0 ) , 
-    f_cond_lower( - Inf<double>() ) , f_cond_upper( + Inf<double>() ) { }
+  	f_sense( 1 ) , f_cond_lower( - Inf<double>() ) , 
+  	f_cond_upper( + Inf<double>() ) { }
 
 /*--------------------------------------------------------------------------*/
  /// destructor of BinaryKnapsackBlock: deletes the abstract representation
@@ -189,14 +193,14 @@ void generate_objective( Configuration * objc = nullptr ) override;
  *  @{ */
 
 /*--------------------------------------------------------------------------*/
- /// getting the current sense of the Objective, which is maximization
+ /// getting the current sense of the Objective
 
 int get_objective_sense() const override final { 
-      return( Objective::eMax );
+      return( f_sense ? Objective::eMax : Objective::eMin );
 }
 
 /*--------------------------------------------------------------------------*/
- /// getting a global valid upper bound on the value of the Objective
+ /// getting a valid upper bound on the value of the Objective
  /** In order to compute a valid upper bound, first note:
   *
   * - all the items i with negative weight W[ i ] < 0 and positive profit 
@@ -208,10 +212,20 @@ int get_objective_sense() const override final {
   * Once all these items have been preprocessed, a valid upper bound on the 
   * optimal value of the problem is computed as a sum of the positive profits 
   * of all the remaining items (plus the sum of the profits of the selected 
-  * preprocessed items). */
+  * preprocessed items).
+  *
+  * If the objective sense is maximization this is also a global valid upper
+  * bound, otherwise it is a conditionally valid upper bound, because the 
+  * problem could be empty (and it being a minimization one this would mean 
+  * that its optimal value is + infinity) */
 
 double get_valid_upper_bound( bool conditional = false ) 
  override final{
+ if( ! f_sense  ){ 		// if the sense is minimization
+  if( ( ! conditional ) && ( is_empty() ) )
+   return( + Inf< double >() );
+ }
+
  if( std::isinf( f_cond_upper ) )
   compute_conditional_bounds();
 
@@ -233,14 +247,17 @@ double get_valid_upper_bound( bool conditional = false )
   * the remaining items (plus the sum of the profits of the selected 
   * preprocessed items). 
   *
-  * This is a conditionally valid lower bound but not a globally valid one 
-  * because the problem may be empty (and it being a maximization one this 
-  * would mean that its optimal value is - infinity). */
+  * If the objective sense is minimization this is also a global valid lower
+  * bound, otherwise it is a conditionally valid lower bound, because the 
+  * problem may be empty (and it being a maximization one this would mean that
+  * its optimal value is - infinity). */
 
 double get_valid_lower_bound( bool conditional = false ) 
  override final{
- if( ( ! conditional ) && ( is_empty() ) )
-  return( - Inf< double >() );
+ if( f_sense ){ 		// if the sense is maximization
+  if( ( ! conditional ) && ( is_empty() ) )
+   return( - Inf< double >() );
+ }
 
  if( std::isinf( f_cond_lower ) )
   compute_conditional_bounds();
@@ -289,6 +306,7 @@ const std::vector<double> & get_Profits() const { return( v_P ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index get a pointer to the corresponding variable
+// TODO commenti sulle variabili a seconda della formulazione usata
 
 ColVariable * get_Var( Index i ){ 
  if( i >= get_NItems() )
@@ -436,7 +454,9 @@ bool anyone_there( void ) const override {
   *
   * - RowConstraintMod changing the RHS of the Constraint;
   *
-  * - VariableMod fixing and un-fixing a ColVariable; 
+  * - VariableMod fixing and un-fixing a ColVariable;
+  *
+  * - ObjectiveMod changing the sense of the objective function. 
   *
   * Any other Modification reaching the BinaryKnapsackBlock will lead to 
   * exception being thrown.
@@ -543,6 +563,13 @@ void chg_capacity( double NC ,
                    c_ModParam issueMod = eNoBlck ,
                    c_ModParam issueAMod = eNoBlck ); 
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// set the sense of the objective function
+
+void set_sense( bool sense ,
+	            c_ModParam issueMod = eNoBlck ,
+                c_ModParam issueAMod = eNoBlck ); 
+
 /**@} ----------------------------------------------------------------------*/
 /*-------------------- PROTECTED PART OF THE CLASS -------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -594,6 +621,8 @@ double f_cond_upper;            ///< conditional upper bound, can be infinite
 std::vector< ColVariable > v_x; 		///< the static binary variables
 std::vector< FRowConstraint> v_cnst;	///< the static constraint 
 FRealObjective f;               		///< the (linear) objective function
+
+bool f_sense;					///< the sense of the objective 
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PRIVATE PART OF THE CLASS --------------------------*/
@@ -648,6 +677,7 @@ public:
   eChgCapacity    ,   ///< change the Knapsack capacity
   eFixX           ,   ///< fix a variable x
   eUnfixX         ,   ///< unfix a variable x
+  eChgSense		  ,   ///< change the sense of the objective
   };
 
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
@@ -688,6 +718,7 @@ public:
    case( eChgCapacity ):  output << "change capacity "; break;
    case( eFixX ):  output << "fix x "; break;
    case( eUnfixX ):  output << "unfix x "; break;
+   case( eChgSense ):  output << "change objective sense "; break;
    }
   }
 
