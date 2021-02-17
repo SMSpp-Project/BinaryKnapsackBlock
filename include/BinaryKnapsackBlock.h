@@ -77,13 +77,7 @@ public:
 /** @name Public types
  @{ */
 
-typedef double WNumber;                         ///< type of weights
-typedef std::vector< WNumber > Vec_WNumber;     ///< a vector of WNumber
-typedef Vec_WNumber::iterator Vec_WNumber_it;   ///< iterator in Vec_WNumber
-
-typedef double PNumber;                         ///< type of profits
-typedef std::vector< PNumber > Vec_PNumber;     ///< a vector of PNumber
-typedef Vec_PNumber::iterator Vec_PNumber_it;   ///< iterator in Vec_WNumber
+typedef std::vector<double>::iterator dblVec_it;
 
 /**@} ----------------------------------------------------------------------*/
 /*------------------------------- FRIENDS ----------------------------------*/
@@ -105,7 +99,7 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
   * also be used as the void constructor. */
 
 explicit BinaryKnapsackBlock( Block * father = nullptr )
-  : Block( father ) , NItems( 0 ) , C( 0 ) , AR( 0 ) , 
+  : Block( father ) , f_NItems( 0 ) , f_C( 0 ) , AR( 0 ) , 
     f_cond_lower( - Inf<double>() ) , f_cond_upper( + Inf<double>() ) { }
 
 /*--------------------------------------------------------------------------*/
@@ -134,8 +128,8 @@ virtual ~BinaryKnapsackBlock(){ guts_of_destructor(); }
   * BinaryKnapsackBlock then a NBModification (the "nuclear option") is 
   * issued. */
 
-void load( Index n , double Capacity , const Vec_WNumber & Weights , 
-           const Vec_PNumber & Profits );
+void load( Index n , double Capacity , const std::vector<double> & Weights , 
+           const std::vector<double> & Profits );
 
 /*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
@@ -257,66 +251,49 @@ double get_valid_lower_bound( bool conditional = false )
 /*--------------------------------------------------------------------------*/
  /// get the number of items
 
-Index get_NItems() const { return( NItems ); }
+Index get_NItems() const { return( f_NItems ); }
 
 /*--------------------------------------------------------------------------*/
  /// get the capacity of the Knapsack
 
-double get_Capacity() const { return( C ); }
+double get_Capacity() const { return( f_C ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index i return the weight of item i 
 
-WNumber get_Weight( c_Index i ) const { 
+double get_Weight( Index i ) const { 
  if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid item " ) );
- return( W[ i ] ); 
+ return( v_W[ i ] ); 
 }
 
 /*--------------------------------------------------------------------------*/
  /// get the vector of Weights
 
-const Vec_WNumber & get_Weights() const { return( W ); }
+const std::vector<double> & get_Weights() const { return( v_W ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index i return the profit of item i 
 
-PNumber get_Profit( c_Index i ) const { 
+double get_Profit( Index i ) const { 
  if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid item " ) );
- return( P[ i ] ); 
+ return( v_P[ i ] ); 
 }
 
 /*--------------------------------------------------------------------------*/
  /// get the vector of Profits
 
-const Vec_PNumber & get_Profits() const { return( P ); }
+const std::vector<double> & get_Profits() const { return( v_P ); }
 
-/*--------------------------------------------------------------------------*/
- /// get a pointer to the Constraint
-
-FRowConstraint * get_Cnst(){ 
- if( !( AR & HasCns ) )
-  throw( std::invalid_argument( "Constraint non-constructed" ) );
- return( & cnst ); 
-}
-
-/*--------------------------------------------------------------------------*/
- /// get a pointer to the Objective
-
-FRealObjective * get_Obj(){ 
- if( !( AR & HasObj ) )
-  throw( std::invalid_argument( "Objective non-constructed" ) );
- return( & f ); 
-}
 
 /*--------------------------------------------------------------------------*/
  /// given an index get a pointer to the corresponding variable
 
-ColVariable * get_Var( c_Index i ){ 
+ColVariable * get_Var( Index i ){ 
  if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid item" ) );
- return( & x[ i ] ); 
+ return( & v_x[ i ] ); 
 }
 
 /**@} ----------------------------------------------------------------------*/
@@ -390,7 +367,7 @@ Solution * get_Solution( Configuration * solc = nullptr,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index gets the solution of the corresponding item
 
-bool get_x( c_Index i );
+bool get_x( Index i );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution
@@ -405,7 +382,7 @@ void get_x( std::vector< bool > & xSol , c_Subset & nms );
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, set the solution of the corresponding item
 
-void set_x( c_Index i , bool value );
+void set_x( Index i , bool value );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set a contiguous interval of the solution
@@ -502,28 +479,28 @@ void serialize( netCDF::NcGroup & group ) const override;
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index and a value fix the variable of the corresponding item
 
-void fix_x( bool value, c_Index item , 
+void fix_x( bool value, Index item , 
             c_ModParam issueMod = eNoBlck ,
             c_ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index unfix the variable of the corresponding item
 
-void unfix_x( c_Index item ,
+void unfix_x( Index item ,
               c_ModParam issueMod = eNoBlck ,
               c_ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the weight of item i
 
-void chg_weight( WNumber NWeight , c_Index item , 
+void chg_weight( double NWeight , Index item , 
                  c_ModParam issueMod = eNoBlck ,
                  c_ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of a contiguous interval of items
 
-void chg_weights( const Vec_WNumber_it NWeight , 
+void chg_weights( const dblVec_it NWeight , 
                   Range rng = Range( 0 , Inf< Index >() ) , 
                   c_ModParam issueMod = eNoBlck ,
                   c_ModParam issueAMod = eNoBlck ); 
@@ -531,22 +508,22 @@ void chg_weights( const Vec_WNumber_it NWeight ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
-void chg_weights( const Vec_WNumber_it NWeight , 
-                  Subset && nms , const bool ordered = false ,  
+void chg_weights( const dblVec_it NWeight , 
+                  Subset && nms , bool ordered = false ,  
                   c_ModParam issueMod = eNoBlck ,
                   c_ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the profit of item i 
 
-void chg_profit( PNumber NProfit , c_Index item , 
+void chg_profit( double NProfit , Index item , 
                  c_ModParam issueMod = eNoBlck ,
                  c_ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of a contiguous interval of items
 
-void chg_profits( const Vec_PNumber_it NProfit , 
+void chg_profits( const dblVec_it NProfit , 
                   Range rng = Range( 0 , Inf< Index >() ) , 
                   c_ModParam issueMod = eNoBlck ,
                   c_ModParam issueAMod = eNoBlck ); 
@@ -554,8 +531,8 @@ void chg_profits( const Vec_PNumber_it NProfit ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of an arbitrary subsets of items
 
-void chg_profits( const Vec_PNumber_it NProfit , 
-                  Subset && nms , const bool ordered = false ,  
+void chg_profits( const dblVec_it NProfit , 
+                  Subset && nms , bool ordered = false ,  
                   c_ModParam issueMod = eNoBlck ,
                   c_ModParam issueAMod = eNoBlck ); 
 
@@ -597,10 +574,10 @@ void load( std::istream & input ) override;
 /*--------------------------- PROTECTED FIELDS  ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-Index NItems;                   ///< the number of Items 
-double C;                       ///< the Capacity of the Knapsack
-Vec_WNumber W;                  ///< vector of Weights          
-Vec_PNumber P;                  ///< vector of Profits
+Index f_NItems;                 ///< the number of Items 
+double f_C;                     ///< the Capacity of the Knapsack
+std::vector<double> v_W;        ///< vector of Weights          
+std::vector<double> v_P;        ///< vector of Profits
 
 unsigned char AR;               ///< bit-wise coded: what abstract is there
 
@@ -614,7 +591,7 @@ static constexpr unsigned char HasCns = 4;
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
-std::vector< ColVariable > x;   ///< the static binary variables
+std::vector< ColVariable > v_x; ///< the static binary variables
 FRowConstraint cnst;            ///< the static constraint 
 FRealObjective f;               ///< the (linear) objective function
 
@@ -635,7 +612,7 @@ void guts_of_add_Modification( p_Mod mod , ChnlName chnl );
 void compute_conditional_bounds( void );
 
 int p2i_x( Variable * const var ) const{
- return( std::distance( x.data() ,
+ return( std::distance( v_x.data() ,
 			   static_cast< const ColVariable * >( var ) ) ); 
 }
 
