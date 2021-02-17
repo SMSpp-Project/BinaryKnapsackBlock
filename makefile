@@ -16,7 +16,7 @@ BKBkOBJ = $(BKBkSDR)obj/BinaryKnapsackBlock.o
 
 BKBkINC = -I$(BKBkSDR)/include
 
-BKBkH   = $(BKBkSDR)include/BinaryKnapsackBlock.h $(BKBkSDR)include/BinaryKnapsackSolver.h
+BKBkH   = $(BKBkSDR)include/BinaryKnapsackBlock.h $(BKBkSDR)include/DPBinaryKnapsackSolver.h
 
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -30,9 +30,9 @@ $(BKBkSDR)obj/BinaryKnapsackBlock.o: $(BKBkSDR)src/BinaryKnapsackBlock.cpp \
 	$(CC) -c $(BKBkSDR)src/BinaryKnapsackBlock.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
-$(BKBkSDR)obj/BinaryKnapsackSolver.o: $(BKBkSDR)src/BinaryKnapsackSolver.cpp $(BKBkH) \
+$(BKBkSDR)obj/DPBinaryKnapsackSolver.o: $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp $(BKBkH) \
 	$(SMS++OBJ)  
-	$(CC) -c $(BKBkSDR)src/BinaryKnapsackSolver.cpp -o $@ \
+	$(CC) -c $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
 ########################## End of makefile ###################################
