@@ -105,7 +105,6 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
  f_cond_upper = Inf<double>();
 
  // Modification
-
  if( anyone_there() )
   add_Modification( std::make_shared< NBModification >( this ) );
 
@@ -152,7 +151,6 @@ void BinaryKnapsackBlock::deserialize( const netCDF::NcGroup & group ){
 
  // call the method of Block
  // inside this the NBModification, the "nuclear option",  is issued
-
  Block::deserialize( group );
 
 } // end( BinaryKnapsackBlock::deserialize )
@@ -246,7 +244,7 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
 bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
    
  if( f_C >= 0 )       // if the Capacity is positive then x = 0 is a feasible 
-  return( false );  // solution and the problem is not empty
+  return( false );    // solution and the problem is not empty
 
  double neg_weights = 0;
 
@@ -265,7 +263,7 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
 /*--------------------------------------------------------------------------*/
 
 Solution * BinaryKnapsackBlock::get_Solution( Configuration *solc , 
-                                             bool emptys ){
+                                              bool emptys ){
  auto * sol = new BinaryKnapsackSolution(); 
 
  sol->v_x.resize( get_NItems() );
@@ -386,8 +384,9 @@ void BinaryKnapsackBlock::fix_x( bool value, Index item ,
  if( item >= get_NItems() )
   throw( std::invalid_argument( "invalid index item" ) );
 
- if( ( v_x[ item ].is_fixed() ) && ( v_x[ item ].get_value() == value ) )// nothing 
-  return;                                                            // to do
+ // if already fixed with the right value then nothing to do
+ if( ( v_x[ item ].is_fixed() ) && ( v_x[ item ].get_value() == value ) )
+  return;      
 
  // reset conditional bounds
  f_cond_lower = -Inf<double>();
@@ -476,7 +475,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
   return;   
 
  if( std::equal( NWeight , NWeight + ( rng.second - rng.first ) ,
-		 v_W.begin() + rng.first ) )
+	 v_W.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -604,7 +603,7 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
   return;   
 
  if( std::equal( NProfit , NProfit + ( rng.second - rng.first ) ,
-		 v_P.begin() + rng.first ) )
+		         v_P.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -662,8 +661,8 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
   // abstract representation
   LinearFunction *lf = dynamic_cast<LinearFunction*>( f.get_function() );
   lf->modify_coefficients( std::vector<double>( NProfit , 
-                  NProfit + nms.size() ) , 
-                  Subset( nms ) , issueAMod );
+                           NProfit + nms.size() ) , 
+                           Subset( nms ) , issueAMod );
  } 
  else if( not_dry_run( issueMod ) ){
   // otherwise change only physical representation 
@@ -991,26 +990,50 @@ throw(std::invalid_argument( "unsupported Modification to BinaryKnapsackBlock"))
 
 void BinaryKnapsackBlock::compute_conditional_bounds(){
 
- f_cond_lower = 0;
- f_cond_upper = 0;
- 
+f_cond_lower = 0;
+f_cond_upper = 0;
+
+if( f_sense ){  // if it is a maximization problem
  for( Index i = 0 ; i < get_NItems() ; i++ ){
+
   // items contained in the optimal solution 
   if( ( v_W[ i ] < 0 ) && ( v_P[ i ] > 0 ) ){ 
    f_cond_lower += v_P[ i ];                
    f_cond_upper += v_P[ i ];
    continue;
   }
+
   // items not contained in the optimal solution
   if( ( v_W[ i ] > 0 ) && ( v_P[ i ] < 0 ) )
    continue;
+
   // remaining items
   if( v_P[ i ] > 0 )
    f_cond_upper += v_P[ i ];
   else 
    f_cond_lower += v_P[ i ];
  }
- 
+} else { // otherwise it is a minimization problem
+ for( Index i = 0 ; i < get_NItems() ; i++ ){
+
+  // items contained in the optimal solution 
+  if( ( v_W[ i ] < 0 ) && ( v_P[ i ] < 0 ) ){ 
+   f_cond_lower += v_P[ i ];                
+   f_cond_upper += v_P[ i ];
+   continue;
+  }
+
+  // items not contained in the optimal solution
+  if( ( v_W[ i ] > 0 ) && ( v_P[ i ] > 0 ) )
+   continue;
+
+  // remaining items
+  if( v_P[ i ] > 0 )
+   f_cond_upper += v_P[ i ];
+  else 
+   f_cond_lower += v_P[ i ];
+ }
+}
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1083,9 +1106,9 @@ void BinaryKnapsackSolution::serialize( netCDF::NcGroup & group ){
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackSolution::print( std::ostream & output ){
-  for(Index i = 0 ; i < v_x.size() ; i++ ){
-    output << "x" << i << ": " << v_x[i] << " ";
-  }
+ for(Index i = 0 ; i < v_x.size() ; i++ ){
+  output << "x" << i << ": " << v_x[i] << " ";
+ }
 }
 
 /*--------------------------------------------------------------------------*/

@@ -196,18 +196,22 @@ void generate_objective( Configuration * objc = nullptr ) override;
  /// getting the current sense of the Objective
 
 int get_objective_sense() const override final { 
-      return( f_sense ? Objective::eMax : Objective::eMin );
+ return( f_sense ? Objective::eMax : Objective::eMin );
 }
 
 /*--------------------------------------------------------------------------*/
  /// getting a valid upper bound on the value of the Objective
  /** In order to compute a valid upper bound, first note:
+  * 
+  * If it is a maximization problem, then 
   *
   * - all the items i with negative weight W[ i ] < 0 and positive profit 
   *   P[ i ] > 0 are contained in the optimal solution.
   * 
   * - all the items i with positive weight W[ i ] > 0 and negative profit 
   *   P[ i ] < 0 are not contained in the optimal solution.
+  *
+  * Similarly if it is a minimization problem changing the sign of the profits
   *
   * Once all these items have been preprocessed, a valid upper bound on the 
   * optimal value of the problem is computed as a sum of the positive profits 
@@ -235,12 +239,16 @@ double get_valid_upper_bound( bool conditional = false )
 /*--------------------------------------------------------------------------*/
  /// getting a lower bound on the value of the Objective
  /** In order to compute a lower bound, first note:
+  * 
+  * If it is a maximization problem, then 
   *
   * - all the items i with negative weight W[ i ] < 0 and positive profit 
   *   P[ i ] > 0 are contained in the optimal solution.
   * 
   * - all the items i with positive weight W[ i ] > 0 and negative profit 
   *   P[ i ] < 0 are not contained in the optimal solution.
+	 *
+  * Similarly if it is a minimization problem changing the sign of the profits
   *
   * Once all these items have been preprocessed, a lower bound on the optimal
   * value of the problem is computed as a sum of the negative profits of all 
@@ -306,7 +314,6 @@ const std::vector<double> & get_Profits() const { return( v_P ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index get a pointer to the corresponding variable
-// TODO commenti sulle variabili a seconda della formulazione usata
 
 ColVariable * get_Var( Index i ){ 
  if( i >= get_NItems() )
@@ -466,7 +473,6 @@ bool anyone_there( void ) const override {
 
 void add_Modification( sp_Mod mod, ChnlName chnl = 0 ) override;
 
-
 /**@} ----------------------------------------------------------------------*/
 /*------ METHODS FOR LOADING, PRINTING & SAVING THE BinaryKnapsackBlock ----*/
 /*--------------------------------------------------------------------------*/
@@ -567,7 +573,7 @@ void chg_capacity( double NC ,
  /// set the sense of the objective function
 
 void set_sense( bool sense ,
-	            c_ModParam issueMod = eNoBlck ,
+	               c_ModParam issueMod = eNoBlck ,
                 c_ModParam issueAMod = eNoBlck ); 
 
 /**@} ----------------------------------------------------------------------*/
@@ -618,9 +624,9 @@ static constexpr unsigned char HasCns = 4;
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
-std::vector< ColVariable > v_x; 		///< the static binary variables
+std::vector< ColVariable > v_x; 		   ///< the static binary variables
 std::vector< FRowConstraint> v_cnst;	///< the static constraint 
-FRealObjective f;               		///< the (linear) objective function
+FRealObjective f;               		   ///< the (linear) objective function
 
 bool f_sense;					///< the sense of the objective 
 
@@ -642,7 +648,7 @@ void compute_conditional_bounds( void );
 
 int p2i_x( Variable * const var ) const{
  return( std::distance( v_x.data() ,
-			   static_cast< const ColVariable * >( var ) ) ); 
+			      static_cast< const ColVariable * >( var ) ) ); 
 }
 
 /*--------------------------------------------------------------------------*/
@@ -677,7 +683,7 @@ public:
   eChgCapacity    ,   ///< change the Knapsack capacity
   eFixX           ,   ///< fix a variable x
   eUnfixX         ,   ///< unfix a variable x
-  eChgSense		  ,   ///< change the sense of the objective
+  eChgSense		         ///< change the sense of the objective
   };
 
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
@@ -900,7 +906,7 @@ public:
 
 /*---------------------------- PRIVATE FIELDS ------------------------------*/
 
-std::vector< double > v_x;   ///< the binary variables
+std::vector< double > v_x;   ///< the variables
 
 /*--------------------------------------------------------------------------*/
 
