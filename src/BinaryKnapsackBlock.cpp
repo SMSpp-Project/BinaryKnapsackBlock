@@ -70,8 +70,34 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlock );
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-               const std::vector<double> & Weights , 
-               const std::vector<double> & Profits )
+               					const std::vector<double> & Weights , 
+               					const std::vector<double> & Profits )
+{
+ 
+ // sanity checks 
+
+ if( Weights.size() != n )
+  throw( std::invalid_argument( "Vector of Weights of the wrong size" ) );
+
+ if( Profits.size() != n )
+  throw( std::invalid_argument( "Vector of Profits of the wrong size" ) );
+
+ // copy vectors and call load( , , && , && )
+ std::vector<double> W( n );
+ std::vector<double> P( n );
+
+ std::copy( Weights.begin() , Weights.end() , W.begin() );
+ std::copy( Profits.begin() , Profits.end() , P.begin() );
+
+ load( n , Capacity , std::move( W ) , std::move( P ) );
+
+} // end( BinaryKnapsackBlock::load( memory ) )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackBlock::load( Index n , double Capacity , 
+               					std::vector<double> && Weights , 
+               					std::vector<double> && Profits )
 {
  
  // sanity checks 
@@ -92,11 +118,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
  f_NItems = n;
  f_C = Capacity;
 
- v_W.resize( f_NItems );  
- v_P.resize( f_NItems ); 
-
- std::copy( Weights.begin() , Weights.end() , v_W.begin() );
- std::copy( Profits.begin() , Profits.end() , v_P.begin() );
+ v_W = std::move( Weights );  
+ v_P = std::move( Profits ); 
 
  generate_abstract_variables();
 
@@ -1004,7 +1027,7 @@ if( f_sense ){  // if it is a maximization problem
   }
 
   // items not contained in the optimal solution
-  if( ( v_W[ i ] > 0 ) && ( v_P[ i ] < 0 ) )
+  if( ( ( v_W[ i ] > 0 ) && ( v_P[ i ] < 0 ) ) || ( v_W[ i ] > f_C ) )
    continue;
 
   // remaining items
@@ -1024,7 +1047,7 @@ if( f_sense ){  // if it is a maximization problem
   }
 
   // items not contained in the optimal solution
-  if( ( v_W[ i ] > 0 ) && ( v_P[ i ] > 0 ) )
+  if( ( ( v_W[ i ] > 0 ) && ( v_P[ i ] > 0 ) ) || ( v_W[ i ] > f_C ) )
    continue;
 
   // remaining items

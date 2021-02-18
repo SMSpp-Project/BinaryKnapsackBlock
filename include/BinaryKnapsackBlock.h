@@ -136,6 +136,11 @@ void load( Index n , double Capacity , const std::vector<double> & Weights ,
            const std::vector<double> & Profits );
 
 /*--------------------------------------------------------------------------*/
+
+void load( Index n , double Capacity , std::vector<double> && Weights , 
+           std::vector<double> && Profits );
+
+/*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
  /** Extends Block::deserialize( netCDF::NcGroup ) to the specific format of
   * a BinaryKnapsackBlock. Besides what is managed by serialize() method of 
@@ -209,7 +214,8 @@ int get_objective_sense() const override final {
   *   P[ i ] > 0 are contained in the optimal solution.
   * 
   * - all the items i with positive weight W[ i ] > 0 and negative profit 
-  *   P[ i ] < 0 are not contained in the optimal solution.
+  *   P[ i ] < 0 are not contained in the optimal solution, as well as all the
+  *   items whose weight is greater than the total Capacity of the Knapsack.
   *
   * Similarly if it is a minimization problem changing the sign of the profits
   *
@@ -246,7 +252,8 @@ double get_valid_upper_bound( bool conditional = false )
   *   P[ i ] > 0 are contained in the optimal solution.
   * 
   * - all the items i with positive weight W[ i ] > 0 and negative profit 
-  *   P[ i ] < 0 are not contained in the optimal solution.
+  *   P[ i ] < 0 are not contained in the optimal solution, as well as all the
+  *   items whose weight is greater than the total Capacity of the Knapsack.
 	 *
   * Similarly if it is a minimization problem changing the sign of the profits
   *
