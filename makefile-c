@@ -21,10 +21,6 @@
 SMS++SDR = $(BKBkSDR)../SMS++/
 include $(SMS++SDR)lib/makefile-inc
 
-# define input macros for MILPSolver complete makefile, then include it
-MILPSSDR = $(BKBkSDR)../MILPSolver/
-include $(MILPSSDR)makefile-c
-
 # include the makefile requiring all external modules in input
 include $(BKBkSDR)/makefile
 
@@ -32,10 +28,10 @@ include $(BKBkSDR)/makefile
 
 # append external -I directives to BKBkINC, BKBkOBJ and BKBkH as defined
 # by the makefile, thus the := assignment has to be used (use GNU make)
-BKBkOBJ := $(BKBkOBJ) $(MILPSOBJ) $(SMS++OBJ)
-BKBkINC := $(BKBkINC) $(SMS++INC) $(MILPSINC)
+BKBkOBJ := $(BKBkOBJ) $(SMS++OBJ)
+BKBkINC := $(BKBkINC) $(SMS++INC) 
 
 # external libreries for BKBlock
-BKBkLIB = $(SMS++LIB) $(MILPSLIB)
+BKBkLIB = $(SMS++LIB)
 
 ############################ End of makefile #################################

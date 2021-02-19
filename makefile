@@ -12,11 +12,13 @@
 
 # macroes to be exported- - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-BKBkOBJ = $(BKBkSDR)obj/BinaryKnapsackBlock.o 
+BKBkOBJ = $(BKBkSDR)obj/BinaryKnapsackBlock.o\
+ $(BKBkSDR)obj/DPBinaryKnapsackSolver.o 
 
 BKBkINC = -I$(BKBkSDR)/include
 
-BKBkH   = $(BKBkSDR)include/BinaryKnapsackBlock.h $(BKBkSDR)include/DPBinaryKnapsackSolver.h
+BKBkH   = $(BKBkSDR)include/BinaryKnapsackBlock.h\
+ $(BKBkSDR)include/DPBinaryKnapsackSolver.h
 
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -30,7 +32,8 @@ $(BKBkSDR)obj/BinaryKnapsackBlock.o: $(BKBkSDR)src/BinaryKnapsackBlock.cpp \
 	$(CC) -c $(BKBkSDR)src/BinaryKnapsackBlock.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
-$(BKBkSDR)obj/DPBinaryKnapsackSolver.o: $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp $(BKBkH) \
+$(BKBkSDR)obj/DPBinaryKnapsackSolver.o:\
+ $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp $(BKBkH) \
 	$(SMS++OBJ)  
 	$(CC) -c $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
