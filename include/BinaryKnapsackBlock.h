@@ -60,7 +60,12 @@ namespace SMSpp_di_unipi_it
 * \f]
 * 
 * By default it is a maximization problem, but it is possible to change the 
-* sense of the objective with set_sense() and obtain a minimization problem.
+* sense of the objective with the method set_sense() that changes the value of
+* f_sense.
+*
+*   - f_sense = 1 for a maximization problem
+*
+*   - f_sense = 0 for a minimization problem
 * 
 * The set of items is assumed not to be changed (save for changing weights and
 * profits, and for items to be fixed or unfixed). */
@@ -103,8 +108,8 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
 
 explicit BinaryKnapsackBlock( Block * father = nullptr )
   : Block( father ) , f_NItems( 0 ) , f_C( 0 ) , AR( 0 ) , 
-  	f_sense( 1 ) , f_cond_lower( - Inf<double>() ) , 
-  	f_cond_upper( + Inf<double>() ) { }
+    f_sense( 1 ) , f_cond_lower( - Inf<double>() ) , 
+    f_cond_upper( + Inf<double>() ) { }
 
 /*--------------------------------------------------------------------------*/
  /// destructor of BinaryKnapsackBlock: deletes the abstract representation
@@ -231,7 +236,7 @@ int get_objective_sense() const override final {
 
 double get_valid_upper_bound( bool conditional = false ) 
  override final{
- if( ! f_sense  ){ 		// if the sense is minimization
+ if( ! f_sense  ){      // if the sense is minimization
   if( ( ! conditional ) && ( is_empty() ) )
    return( + Inf< double >() );
  }
@@ -254,7 +259,7 @@ double get_valid_upper_bound( bool conditional = false )
   * - all the items i with positive weight W[ i ] > 0 and negative profit 
   *   P[ i ] < 0 are not contained in the optimal solution, as well as all the
   *   items whose weight is greater than the total Capacity of the Knapsack.
-	 *
+     *
   * Similarly if it is a minimization problem changing the sign of the profits
   *
   * Once all these items have been preprocessed, a lower bound on the optimal
@@ -269,7 +274,7 @@ double get_valid_upper_bound( bool conditional = false )
 
 double get_valid_lower_bound( bool conditional = false ) 
  override final{
- if( f_sense ){ 		// if the sense is maximization
+ if( f_sense ){         // if the sense is maximization
   if( ( ! conditional ) && ( is_empty() ) )
    return( - Inf< double >() );
  }
@@ -318,7 +323,6 @@ double get_Profit( Index i ) const {
 
 const std::vector<double> & get_Profits() const { return( v_P ); }
 
-
 /*--------------------------------------------------------------------------*/
  /// given an index get a pointer to the corresponding variable
 
@@ -344,7 +348,7 @@ ColVariable * get_Var( Index i ){
   * prior to this method. */
 
  bool is_feasible( bool useabstract = false , 
-                  Configuration * fsbc = nullptr ) override;
+                   Configuration * fsbc = nullptr ) override;
 
  /// returns true if the Binary Knapsack problem is empty.
  /** Returns true if the Binary Knapsack problem is empty. 
@@ -355,7 +359,7 @@ ColVariable * get_Var( Index i ){
   * The method is_empty() checks this condition. */
 
  bool is_empty( bool useabstract = false,
-               Configuration * optc = nullptr ) override;
+                Configuration * optc = nullptr ) override;
 
  /// returns true if the Binary Knapsack problem is unbounded.
 
@@ -367,8 +371,30 @@ ColVariable * get_Var( Index i ){
 /*--------------------------------------------------------------------------*/
 /** @name Methods for R3 Blocks
  *  @{ */
+ /// gets an R3 Block of BinaryKnapsackBlock currently only the copy one
+ /** Gets an R3 Block of the BinaryKnapsackBlock. The list of currently 
+  * supported R3 Block is:
+  *
+  * - r3bc == nullptr: the copy (a BinaryKnapsackBlock identical to this)
+  */
 
+ Block * get_R3_Block( Configuration *r3bc = nullptr ,
+           Block * base = nullptr , Block * father = nullptr ) override;
 
+ /*--------------------------------------------------------------------------*/
+ /// maps back the solution from a copy BinaryKnapsackBlock to the current one
+ /** Maps back the solution from a copy BinaryKnapsackBlock to the current one
+  */
+
+ void map_back_solution( Block *R3B , Configuration *r3bc = nullptr ,
+       Configuration *solc = nullptr ) override;
+
+ /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// maps the solution of the current BinaryKnapsackBlock to a copy.
+ /** Maps the solution of the current BinaryKnapsackBlock to a copy. */
+
+ void map_forward_solution( Block *R3B , Configuration *r3bc = nullptr ,
+       Configuration *solc = nullptr ) override;
 
 /**@} ----------------------------------------------------------------------*/
 /*----------------------- Methods for handling Solution --------------------*/
@@ -412,6 +438,11 @@ void get_x(std::vector< bool > & xSol , Range rng = Range(0 , Inf<Index>()));
 void get_x( std::vector< bool > & xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// get the number of variables
+
+Index get_VarSize(){ return( v_x.size() ); }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, set the solution of the corresponding item
 
 void set_x( Index i , bool value );
@@ -425,6 +456,11 @@ void set_x(std::vector< bool > & xSol , Range rng = Range(0 , Inf<Index>()));
  /// set the solution for an arbitrary subset of items
 
 void set_x( std::vector< bool > & xSol , c_Subset & nms );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// given an index i return true if the corresponding variable is fixed
+
+bool is_fixed( Index i ){ return( v_x[ i ].is_fixed() ); }
 
 /**@} ----------------------------------------------------------------------*/
 /*-------------------- Methods for handling Modification -------------------*/
@@ -510,78 +546,78 @@ void serialize( netCDF::NcGroup & group ) const override;
  * Modification. */
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// given an index and a value fix the variable of the corresponding item
+ /// given an index and a value fix the variable of the corresponding variable
 
-void fix_x( bool value, Index item , 
-            c_ModParam issueMod = eNoBlck ,
-            c_ModParam issueAMod = eNoBlck ); 
+void fix_x( bool value, Index i , 
+            ModParam issueMod = eNoBlck ,
+            ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// given an index unfix the variable of the corresponding item
+ /// given an index unfix the variable of the corresponding variable
 
-void unfix_x( Index item ,
-              c_ModParam issueMod = eNoBlck ,
-              c_ModParam issueAMod = eNoBlck ); 
+void unfix_x( Index i ,
+              ModParam issueMod = eNoBlck ,
+              ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the weight of item i
 
 void chg_weight( double NWeight , Index item , 
-                 c_ModParam issueMod = eNoBlck ,
-                 c_ModParam issueAMod = eNoBlck ); 
+                 ModParam issueMod = eNoBlck ,
+                 ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of a contiguous interval of items
 
 void chg_weights( const dblVec_it NWeight , 
                   Range rng = Range( 0 , Inf< Index >() ) , 
-                  c_ModParam issueMod = eNoBlck ,
-                  c_ModParam issueAMod = eNoBlck ); 
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
 void chg_weights( const dblVec_it NWeight , 
                   Subset && nms , bool ordered = false ,  
-                  c_ModParam issueMod = eNoBlck ,
-                  c_ModParam issueAMod = eNoBlck ); 
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the profit of item i 
 
 void chg_profit( double NProfit , Index item , 
-                 c_ModParam issueMod = eNoBlck ,
-                 c_ModParam issueAMod = eNoBlck ); 
+                 ModParam issueMod = eNoBlck ,
+                 ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of a contiguous interval of items
 
 void chg_profits( const dblVec_it NProfit , 
                   Range rng = Range( 0 , Inf< Index >() ) , 
-                  c_ModParam issueMod = eNoBlck ,
-                  c_ModParam issueAMod = eNoBlck ); 
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of an arbitrary subsets of items
 
 void chg_profits( const dblVec_it NProfit , 
                   Subset && nms , bool ordered = false ,  
-                  c_ModParam issueMod = eNoBlck ,
-                  c_ModParam issueAMod = eNoBlck ); 
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the capacity of the Knapsack
 
 void chg_capacity( double NC ,
-                   c_ModParam issueMod = eNoBlck ,
-                   c_ModParam issueAMod = eNoBlck ); 
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the sense of the objective function
 
 void set_sense( bool sense ,
-	               c_ModParam issueMod = eNoBlck ,
-                c_ModParam issueAMod = eNoBlck ); 
+                ModParam issueMod = eNoBlck ,
+                ModParam issueAMod = eNoBlck ); 
 
 /**@} ----------------------------------------------------------------------*/
 /*-------------------- PROTECTED PART OF THE CLASS -------------------------*/
@@ -631,11 +667,11 @@ static constexpr unsigned char HasCns = 4;
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
-std::vector< ColVariable > v_x; 		   ///< the static binary variables
-std::vector< FRowConstraint> v_cnst;	///< the static constraint 
-FRealObjective f;               		   ///< the (linear) objective function
+std::vector< ColVariable > v_x;         ///< the static binary variables
+std::vector< FRowConstraint> v_cnst;    ///< the static constraint 
+FRealObjective f;                       ///< the (linear) objective function
 
-bool f_sense;					///< the sense of the objective 
+bool f_sense;                   ///< the sense of the objective 
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PRIVATE PART OF THE CLASS --------------------------*/
@@ -655,7 +691,7 @@ void compute_conditional_bounds( void );
 
 int p2i_x( Variable * const var ) const{
  return( std::distance( v_x.data() ,
-			      static_cast< const ColVariable * >( var ) ) ); 
+         static_cast< const ColVariable * >( var ) ) ); 
 }
 
 /*--------------------------------------------------------------------------*/
@@ -690,7 +726,7 @@ public:
   eChgCapacity    ,   ///< change the Knapsack capacity
   eFixX           ,   ///< fix a variable x
   eUnfixX         ,   ///< unfix a variable x
-  eChgSense		         ///< change the sense of the objective
+  eChgSense           ///< change the sense of the objective
   };
 
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/

@@ -281,6 +281,73 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
  return( true );
 }
 
+/* -------------------------------------------------------------------------*/
+/*------------------------- Methods for R3 Blocks --------------------------*/
+/*--------------------------------------------------------------------------*/
+
+ Block * BinaryKnapsackBlock::get_R3_Block( Configuration *r3bc , 
+                                            Block * base , Block * father ){
+ 
+ if( r3bc != nullptr )
+  throw( std::invalid_argument( "non-nullptr R3B Configuration" ) );
+
+ BinaryKnapsackBlock * BKB;
+ if( base ){
+  BKB = dynamic_cast< BinaryKnapsackBlock * >( base );
+  if( ! BKB )
+   throw( std::invalid_argument( "base is not a BinaryKnapsackBlock" ) );
+ } else
+    BKB = new BinaryKnapsackBlock( father );
+
+  BKB->load( f_NItems , f_C , v_W , v_P );
+  BKB->set_sense( f_sense );
+
+  return( BKB );
+
+ }// end( BinaryKnapsackBlock::get_R3_Block )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackBlock::map_back_solution( Block *R3B , Configuration *r3bc, 
+                        Configuration *solc ){
+
+BinaryKnapsackBlock * BKB = dynamic_cast< BinaryKnapsackBlock * >( R3B );
+if( ! BKB )
+ throw( std::invalid_argument( "R3B is not a BinaryKnapsackBlock" ) );
+
+// check if the size of the variables are equal. Better not to use NItems
+// to allow different formulations.
+if( BKB->get_VarSize() != get_VarSize() )
+ throw( std::invalid_argument( "incompatible variables size" ) );
+
+// copy solution
+std::vector< bool > xSol( get_VarSize() );
+BKB->get_x( xSol );
+set_x( xSol );
+ 
+}// end( BinaryKnapsackBlock::map_back_solution )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackBlock::map_forward_solution( Block * R3B , 
+                              Configuration *r3bc , Configuration *solc ){
+
+BinaryKnapsackBlock * BKB = dynamic_cast< BinaryKnapsackBlock * >( R3B );
+if( ! BKB )
+ throw( std::invalid_argument( "R3B is not a BinaryKnapsackBlock" ) );
+
+// check if the size of the variables are equal. Better not to use NItems
+// to allow different formulations.
+if( BKB->get_VarSize() != get_VarSize() )
+ throw( std::invalid_argument( "incompatible variables size" ) );
+
+// copy solution
+std::vector< bool > xSol( get_VarSize() );
+get_x( xSol );
+BKB->set_x( xSol );
+ 
+}// end( BinaryKnapsackBlock::map_forward_solution )
+
 /*--------------------------------------------------------------------------*/
 /*----------------------- Methods for handling Solution --------------------*/
 /*--------------------------------------------------------------------------*/
@@ -401,14 +468,14 @@ void BinaryKnapsackBlock::serialize( netCDF::NcGroup & group ) const {
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::fix_x( bool value, Index item , 
-                                 c_ModParam issueMod, c_ModParam issueAMod ){
+void BinaryKnapsackBlock::fix_x( bool value, Index i , 
+                                 ModParam issueMod, ModParam issueAMod ){
 
- if( item >= get_NItems() )
+ if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid index item" ) );
 
  // if already fixed with the right value then nothing to do
- if( ( v_x[ item ].is_fixed() ) && ( v_x[ item ].get_value() == value ) )
+ if( ( v_x[ i ].is_fixed() ) && ( v_x[ i ].get_value() == value ) )
   return;      
 
  // reset conditional bounds
@@ -416,27 +483,27 @@ void BinaryKnapsackBlock::fix_x( bool value, Index item ,
  f_cond_upper = Inf<double>();
 
 if( not_dry_run( issueAMod ) ){
- v_x[ item ].set_value( value );
- v_x[ item ].is_fixed( true , issueAMod ); 
+ v_x[ i ].set_value( value );
+ v_x[ i ].is_fixed( true , issueAMod ); 
 }
  
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
-          BinaryKnapsackBlockMod::eFixX , std::make_pair( item , item + 1 ) ) , 
+          BinaryKnapsackBlockMod::eFixX , std::make_pair( i , i + 1 ) ) , 
           Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::fix_x )
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::unfix_x( Index item , c_ModParam issueMod, 
-                                   c_ModParam issueAMod ){
+void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod, 
+                                   ModParam issueAMod ){
 
- if( item >= get_NItems() )
+ if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid index item" ) );
 
- if( !( v_x[ item ].is_fixed() ) ) // already unfixed
+ if( !( v_x[ i ].is_fixed() ) ) // already unfixed
   return;                        // nothing to do
 
  // reset conditional bounds
@@ -444,12 +511,12 @@ void BinaryKnapsackBlock::unfix_x( Index item , c_ModParam issueMod,
  f_cond_upper = Inf<double>();
  
  if( not_dry_run( issueAMod ) )
-  v_x[ item ].is_fixed( false , issueAMod ); 
+  v_x[ i ].is_fixed( false , issueAMod ); 
 
  // issue physical Modification 
  if( issue_pmod( issueMod ) ) 
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
-          BinaryKnapsackBlockMod::eUnfixX , std::make_pair( item , item + 1 ) ) , 
+          BinaryKnapsackBlockMod::eUnfixX , std::make_pair( i , i + 1 ) ) , 
           Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::unfix_x )
@@ -457,7 +524,7 @@ void BinaryKnapsackBlock::unfix_x( Index item , c_ModParam issueMod,
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::chg_weight( double NWeight , Index item , 
-                          c_ModParam issueMod , c_ModParam issueAMod ){
+                          ModParam issueMod , ModParam issueAMod ){
 
  if( item >= get_NItems() )
   throw( std::invalid_argument( "invalid item" ) );
@@ -490,8 +557,8 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
 
 void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
                                        Range rng , 
-                                       c_ModParam issueMod ,
-                                       c_ModParam issueAMod ){
+                                       ModParam issueMod ,
+                                       ModParam issueAMod ){
 
  rng.second = std::min( rng.second , get_NItems() );
  if( rng.second <= rng.first )  // nothing to change
@@ -535,8 +602,8 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
 
 void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
                                        Subset && nms , bool ordered ,  
-                                       c_ModParam issueMod ,
-                                       c_ModParam issueAMod ){
+                                       ModParam issueMod ,
+                                       ModParam issueAMod ){
 
  if( nms.empty() )  // nothing to change
   return;            
@@ -580,7 +647,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::chg_profit( double NProfit , Index item , 
-                          c_ModParam issueMod , c_ModParam issueAMod ){
+                          ModParam issueMod , ModParam issueAMod ){
 
  if( item >= get_NItems() )
   throw( std::invalid_argument( "invalid item" ) );
@@ -618,8 +685,8 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
 
 void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
                                        Range rng , 
-                                       c_ModParam issueMod ,
-                                       c_ModParam issueAMod ){
+                                       ModParam issueMod ,
+                                       ModParam issueAMod ){
 
  rng.second = std::min( rng.second , get_NItems() );
  if( rng.second <= rng.first )  // nothing to change
@@ -662,8 +729,8 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
 
 void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
                                        Subset && nms , bool ordered ,  
-                                       c_ModParam issueMod ,
-                                       c_ModParam issueAMod ){
+                                       ModParam issueMod ,
+                                       ModParam issueAMod ){
 
  if( nms.empty() )  // nothing to change
   return;            
@@ -706,7 +773,7 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::chg_capacity( double NC , 
-                          c_ModParam issueMod , c_ModParam issueAMod ){
+                          ModParam issueMod , ModParam issueAMod ){
 
  if( f_C == NC ) // nothing to do
   return;
@@ -733,8 +800,8 @@ void BinaryKnapsackBlock::chg_capacity( double NC ,
 
  /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_sense( bool sense , 
-                          c_ModParam issueMod , c_ModParam issueAMod ){
+void BinaryKnapsackBlock::set_sense( bool sense , ModParam issueMod , 
+                                     ModParam issueAMod ){
 
  if( f_sense == sense ) // nothing to do
   return;
