@@ -219,8 +219,7 @@ int get_objective_sense() const override final {
   *   P[ i ] > 0 are contained in the optimal solution.
   * 
   * - all the items i with positive weight W[ i ] > 0 and negative profit 
-  *   P[ i ] < 0 are not contained in the optimal solution, as well as all the
-  *   items whose weight is greater than the total Capacity of the Knapsack.
+  *   P[ i ] < 0 are not contained in the optimal solution.
   *
   * Similarly if it is a minimization problem changing the sign of the profits
   *
@@ -257,8 +256,7 @@ double get_valid_upper_bound( bool conditional = false )
   *   P[ i ] > 0 are contained in the optimal solution.
   * 
   * - all the items i with positive weight W[ i ] > 0 and negative profit 
-  *   P[ i ] < 0 are not contained in the optimal solution, as well as all the
-  *   items whose weight is greater than the total Capacity of the Knapsack.
+  *   P[ i ] < 0 are not contained in the optimal solution.
      *
   * Similarly if it is a minimization problem changing the sign of the profits
   *
@@ -327,7 +325,7 @@ const std::vector<double> & get_Profits() const { return( v_P ); }
  /// given an index get a pointer to the corresponding variable
 
 ColVariable * get_Var( Index i ){ 
- if( i >= get_NItems() )
+ if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid item" ) );
  return( & v_x[ i ] ); 
 }
@@ -553,9 +551,38 @@ void fix_x( bool value, Index i ,
             ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// fix variables of a contiguos interval of indeces
+
+void fix_x( const std::vector< bool > & value , 
+			Range rng = Range( 0 , Inf< Index >() ) , 
+            ModParam issueMod = eNoBlck ,
+            ModParam issueAMod = eNoBlck ); 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// fix variables of an arbitrary subsets of indeces
+
+void fix_x( const std::vector< bool > & value , Subset && nms , 
+            ModParam issueMod = eNoBlck ,
+            ModParam issueAMod = eNoBlck ); 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index unfix the variable of the corresponding variable
 
 void unfix_x( Index i ,
+              ModParam issueMod = eNoBlck ,
+              ModParam issueAMod = eNoBlck ); 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// unfix variables of a contiguos interval of indeces
+
+void unfix_x( Range rng = Range( 0 , Inf< Index >() ) , 
+              ModParam issueMod = eNoBlck ,
+              ModParam issueAMod = eNoBlck ); 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// unfix variables of an arbitrary subsets of indeces
+
+void unfix_x( Subset && nms , 
               ModParam issueMod = eNoBlck ,
               ModParam issueAMod = eNoBlck ); 
 

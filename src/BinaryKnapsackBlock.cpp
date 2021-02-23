@@ -356,7 +356,7 @@ Solution * BinaryKnapsackBlock::get_Solution( Configuration *solc ,
                                               bool emptys ){
  auto * sol = new BinaryKnapsackSolution(); 
 
- sol->v_x.resize( get_NItems() );
+ sol->v_x.resize( get_VarSize() );
 
  if( ! emptys )
   sol->read( this );
@@ -366,17 +366,17 @@ Solution * BinaryKnapsackBlock::get_Solution( Configuration *solc ,
 
 /*--------------------------------------------------------------------------*/
 
-bool BinaryKnapsackBlock::get_x( Index item ){
- if( item >= get_NItems() )
+bool BinaryKnapsackBlock::get_x( Index i ){
+ if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid item" ) );
- return v_x[ item ].get_value(); 
+ return v_x[ i ].get_value(); 
 }
 
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::get_x( std::vector<bool> & xSol , Range rng ){
  
- rng.second = std::min( rng.second , get_NItems() );
+ rng.second = std::min( rng.second , get_VarSize() );
 
  auto xSoli = xSol.begin();
  for( Index i = rng.first ; i < rng.second ; i++ )
@@ -390,7 +390,7 @@ void BinaryKnapsackBlock::get_x( std::vector<bool> & xSol , c_Subset & nms ){
  
  auto xSoli = xSol.begin();
  for( auto i : nms ){
-  if( i >= get_NItems() )
+  if( i >= get_VarSize() )
    throw( std::invalid_argument( "invalid item" ) );
   ( * xSoli++ ) = v_x[ i ].get_value();
  }
@@ -398,10 +398,10 @@ void BinaryKnapsackBlock::get_x( std::vector<bool> & xSol , c_Subset & nms ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( Index item , bool value ){
- if( item >= get_NItems() )
+void BinaryKnapsackBlock::set_x( Index i , bool value ){
+ if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid item" ) );
- v_x[ item ].set_value( value ); 
+ v_x[ i ].set_value( value ); 
 }
 
 /*--------------------------------------------------------------------------*/
@@ -422,7 +422,7 @@ void BinaryKnapsackBlock::set_x( std::vector<bool> & xSol , c_Subset & nms ){
  
  auto xSoli = xSol.begin();
  for( auto i : nms ){
-  if( i >= get_NItems() )
+  if( i >= get_VarSize() )
    throw( std::invalid_argument( "invalid item" ) );
   v_x[ i ].set_value( * xSoli++ );
  }
@@ -471,7 +471,7 @@ void BinaryKnapsackBlock::serialize( netCDF::NcGroup & group ) const {
 void BinaryKnapsackBlock::fix_x( bool value, Index i , 
                                  ModParam issueMod, ModParam issueAMod ){
 
- if( i >= get_NItems() )
+ if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid index item" ) );
 
  // if already fixed with the right value then nothing to do
@@ -497,10 +497,51 @@ if( not_dry_run( issueAMod ) ){
 
 /*--------------------------------------------------------------------------*/
 
+void BinaryKnapsackBlock::fix_x( const std::vector< bool > & value , Range rng , 
+                                 ModParam issueMod, ModParam issueAMod ){
+
+
+ rng.second = std::min( rng.second , get_VarSize() );
+ if( rng.second <= rng.first )	// nothing to do
+  return;
+
+ auto vi = value.begin();
+
+ for( Index i = rng.first ; i < rng.second ; i++ , vi++ )
+  fix_x( * vi , i , eDryRun , issueAMod );
+
+ // issue physical Modification
+ if( issue_pmod( issueMod ) )  
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
+          BinaryKnapsackBlockMod::eFixX , rng ) , 
+          Observer::par2chnl( issueMod ) );
+
+} // end( BinaryKnapsackBlock::fix_x )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackBlock::fix_x( const std::vector< bool > & value , Subset && nms , 
+                                 ModParam issueMod, ModParam issueAMod ){
+
+ auto vi = value.begin();
+
+ for( auto i : nms )
+  fix_x( * vi++ , i , eDryRun , issueAMod );
+
+ // issue physical Modification
+ if( issue_pmod( issueMod ) )  
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(this,
+          BinaryKnapsackBlockMod::eFixX , std::move( nms ) ) , 
+          Observer::par2chnl( issueMod ) );
+
+} // end( BinaryKnapsackBlock::fix_x )
+
+/*--------------------------------------------------------------------------*/
+
 void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod, 
                                    ModParam issueAMod ){
 
- if( i >= get_NItems() )
+ if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid index item" ) );
 
  if( !( v_x[ i ].is_fixed() ) ) // already unfixed
@@ -517,6 +558,43 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod,
  if( issue_pmod( issueMod ) ) 
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
           BinaryKnapsackBlockMod::eUnfixX , std::make_pair( i , i + 1 ) ) , 
+          Observer::par2chnl( issueMod ) );
+
+} // end( BinaryKnapsackBlock::unfix_x )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod, 
+								   ModParam issueAMod ){
+
+
+ rng.second = std::min( rng.second , get_VarSize() );
+ if( rng.second <= rng.first )	// nothing to do
+  return;
+
+ for( Index i = rng.first ; i < rng.second ; i++ )
+  unfix_x( i , eDryRun , issueAMod );
+
+ // issue physical Modification
+ if( issue_pmod( issueMod ) )  
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
+          BinaryKnapsackBlockMod::eUnfixX , rng ) , 
+          Observer::par2chnl( issueMod ) );
+
+} // end( BinaryKnapsackBlock::unfix_x )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackBlock::unfix_x( Subset && nms , ModParam issueMod, 
+								   ModParam issueAMod ){
+
+ for( auto i : nms )
+  unfix_x( i , eDryRun , issueAMod );
+
+ // issue physical Modification
+ if( issue_pmod( issueMod ) )  
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(this,
+          BinaryKnapsackBlockMod::eUnfixX , std::move( nms ) ) , 
           Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::unfix_x )
@@ -1087,14 +1165,14 @@ if( f_sense ){  // if it is a maximization problem
  for( Index i = 0 ; i < get_NItems() ; i++ ){
 
   // items contained in the optimal solution 
-  if( ( v_W[ i ] < 0 ) && ( v_P[ i ] > 0 ) ){ 
+  if( ( v_W[ i ] < 0 ) && ( v_P[ i ] >= 0 ) ){ 
    f_cond_lower += v_P[ i ];                
    f_cond_upper += v_P[ i ];
    continue;
   }
 
   // items not contained in the optimal solution
-  if( ( ( v_W[ i ] > 0 ) && ( v_P[ i ] < 0 ) ) || ( v_W[ i ] > f_C ) )
+  if( ( v_W[ i ] > 0 ) && ( v_P[ i ] < 0 ) )
    continue;
 
   // remaining items
@@ -1107,14 +1185,14 @@ if( f_sense ){  // if it is a maximization problem
  for( Index i = 0 ; i < get_NItems() ; i++ ){
 
   // items contained in the optimal solution 
-  if( ( v_W[ i ] < 0 ) && ( v_P[ i ] < 0 ) ){ 
+  if( ( v_W[ i ] < 0 ) && ( v_P[ i ] <= 0 ) ){ 
    f_cond_lower += v_P[ i ];                
    f_cond_upper += v_P[ i ];
    continue;
   }
 
   // items not contained in the optimal solution
-  if( ( ( v_W[ i ] > 0 ) && ( v_P[ i ] > 0 ) ) || ( v_W[ i ] > f_C ) )
+  if( ( v_W[ i ] > 0 ) && ( v_P[ i ] > 0 ) )
    continue;
 
   // remaining items
