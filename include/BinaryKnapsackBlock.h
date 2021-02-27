@@ -87,6 +87,10 @@ public:
 
 typedef std::vector<double>::iterator dblVec_it;
 
+typedef std::vector<bool> boolVec;
+typedef const boolVec c_boolVec;
+
+
 /**@} ----------------------------------------------------------------------*/
 /*------------------------------- FRIENDS ----------------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -428,12 +432,12 @@ bool get_x( Index i );
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution
 
-void get_x(std::vector< bool > & xSol , Range rng = Range(0 , Inf<Index>()));
+void get_x( boolVec & xSol , Range rng = Range(0 , Inf<Index>()));
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the solution for an arbitrary subset of items
 
-void get_x( std::vector< bool > & xSol , c_Subset & nms );
+void get_x( boolVec & xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the number of variables
@@ -448,12 +452,12 @@ void set_x( Index i , bool value );
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set a contiguous interval of the solution
 
-void set_x(std::vector< bool > & xSol , Range rng = Range(0 , Inf<Index>()));
+void set_x( c_boolVec & xSol , Range rng = Range(0 , Inf<Index>()));
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the solution for an arbitrary subset of items
 
-void set_x( std::vector< bool > & xSol , c_Subset & nms );
+void set_x( c_boolVec & xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i return true if the corresponding variable is fixed
@@ -553,15 +557,15 @@ void fix_x( bool value, Index i ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// fix variables of a contiguos interval of indeces
 
-void fix_x( const std::vector< bool > & value , 
-			Range rng = Range( 0 , Inf< Index >() ) , 
+void fix_x( c_boolVec & value , 
+			      Range rng = Range( 0 , Inf< Index >() ) , 
             ModParam issueMod = eNoBlck ,
             ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// fix variables of an arbitrary subsets of indeces
 
-void fix_x( const std::vector< bool > & value , Subset && nms , 
+void fix_x( c_boolVec & value , Subset && nms , 
             ModParam issueMod = eNoBlck ,
             ModParam issueAMod = eNoBlck ); 
 
@@ -691,14 +695,14 @@ static constexpr unsigned char HasObj = 2;
 static constexpr unsigned char HasCns = 4;
 ///< third bit of AR == 1 if the Constraint has been constructed
 
+bool f_sense;                   ///< the sense of the objective 
+
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
 std::vector< ColVariable > v_x;         ///< the static binary variables
 std::vector< FRowConstraint> v_cnst;    ///< the static constraint 
 FRealObjective f;                       ///< the (linear) objective function
-
-bool f_sense;                   ///< the sense of the objective 
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PRIVATE PART OF THE CLASS --------------------------*/
@@ -975,8 +979,10 @@ public:
  private:
 
 /*---------------------------- PRIVATE FIELDS ------------------------------*/
+/// vector containing the values of the current solution. It contains doubles
+/// to allow to store scaled solutions of some double factor
 
-std::vector< double > v_x;   ///< the variables
+std::vector<double> v_x;   ///< the variables
 
 /*--------------------------------------------------------------------------*/
 

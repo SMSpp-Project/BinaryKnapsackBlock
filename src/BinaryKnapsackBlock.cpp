@@ -374,7 +374,7 @@ bool BinaryKnapsackBlock::get_x( Index i ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::get_x( std::vector<bool> & xSol , Range rng ){
+void BinaryKnapsackBlock::get_x( boolVec & xSol , Range rng ){
  
  rng.second = std::min( rng.second , get_VarSize() );
 
@@ -386,7 +386,7 @@ void BinaryKnapsackBlock::get_x( std::vector<bool> & xSol , Range rng ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::get_x( std::vector<bool> & xSol , c_Subset & nms ){
+void BinaryKnapsackBlock::get_x( boolVec & xSol , c_Subset & nms ){
  
  auto xSoli = xSol.begin();
  for( auto i : nms ){
@@ -406,7 +406,7 @@ void BinaryKnapsackBlock::set_x( Index i , bool value ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( std::vector<bool> & xSol , Range rng ){
+void BinaryKnapsackBlock::set_x( c_boolVec & xSol , Range rng ){
  
  rng.second = std::min( rng.second , get_NItems() );
 
@@ -418,7 +418,7 @@ void BinaryKnapsackBlock::set_x( std::vector<bool> & xSol , Range rng ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( std::vector<bool> & xSol , c_Subset & nms ){
+void BinaryKnapsackBlock::set_x( c_boolVec & xSol , c_Subset & nms ){
  
  auto xSoli = xSol.begin();
  for( auto i : nms ){
@@ -497,7 +497,7 @@ if( not_dry_run( issueAMod ) ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::fix_x( const std::vector< bool > & value , Range rng , 
+void BinaryKnapsackBlock::fix_x( c_boolVec & value , Range rng , 
                                  ModParam issueMod, ModParam issueAMod ){
 
 
@@ -520,7 +520,7 @@ void BinaryKnapsackBlock::fix_x( const std::vector< bool > & value , Range rng ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::fix_x( const std::vector< bool > & value , Subset && nms , 
+void BinaryKnapsackBlock::fix_x( c_boolVec & value , Subset && nms , 
                                  ModParam issueMod, ModParam issueAMod ){
 
  auto vi = value.begin();
@@ -1165,14 +1165,14 @@ if( f_sense ){  // if it is a maximization problem
  for( Index i = 0 ; i < get_NItems() ; i++ ){
 
   // items contained in the optimal solution 
-  if( ( v_W[ i ] < 0 ) && ( v_P[ i ] >= 0 ) ){ 
+  if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){ 
    f_cond_lower += v_P[ i ];                
    f_cond_upper += v_P[ i ];
    continue;
   }
 
   // items not contained in the optimal solution
-  if( ( v_W[ i ] > 0 ) && ( v_P[ i ] < 0 ) )
+  if( ( v_W[ i ] >= 0 ) && ( v_P[ i ] < 0 ) )
    continue;
 
   // remaining items
@@ -1185,14 +1185,14 @@ if( f_sense ){  // if it is a maximization problem
  for( Index i = 0 ; i < get_NItems() ; i++ ){
 
   // items contained in the optimal solution 
-  if( ( v_W[ i ] < 0 ) && ( v_P[ i ] <= 0 ) ){ 
+  if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] <= 0 ) ){ 
    f_cond_lower += v_P[ i ];                
    f_cond_upper += v_P[ i ];
    continue;
   }
 
   // items not contained in the optimal solution
-  if( ( v_W[ i ] > 0 ) && ( v_P[ i ] > 0 ) )
+  if( ( v_W[ i ] >= 0 ) && ( v_P[ i ] > 0 ) )
    continue;
 
   // remaining items
@@ -1238,7 +1238,7 @@ void BinaryKnapsackSolution::read( const Block * const block ){
  auto vxi = v_x.begin();
 
  for( auto & xi : BKB->v_x ) 
-  *( vxi++ ) = xi.get_value(); 
+  *( vxi++ ) = static_cast< double >( xi.get_value() ); 
 
 } // end( BinaryKnapsackSolution::read )
 
@@ -1258,7 +1258,7 @@ void BinaryKnapsackSolution::write( Block * const block ){
   auto vxi = v_x.begin();
 
   for( auto & xi : BKB->v_x )
-   xi.set_value( *( vxi++ ) );
+   xi.set_value( static_cast< bool >( *( vxi++ ) ) );
  }
 } // end( BinaryKnapsackSolution::write )
 
@@ -1267,7 +1267,7 @@ void BinaryKnapsackSolution::write( Block * const block ){
 void BinaryKnapsackSolution::serialize( netCDF::NcGroup & group ){
  if( ! v_x.empty() ) {
   netCDF::NcDim ni = group.addDim( "n" , v_x.size() ); 
-( group.addVar( "x" , netCDF::NcInt() , ni ) ).putVar( v_x.data() );
+( group.addVar( "x" , netCDF::NcDouble() , ni ) ).putVar( v_x.data() );
  }
 } // end( BinaryKnapsackSolution::serialize )
 
