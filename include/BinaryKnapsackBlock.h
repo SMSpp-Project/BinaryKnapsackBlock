@@ -558,7 +558,7 @@ void fix_x( bool value, Index i ,
  /// fix variables of a contiguos interval of indeces
 
 void fix_x( c_boolVec & value , 
-			      Range rng = Range( 0 , Inf< Index >() ) , 
+            Range rng = Range( 0 , Inf< Index >() ) , 
             ModParam issueMod = eNoBlck ,
             ModParam issueAMod = eNoBlck ); 
 

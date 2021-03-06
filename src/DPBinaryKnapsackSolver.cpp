@@ -39,7 +39,7 @@ SMSpp_insert_in_factory_cpp_1( DPBinaryKnapsackSolver );
 
 void DPBinaryKnapsackSolver::set_Block( Block * block ){
  
- if( block == f_Block )       // nothing to do	
+ if( block == f_Block )       // nothing to do  
   return;
 
  Solver::set_Block( block );  // attach to the new Block
@@ -79,36 +79,36 @@ Three phases are performed:
 
  - Third phase: the graph has already reached the maximum capacity and
                 the items to be processed are the ones with positive weight 
-																			                                      */
-													
+                                                                            */
+                          
 // initializations - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-int N = pi.size() + ni.size();	// number of items (not preprocessed)
+int N = pi.size() + ni.size();  // number of items (not preprocessed)
 
-if( N == 0 ){					          // if N == 0 all the items have been
- obj = prp_P; 					        // preprocessed, no need of DP
- return( kOK );					        // return
+if( N == 0 ){                   // if N == 0 all the items have been
+ obj = prp_P;                   // preprocessed, no need of DP
+ return( kOK );                 // return
 }
 
 int C = f_C - prp_W;            // new capacity after the preprocessing
-pred.resize( N );  			        // Matrix of predecessors
+pred.resize( N );               // Matrix of predecessors
 
 // the only two necessary sets of labels 
 std::vector< double > currlab( nW + 1 , -Inf< double >() );
 std::vector< double > nextlab( nW + 1 );
 
-currlab[ nW ] = 0;				      // start DP from nW
+currlab[ nW ] = 0;              // start DP from nW
 
 // index over all items 
 int i = 0;
 
-auto nii = ni.begin();			// iterator over the items with negative weight
-int nSize = ni.size();			// number of items with negative weight
+auto nii = ni.begin();      // iterator over the items with negative weight
+int nSize = ni.size();      // number of items with negative weight
 
 
 // first phase - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-int mincurrlab = nW;			  // minimum label
+int mincurrlab = nW;        // minimum label
 
 for( ; i < nSize ; i++ , nii++ ){
 
@@ -118,7 +118,7 @@ for( ; i < nSize ; i++ , nii++ ){
  std::fill( nextlab.begin() , nextlab.end() , -Inf< double >() );
 
  double p = v_P[ *nii ];        // profit of the current item
- int w = v_W[ *nii ];  		      // weight of the current item
+ int w = v_W[ *nii ];           // weight of the current item
 
  for( int j = mincurrlab ; j <= nW ; j++ ){
 
@@ -145,9 +145,9 @@ for( ; i < nSize ; i++ , nii++ ){
 }
 // end first phase - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-auto pii = pi.begin();			// iterator over the items with positive weight
+auto pii = pi.begin();      // iterator over the items with positive weight
 
-int maxcurrlab = nW; 			  // maximum label
+int maxcurrlab = nW;        // maximum label
 
 currlab.resize( C + nW + 1 );
 nextlab.resize( C + nW + 1 );
@@ -155,8 +155,8 @@ nextlab.resize( C + nW + 1 );
 // second phase- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 for( ; i < N ; i++ , pii++ ){
  
- double p = v_P[ *pii ];  		// profit of the current item
- int w = v_W[ *pii ];  		    // weight of the current item
+ double p = v_P[ *pii ];      // profit of the current item
+ int w = v_W[ *pii ];         // weight of the current item
 
  int maxnextlab = maxcurrlab + w;
  if( maxnextlab > C + nW )
@@ -206,8 +206,8 @@ for( ; i < N ; i++ , pii++ ){
  // Initialize nextlab
  std::fill( nextlab.begin() , nextlab.end() , -Inf< double >() );
 
- double p = v_P[ *pii ];  		// profit of the current item
- int w = v_W[ *pii ];  		    // weight of the current item
+ double p = v_P[ *pii ];      // profit of the current item
+ int w = v_W[ *pii ];         // weight of the current item
 
  double bestlab = -Inf< double >();
 
@@ -243,7 +243,7 @@ for( ; i < N ; i++ , pii++ ){
 
 // find optimal value- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-labels.resize( currlab.size() );	// save currlab in labels 
+labels.resize( currlab.size() );  // save currlab in labels 
 
 int bestj;
 
@@ -258,13 +258,13 @@ for( int i = 0 ; i <= C + nW ; i++ ){
  labels[ i ] = currlab[ i ];
 }
 
-obj +=  prp_P;				// add the profit coming from the preprocessing 
+obj +=  prp_P;        // add the profit coming from the preprocessing 
 
 // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - - 
 
 pii = pi.end() - 1;
 
-for( i = N - 1 ; i >= nSize ; i-- , pii-- ){ 	// positive part
+for( i = N - 1 ; i >= nSize ; i-- , pii-- ){  // positive part
  if( pred[ i ][ bestj ] ){
   v_x[ *pii ] = 1;
   bestj -= v_W[ *pii ];
@@ -273,7 +273,7 @@ for( i = N - 1 ; i >= nSize ; i-- , pii-- ){ 	// positive part
 
 nii = ni.end() - 1;
 
-for( ; i >= 0 ; i-- , nii-- ){              	// negative part
+for( ; i >= 0 ; i-- , nii-- ){                // negative part
  if( pred[ i ][ bestj ] ){
   v_x[ *nii ] = 1;
   bestj -= v_W[ *nii ];
@@ -406,7 +406,7 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
  Actually the variables corresponding to all the remaining items are also
  initialized to 0, but the second set of preprocessed items are discarded
- from the computation. 														                         */
+ from the computation.                                                     */
  
  int C = f_C - prp_W;
  int count_pos = 0;
@@ -439,16 +439,16 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
    continue; 
   }
 
-  if( v_W[ i ] > 0 ){  	 // items with positive weights
+  if( v_W[ i ] > 0 ){    // items with positive weights
    *pii++ = i;
    count_pos++; 
   }
-  else{						       // items with negative weights
+  else{                  // items with negative weights
    *nii++ = i;
    count_neg++; 
   }
 
-  v_x[ i ] = 0;				   // initialize all variables to 0
+  v_x[ i ] = 0;          // initialize all variables to 0
 
  }
 

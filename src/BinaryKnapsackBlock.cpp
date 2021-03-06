@@ -33,8 +33,8 @@ using c_Subset = Block::c_Subset;
 
 template< typename T >
 static bool is_equal( std::vector<T> & vec , c_Subset & nms ,
-		      typename std::vector<T>::const_iterator cmp ,
-		      Index n_max )
+          typename std::vector<T>::const_iterator cmp ,
+          Index n_max )
 {
  for( auto nm : nms ) {
   if( nm >= n_max )
@@ -51,7 +51,7 @@ static bool is_equal( std::vector<T> & vec , c_Subset & nms ,
 
 template< typename T >
 static void copyidx( std::vector<T> & vec , c_Subset & nms ,
-		     typename std::vector<T>::const_iterator cpy )
+         typename std::vector<T>::const_iterator cpy )
 {
  for( auto nm : nms )
   vec[ nm ] = *(cpy++);
@@ -70,8 +70,8 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlock );
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-               					const std::vector<double> & Weights , 
-               					const std::vector<double> & Profits )
+                        const std::vector<double> & Weights , 
+                        const std::vector<double> & Profits )
 {
  
  // sanity checks 
@@ -96,8 +96,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-               					std::vector<double> && Weights , 
-               					std::vector<double> && Profits )
+                        std::vector<double> && Weights , 
+                        std::vector<double> && Profits )
 {
  
  // sanity checks 
@@ -502,7 +502,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec & value , Range rng ,
 
 
  rng.second = std::min( rng.second , get_VarSize() );
- if( rng.second <= rng.first )	// nothing to do
+ if( rng.second <= rng.first )  // nothing to do
   return;
 
  auto vi = value.begin();
@@ -565,11 +565,11 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod,
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod, 
-								   ModParam issueAMod ){
+                   ModParam issueAMod ){
 
 
  rng.second = std::min( rng.second , get_VarSize() );
- if( rng.second <= rng.first )	// nothing to do
+ if( rng.second <= rng.first )  // nothing to do
   return;
 
  for( Index i = rng.first ; i < rng.second ; i++ )
@@ -586,7 +586,7 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod,
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::unfix_x( Subset && nms , ModParam issueMod, 
-								   ModParam issueAMod ){
+                   ModParam issueAMod ){
 
  for( auto i : nms )
   unfix_x( i , eDryRun , issueAMod );
@@ -643,7 +643,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
   return;   
 
  if( std::equal( NWeight , NWeight + ( rng.second - rng.first ) ,
-	 v_W.begin() + rng.first ) )
+   v_W.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -771,7 +771,7 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
   return;   
 
  if( std::equal( NProfit , NProfit + ( rng.second - rng.first ) ,
-		         v_P.begin() + rng.first ) )
+             v_P.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -1143,9 +1143,9 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
 
    auto obj = dynamic_cast< Objective * >( & f );
    if( tmod->of() == obj ){ 
-   	bool sense = tmod->type() == Objective::eMax ? 1 : 0;
-   	set_sense( sense , make_par( eNoBlck , chnl ) , eDryRun );
-   	return;
+    bool sense = tmod->type() == Objective::eMax ? 1 : 0;
+    set_sense( sense , make_par( eNoBlck , chnl ) , eDryRun );
+    return;
    }
    throw( std::invalid_argument("Modification to the wrong objective") );
   }
