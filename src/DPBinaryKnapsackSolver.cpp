@@ -56,8 +56,8 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ){
 
 /* The variable i is the first item processed by the DP algorithm. If compute
  is called for the first time then i = 0 and the algorithm is entirely 
- executed. Otherwise process_outstanding_Modification process all the 
- modifications and return the index of the item from which to restart the 
+ executed. Otherwise process_outstanding_Modification(), after processing all 
+ the modifications, returns the index of the item from which to restart the 
  algorithm (if it is possible according to the reopt parameter).            */
  
  int i = process_outstanding_Modification();
@@ -72,50 +72,51 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ){
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-int N = pi.size() + ni.size();  // number of items (not preprocessed)
+int N = pi.size() + ni.size();      // number of items (not preprocessed)
 
-if( N == 0 ){                   // if N == 0 all the items have been
- obj = prp_P;                   // preprocessed, no need of DP
- return( kOK );                 // return
+if( N == 0 ){                       // if N == 0 all the items have been
+ obj = prp_P;                       // preprocessed, no need of DP
+ return( kOK );                     // return
 }
 
-if( i == N )                    // if i == N it is assumed that everything 
- return( kOK );                 // has already been done in 
-                                // process_outstanding_Modification()
+if( i == N )                        // if i == N it is assumed that everything 
+ return( kOK );                     // has already been done in 
+                                    // process_outstanding_Modification()
 
-int C = f_C - prp_W;            // new capacity after the preprocessing
+int C = f_C - prp_W;                // new capacity after the preprocessing
 
-G.resize( N + 1 );              // resize the DP graph
+G.resize( N + 1 );                  // resize the DP graph
 
-int maxcurrlab;                 
-int maxnextlab;                 
-int size;
+int maxcurrlab;                     // max current height of the graph
+int maxnextlab;                     // max next height of the graph    
+int size;                           // size of the current set of labels
 
-std::vector< double > currlab;
-std::vector< double > nextlab;
+std::vector< double > currlab;      // set of current labels
+std::vector< double > nextlab;      // set of next labels
 
 // Initialization - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-// iterator over ni[] and pi[]
-std::vector< int >::iterator it;
 
-if( i == 0 ){                     // if i == 0 the DP algorithm is entirely
-  G[ 0 ].minLab = 0;              // executed, otherwise it starts from i
-  maxcurrlab = 0;                 // and the initializations are stored in 
-  size = 1;                       // G[ i ]
-  currlab.resize( size );
-  currlab[ 0 ] = 0;
+std::vector< int >::iterator it;    // iterator over ni[] and pi[]
 
-  it = ni.begin();                // start from the beginning   
+if( i == 0 ){                       // if i == 0 the DP algorithm is entirely
+ G[ 0 ].minLab = 0;                 // executed, initialize dummy node in the 
+ maxcurrlab = 0;                    // origin
+ size = 1;                         
+ currlab.resize( size );
+ currlab[ 0 ] = 0;
+
+ it = ni.begin();                   // and start from the beginning   
 }
-else{
-  size = G[ i ].lab.size();
-  maxcurrlab = size + G[ i ].minLab - 1;
-  currlab.resize( size );
-  std::copy( G[ i ].lab.begin() , G[ i ].lab.end() , currlab.begin() );
+else{                               // otherwise initialize with data stored 
+                                    // in G[ i ]
+ size = G[ i ].lab.size();         
+ maxcurrlab = size + G[ i ].minLab - 1;
+ currlab.resize( size );
+ std::copy( G[ i ].lab.begin() , G[ i ].lab.end() , currlab.begin() );
 
-  // start from the correct items
-  it = i >= ni.size() ? pi.begin() + i : ni.begin() + i;
+ // and start from the correct item
+ it = i >= ni.size() ? pi.begin() + i - ni.size() : ni.begin() + i;
 }
 
 // DYNAMIC PROGRAMMING - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -135,16 +136,17 @@ they will be used for reoptimization.
 
 for( ; i < N ; i++ , it++ ){
 
-  // if all the items with negative weights have been processed 
-  // start process the items with positive weights
-  if( it == ni.end() )
-    it = pi.begin();
+ // if all the items with negative weights have been processed 
+ // start process the items with positive weights
+ if( it == ni.end() )
+  it = pi.begin();
 
   double p = v_P[ *it ];        // profit of the current item
   int w = v_W[ *it ];           // weight of the current item  
 
   // compute max and min "height" of the graph and resize accordingly
-  // and check if the maximum capacity is reached
+  // and if w > 0 check if the maximum capacity is reached
+  // Also store minLab in G[ i ].minLab
   maxnextlab = w > 0 ? std::min( maxcurrlab + w , C + nW ) : maxcurrlab;
   G[ i + 1 ].minLab = std::min( G[ i ].minLab , G[ i ].minLab + w );
 
@@ -157,49 +159,51 @@ for( ; i < N ; i++ , it++ ){
   // Allocate predecessors
   G[ i + 1 ].pred.resize( nextsize );
   
+  // Initialize the best label among those of this slice 
   double bestlab = -Inf< double >();
 
   for( int j = 0 ; j < size ; j++ ){
    
-    // if the node does not exists or if it has a worst lab continue
-    if( currlab[ j ] <= bestlab )
-      continue;
+   // if the node does not exists (currlab = -Inf) 
+   // or if it does not have a better label continue
+   if( currlab[ j ] <= bestlab )
+    continue;
 
-    // update bestlab
-    bestlab = currlab[ j ];
+   // update bestlab
+   bestlab = currlab[ j ];
 
-    // horizontal and diagonal indeces (are shifted by minLab)
-    int hi = j + G[ i ].minLab - G[ i + 1 ].minLab;
-    int di = hi + w;
+   // horizontal and diagonal indeces (are shifted by minLab)
+   int hi = j + G[ i ].minLab - G[ i + 1 ].minLab;
+   int di = hi + w;
 
-    // horizontal arc
-    if( currlab[ j ] > nextlab[ hi ] ){
-      G[ i + 1 ].pred[ hi ] = false;
-      nextlab[ hi ] = currlab[ j ];
-    }
+   // horizontal arc
+   if( currlab[ j ] > nextlab[ hi ] ){
+    G[ i + 1 ].pred[ hi ] = false;
+    nextlab[ hi ] = currlab[ j ];
+   }
 
-    // check if the maximum capacity is reached
-    if( ( w > 0 ) && ( di > C + nW ) )
-      continue;
+   // check if the maximum capacity is reached
+   if( ( w > 0 ) && ( di > C + nW ) )
+    continue;
 
-    // diagonal arc 
-    if( currlab[ j ] + p > nextlab[ di ] ){
-      G[ i + 1 ].pred[ di ] = true;
-      nextlab[ di ] = currlab[ j ] + p;
-    }
+   // diagonal arc 
+   if( currlab[ j ] + p > nextlab[ di ] ){
+    G[ i + 1 ].pred[ di ] = true;
+    nextlab[ di ] = currlab[ j ] + p;
+   }
 
   }
 
-  // if reopt save currlab
-  if( reopt ){
-    G[ i ].lab.resize( size );
-    std::copy( currlab.begin() , currlab.end() , G[ i ].lab.begin() );
-  }
+ // if reopt save currlab
+ if( reopt ){
+  G[ i ].lab.resize( size );
+  std::copy( currlab.begin() , currlab.end() , G[ i ].lab.begin() );
+ }
 
   
-  size = nextsize;
-  maxcurrlab = maxnextlab;
-  std::swap( currlab , nextlab );
+ size = nextsize;
+ maxcurrlab = maxnextlab;
+ std::swap( currlab , nextlab );
 
 }
 
@@ -213,16 +217,15 @@ std::copy( currlab.begin() , currlab.end() , G[ N ].lab.begin() );
 int maxh = std::min( size , C + nW + 1 );
 int besth;
 
-obj = -Inf< double >();     // objective value
+obj = -Inf< double >();      // Initialize objective value
 for( int i = 0 ; i < maxh ; i++ ){
-  if( G[ N ].lab[ i ] > obj ){
-    obj = G[ N ].lab[ i ];
-    besth = i;
-  }
+ if( G[ N ].lab[ i ] > obj ){
+  obj = G[ N ].lab[ i ];
+  besth = i;
+ }
 }
 
-// add the profit coming from the preprocessing
-obj += prp_P;
+obj += prp_P;               // add the profit coming from the preprocessing
 
 // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - - 
 
@@ -231,19 +234,20 @@ it = pi.size() ? pi.end() - 1 : ni.end() - 1;
 
 for( int i = N ; i > 0 ; i-- , it-- ){
 
-  if( G[ i ].pred[ besth ] ){
-    v_x[ *it ] = 1;
-    besth += G[ i ].minLab - G[ i - 1 ].minLab - v_W[ *it ];
-  }
-  else
-    besth += G[ i ].minLab - G[ i - 1 ].minLab;
+ if( G[ i ].pred[ besth ] ){
+  v_x[ *it ] = 1;
+  besth += G[ i ].minLab - G[ i - 1 ].minLab - v_W[ *it ];
+ }
+ else
+  besth += G[ i ].minLab - G[ i - 1 ].minLab;
 
-  if( it == pi.begin() )        // if all the items with positive weights have
-    it = ni.end();              // been processed, start process the items 
+ if( it == pi.begin() )         // if all the items with positive weights have
+  it = ni.end();                // been processed, start process the items 
                                 // with negative weights
 } 
 
- return( kOK );
+return( kOK );
+
 }
 
 /*--------------------------------------------------------------------------*/
@@ -445,7 +449,7 @@ int DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
     switch( tmod->type() ){
      case( BinaryKnapsackBlockMod::eChgWeight ): break;
-     case( BinaryKnapsackBlockMod::eChgProfit): break;
+     case( BinaryKnapsackBlockMod::eChgProfit ): break;
      case( BinaryKnapsackBlockMod::eFixX ): break;
      case( BinaryKnapsackBlockMod::eUnfixX ): break;         
     }
@@ -461,7 +465,7 @@ int DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
     switch( tmod->type() ){
      case( BinaryKnapsackBlockMod::eChgWeight ): break;
-     case( BinaryKnapsackBlockMod::eChgProfit): break;
+     case( BinaryKnapsackBlockMod::eChgProfit ): break;
      case( BinaryKnapsackBlockMod::eFixX ): break;
      case( BinaryKnapsackBlockMod::eUnfixX ): break;         
     }

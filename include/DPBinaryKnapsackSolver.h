@@ -59,7 +59,7 @@ public:
  /// public enum for the reoptimization algorithmic parameters
 
  enum Reopt_par{
-  noReopt = 0,
+  noReopt = 0,          // TODO: add intermediate options
   fullReopt
  };
 
