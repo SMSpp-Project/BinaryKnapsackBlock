@@ -56,6 +56,21 @@ public:
 /** @name Public types
  @{ */
 
+ /// public enum for the reoptimization algorithmic parameters
+
+ enum Reopt_par{
+  noReopt = 0,
+  fullReopt
+ };
+
+ /// define struct for data stored in a graph G constructed by the DP algorithm
+
+ typedef struct{
+  std::vector< double > lab;
+  std::vector< bool > pred;
+  int minLab;
+ }slice;
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -69,7 +84,7 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( -Inf< double >() ) , prp_W( 0 ) , prp_P( 0 ) , 
-                           nW( 0 ) {}
+                           nW( 0 ) , reopt( noReopt ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -167,22 +182,25 @@ protected:
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
- std::vector< std::vector< bool > > pred; ///< Matrix of predecessors
- std::vector< double > labels;          ///< vector of labels
+ std::vector< slice > G;                ///< DP Graph 
 
 /* preprocessing data - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-int prp_W;
-///< total weight of preprocessed items whose variables are set to 1
-double prp_P;           
-///< total profit of preprocessed items whose variables are set to 1
+ int prp_W;
+ ///< total weight of preprocessed items whose variables are set to 1
+ double prp_P;           
+ ///< total profit of preprocessed items whose variables are set to 1
 
-std::vector< int > pi;
-///< indeces of NOT preprocessed items with positive weight
-std::vector< int > ni;
-///< indeces of NOT preprocessed items with negative weight
+ std::vector< int > pi;
+ ///< indeces of NOT preprocessed items with positive weight
+ std::vector< int > ni;
+ ///< indeces of NOT preprocessed items with negative weight
 
-int nW;     ///< total weight of NOT preprocessed items with negative weight
+ int nW;     ///< total weight of NOT preprocessed items with negative weight
+
+/* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+ Reopt_par reopt;
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
@@ -198,13 +216,13 @@ private:
  void load();
 
  /// process all the pending modifications
- void process_outstanding_Modification();
+ int process_outstanding_Modification();
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-SMSpp_insert_in_factory_h;  // insert DPBinaryKnapsackSolver in the factory
+ SMSpp_insert_in_factory_h;  // insert DPBinaryKnapsackSolver in the factory
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -219,6 +237,10 @@ SMSpp_insert_in_factory_h;  // insert DPBinaryKnapsackSolver in the factory
 /*--------------------------------------------------------------------------*/
 /*-------------------- End File DPBinaryKnapsackSolver.h -------------------*/
 /*--------------------------------------------------------------------------*/
+
+
+
+
 
 
 
