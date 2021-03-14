@@ -54,13 +54,10 @@ void DPBinaryKnapsackSolver::set_Block( Block * block ){
 
 int DPBinaryKnapsackSolver::compute( bool changedvars ){
 
-/* The variable i is the first item processed by the DP algorithm. If compute
- is called for the first time then i = 0 and the algorithm is entirely 
- executed. Otherwise process_outstanding_Modification(), after processing all 
- the modifications, returns the index of the item from which to restart the 
- algorithm (if it is possible according to the reopt parameter).            */
- 
- int i = process_outstanding_Modification();
+// process all the pending modifications and compute the first item from 
+// which to restart the DP algorithm (start_item)
+
+process_outstanding_Modification();
 
 // check if the problem is empty - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -72,7 +69,15 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ){
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-int N = pi.size() + ni.size();      // number of items (not preprocessed)
+/* The variable i is the first item processed by the DP algorithm. If compute
+ is called for the first time then i = 0 and the algorithm is entirely 
+ executed. Otherwise process_outstanding_Modification(), after processing all 
+ the modifications, computes the index of the item from which to restart the 
+ algorithm (if it is possible according to the reopt parameter).            */
+
+int i = start_item;
+
+int N = items.size();               // number of items (not preprocessed)
 
 if( N == 0 ){                       // if N == 0 all the items have been
  obj = prp_P;                       // preprocessed, no need of DP
@@ -89,44 +94,35 @@ G.resize( N + 1 );                  // resize the DP graph
 
 int maxcurrlab;                     // max current height of the graph
 int maxnextlab;                     // max next height of the graph    
-int size;                           // size of the current set of labels
 
 std::vector< double > currlab;      // set of current labels
 std::vector< double > nextlab;      // set of next labels
 
+std::vector< int >::iterator it;    // iterator over items[]
+
 // Initialization - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-
-std::vector< int >::iterator it;    // iterator over ni[] and pi[]
-
 if( i == 0 ){                       // if i == 0 the DP algorithm is entirely
- G[ 0 ].minLab = 0;                 // executed, initialize dummy node in the 
- maxcurrlab = 0;                    // origin
- size = 1;                         
- currlab.resize( size );
+ maxcurrlab = 0;                    // executed, initialize dummy node in the                                        
+ currlab.resize( maxcurrlab + 1 );  // origin
  currlab[ 0 ] = 0;
 
- it = ni.begin();                   // and start from the beginning   
+ it = items.begin();                // and start from the beginning   
 }
-else{                               // otherwise initialize with data stored 
-                                    // in G[ i ]
- size = G[ i ].lab.size();         
- maxcurrlab = size + G[ i ].minLab - 1;
- currlab.resize( size );
+else{                         // otherwise initialize with data stored in G[ i ]
+ maxcurrlab = G[ i ].lab.size() - 1;
+ currlab.resize( maxcurrlab + 1 );
  std::copy( G[ i ].lab.begin() , G[ i ].lab.end() , currlab.begin() );
 
  // and start from the correct item
- it = i >= ni.size() ? pi.begin() + i - ni.size() : ni.begin() + i;
+ it = items.begin() + i;
 }
 
 // DYNAMIC PROGRAMMING - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 /*
-The algorithm processes first the items with negative weight and second the 
-items with positive weights.
-
-At each iteration it computes the maximum and the minimum "height" of the 
-constructed graph in order to allocate only the necessary memory to store the 
-current labels.
+At each iteration the algorithm computes the maximum height of the constructed 
+graph in order to allocate only the necessary memory to store the current 
+labels.
 
 According to the reopt parameter, labels can be stored in G[ i ].lab so that
 they will be used for reoptimization.
@@ -136,33 +132,23 @@ they will be used for reoptimization.
 
 for( ; i < N ; i++ , it++ ){
 
- // if all the items with negative weights have been processed 
- // start process the items with positive weights
- if( it == ni.end() )
-  it = pi.begin();
-
   double p = v_P[ *it ];        // profit of the current item
   int w = v_W[ *it ];           // weight of the current item  
 
-  // compute max and min "height" of the graph and resize accordingly
-  // and if w > 0 check if the maximum capacity is reached
-  // Also store minLab in G[ i ].minLab
-  maxnextlab = w > 0 ? std::min( maxcurrlab + w , C + nW ) : maxcurrlab;
-  G[ i + 1 ].minLab = std::min( G[ i ].minLab , G[ i ].minLab + w );
-
-  int nextsize = maxnextlab - G[ i + 1 ].minLab + 1;
+  // max "height" of the graph checking if the maximum capacity is reached
+  maxnextlab = std::min( maxcurrlab + w , C );
 
   // Initialize labels 
-  nextlab.resize( nextsize );
-  std::fill( nextlab.begin() , nextlab.end() , -Inf< double >() );
+  nextlab.resize( maxnextlab + 1 );
+  std::fill( nextlab.begin() , nextlab.end() , - Inf< double >() );
   
   // Allocate predecessors
-  G[ i + 1 ].pred.resize( nextsize );
+  G[ i + 1 ].pred.resize( maxnextlab + 1 );
   
   // Initialize the best label among those of this slice 
   double bestlab = -Inf< double >();
 
-  for( int j = 0 ; j < size ; j++ ){
+  for( int j = 0 ; j <= maxcurrlab ; j++ ){
    
    // if the node does not exists (currlab = -Inf) 
    // or if it does not have a better label continue
@@ -172,55 +158,48 @@ for( ; i < N ; i++ , it++ ){
    // update bestlab
    bestlab = currlab[ j ];
 
-   // horizontal and diagonal indeces (are shifted by minLab)
-   int hi = j + G[ i ].minLab - G[ i + 1 ].minLab;
-   int di = hi + w;
-
    // horizontal arc
-   if( currlab[ j ] > nextlab[ hi ] ){
-    G[ i + 1 ].pred[ hi ] = false;
-    nextlab[ hi ] = currlab[ j ];
+   if( currlab[ j ] > nextlab[ j ] ){
+    G[ i + 1 ].pred[ j ] = false;
+    nextlab[ j ] = currlab[ j ];
    }
 
    // check if the maximum capacity is reached
-   if( ( w > 0 ) && ( di > C + nW ) )
+   if( j + w > C )
     continue;
 
    // diagonal arc 
-   if( currlab[ j ] + p > nextlab[ di ] ){
-    G[ i + 1 ].pred[ di ] = true;
-    nextlab[ di ] = currlab[ j ] + p;
+   if( currlab[ j ] + p > nextlab[ j + w ] ){
+    G[ i + 1 ].pred[ j + w ] = true;
+    nextlab[ j + w ] = currlab[ j ] + p;
    }
 
   }
 
  // if reopt save currlab
  if( reopt ){
-  G[ i ].lab.resize( size );
+  G[ i ].lab.resize( maxcurrlab + 1 );
   std::copy( currlab.begin() , currlab.end() , G[ i ].lab.begin() );
  }
 
-  
- size = nextsize;
  maxcurrlab = maxnextlab;
  std::swap( currlab , nextlab );
 
 }
 
-// find optimal value- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-// save last labels
-G[ N ].lab.resize( size );
+// always save last labels
+G[ N ].lab.resize( maxcurrlab + 1 );
 std::copy( currlab.begin() , currlab.end() , G[ N ].lab.begin() );
 
-// find optimal value
-int maxh = std::min( size , C + nW + 1 );
+// find optimal value- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+int maxh = std::min( maxcurrlab + 1 , C + 1 );
 int besth;
 
 obj = -Inf< double >();      // Initialize objective value
 for( int i = 0 ; i < maxh ; i++ ){
  if( G[ N ].lab[ i ] > obj ){
-  obj = G[ N ].lab[ i ];
+  obj = G[ N ].lab[ i ]; 
   besth = i;
  }
 }
@@ -229,22 +208,20 @@ obj += prp_P;               // add the profit coming from the preprocessing
 
 // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - - 
 
-// if there are no items with positive weights start from ni.end() - 1
-it = pi.size() ? pi.end() - 1 : ni.end() - 1;
+it = items.end() - 1;
 
 for( int i = N ; i > 0 ; i-- , it-- ){
 
  if( G[ i ].pred[ besth ] ){
   v_x[ *it ] = 1;
-  besth += G[ i ].minLab - G[ i - 1 ].minLab - v_W[ *it ];
+  besth -= v_W[ *it ];
  }
- else
-  besth += G[ i ].minLab - G[ i - 1 ].minLab;
 
- if( it == pi.begin() )         // if all the items with positive weights have
-  it = ni.end();                // been processed, start process the items 
-                                // with negative weights
-} 
+}
+
+// x = 1 - x for the items in ni
+for( auto i : ni )
+ v_x[ i ] = 1 - v_x[ i ];    
 
 return( kOK );
 
@@ -313,8 +290,11 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
     throw(std::logic_error("cannot acquire read_lock on BinariKnapsackBlock"));
 
    // load Binary Knapsack instance - - - - - - - - - - - - - - - - - - - - - 
+
    f_sense = BKB->get_objective_sense();    // get the sense of the objective
+
    f_NItems = BKB->get_NItems();            // get the number of items
+
    f_C = std::floor( BKB->get_Capacity() ); // get the Capacity
 
    // get profits
@@ -329,11 +309,10 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
    v_W.resize( f_NItems );
    const std::vector< double > & W = BKB->get_Weights();
 
-   // load weights and compute nW, prp_P and prp_W
-   nW = 0;
-   prp_P = 0;
+   // load weights and update prp_W (total negative weight) and prp_P
    prp_W = 0;
-   
+   prp_P = 0;
+
    for( int i = 0 ; i < W.size() ; i++ ){
    
     // check that weights are integers
@@ -344,23 +323,17 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
     // if the variables is fixed to 1 update prp_P and prp_W
     if( BKB->is_fixed( i ) ){
-     if( BKB->get_x( i ) ){
+     if( BKB->get_x( i ) ){   
       prp_P += v_P[ i ];
       prp_W += v_W[ i ];
      }
      continue; 
     }
 
-    // items with negative weights involved in the DP algorithm
-    if( ( v_W[ i ] < 0 ) && ( v_P[ i ] < 0 ) )
-     nW -= v_W[ i ];
-    
-    
-    // items with negative weights NOT involved in the DP algorithm
-    if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){
-     prp_P += v_P[ i ];
+    // items with negative weights 
+    if( v_W[ i ] <= 0 )
      prp_W += v_W[ i ]; 
-    }
+    
    }
 
    BKB->read_unlock();
@@ -380,6 +353,7 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
  from the computation                                                      */
  
  int C = f_C - prp_W;
+
  v_x.resize( f_NItems );
 
  for( int i = 0 ; i < f_NItems ; i++ ){
@@ -393,27 +367,38 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
   // items to be picked
   if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){
    v_x[ i ] = 1;
+   prp_P += v_P[ i ];
    continue;
   }
 
   // items not to be picked
-  if( ( v_W[ i ] > C + nW ) || ( ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ) ){
+  if( ( v_W[ i ] > C ) || ( ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ) ){
    v_x[ i ] = 0;
    continue; 
   }
 
-  // store the indeces of the items with positive weights that are involved 
-  // in the DP algorithm in pi[] and the indeces of the items with negative 
-  // weights in ni[]
+  // if the item has negative weight (and negative profit) update prp_P and
+  // change the sign of v_W[ i ] and v_P[ i ]
+  if( v_W[ i ] <= 0 ){
+   prp_P += v_P[ i ];
 
-  if( v_W[ i ] > 0 )    // items with positive weights
-   pi.push_back( i ); 
-  else                  // items with negative weights
+   v_W[ i ] = - v_W[ i ];
+   v_P[ i ] = - v_P[ i ];
+
    ni.push_back( i ); 
+  }
+
+  // store the indeces of the items that are involved in the DP algorithm
+
+  items.push_back( i );
   
-  v_x[ i ] = 0;         // initialize all variables to 0
+  v_x[ i ] = 0;                         // initialize all variables to 0
 
  }
+
+ start_item = 0;                        // starting item 
+
+ obj = -Inf< double >();                // objective value
 
  } // end if( f_Block )
 
@@ -421,7 +406,15 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
 /*--------------------------------------------------------------------------*/
 
-int DPBinaryKnapsackSolver::process_outstanding_Modification(){
+void DPBinaryKnapsackSolver::process_outstanding_Modification(){
+
+ if( v_mod.empty() )
+  return;
+
+ auto BKB = dynamic_cast< BinaryKnapsackBlock * >( f_Block );
+
+ // item is the index from which to restart the DP algorithm
+ int item = Inf< int >();
 
  while( ! v_mod.empty() ){
   
@@ -475,7 +468,7 @@ int DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
  } // end( while( ! v_mod.empty() ) )
 
-return 0;
+start_item = 0;
 
 }// end( process_outstanding_Modification() )
 

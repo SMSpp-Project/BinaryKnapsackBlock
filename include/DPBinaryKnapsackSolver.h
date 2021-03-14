@@ -40,7 +40,15 @@ namespace SMSpp_di_unipi_it
  * Dynamic Programming approach.
  *
  * The algorithm assumes that weights of the items are integers, otherwise an
- * exception is thrown. Capacity and Profits can be double. */
+ * exception is thrown. Capacity and Profits can be double. 
+ *
+ * Even if compute() always solves the maximization problem, the objective
+ * sense of the problem encoded in the BinaryKnapsackBlock can be either Min 
+ * or Max and all the necessary transformations are automatically handled. 
+ *
+ * The implemented algorithm also manages the presence of items with negative 
+ * weights.                                                                 */                         
+
 
 class DPBinaryKnapsackSolver : public Solver {
 
@@ -68,8 +76,7 @@ public:
  typedef struct{
   std::vector< double > lab;
   std::vector< bool > pred;
-  int minLab;
- }slice;
+ } slice;
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
@@ -83,8 +90,8 @@ public:
  /// constructor
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
-                           obj( -Inf< double >() ) , prp_W( 0 ) , prp_P( 0 ) , 
-                           nW( 0 ) , reopt( noReopt ) {}
+                           obj( -Inf< double >() ) , start_item( 0 ) , 
+                           prp_W( 0 ) , prp_P( 0 ) , reopt( noReopt ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -184,6 +191,9 @@ protected:
 
  std::vector< slice > G;                ///< DP Graph 
 
+ std::vector< int > items;              ///< indeces of NOT preprocessed items
+ int start_item;                        ///< index of the starting item 
+
 /* preprocessing data - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  int prp_W;
@@ -191,12 +201,8 @@ protected:
  double prp_P;           
  ///< total profit of preprocessed items whose variables are set to 1
 
- std::vector< int > pi;
- ///< indeces of NOT preprocessed items with positive weight
  std::vector< int > ni;
  ///< indeces of NOT preprocessed items with negative weight
-
- int nW;     ///< total weight of NOT preprocessed items with negative weight
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -212,11 +218,12 @@ private:
 /*--------------------------- PRIVATE METHODS ------------------------------*/
 /*--------------------------------------------------------------------------*/
 
- /// load the Binary Knapsack instance and perform the preprocessing
+ /// load the Binary Knapsack instance and perform the preprocessing    
  void load();
 
- /// process all the pending modifications
- int process_outstanding_Modification();
+ /// process all the pending modifications and compute the first item from 
+ /// which to restart the DP algorithm (start_item)
+ void process_outstanding_Modification();
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
