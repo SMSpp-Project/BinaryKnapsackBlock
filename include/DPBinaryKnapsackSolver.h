@@ -63,12 +63,11 @@ public:
 /*--------------------------------------------------------------------------*/
 /** @name Public types
  @{ */
+    
+ /// public enum for the reoptimization algorithmic parameter
 
- /// public enum for the reoptimization algorithmic parameters
-
- enum Reopt_par{
-  noReopt = 0,          // TODO: add intermediate options
-  fullReopt
+ enum dbl_par_type_DPBKSlv{
+  dblReopt = dblLastAlgPar,
  };
 
  /// define struct for data stored in a graph G constructed by the DP algorithm
@@ -90,8 +89,14 @@ public:
  /// constructor
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
-                           obj( -Inf< double >() ) , start_item( 0 ) , 
-                           prp_W( 0 ) , prp_P( 0 ) , reopt( noReopt ) {}
+                           obj( - Inf< double >() ) , start_item( 0 ) , 
+                           besth( 0 ) , prp_W( 0 ) , prp_P( 0 ) ,  
+                           reload( false ) , prp( false ) , HasSol( false ) , 
+                           reopt( 0 ) {
+                            G.resize( 1 );          // initialize dummy node 
+                            G[ 0 ].lab.resize( 1 ); // in the origin
+                            G[ 0 ].lab[ 0 ] = 0; 
+                           }
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -153,6 +158,7 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 /*--------------------------------------------------------------------------*/
 /** @name Handling the parameters of the DPBinaryKnapsackSolver @{ */
 
+void set_par( idx_type par , double value ) override;
 
 /**@} ----------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
@@ -192,7 +198,8 @@ protected:
  std::vector< slice > G;                ///< DP Graph 
 
  std::vector< int > items;              ///< indeces of NOT preprocessed items
- int start_item;                        ///< index of the starting item 
+ int start_item;                        ///< index of the starting item
+ int besth;                             ///< "height" of the optimal value
 
 /* preprocessing data - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -204,9 +211,13 @@ protected:
  std::vector< int > ni;
  ///< indeces of NOT preprocessed items with negative weight
 
+ bool reload;                           ///< if the instance must be reloaded
+ bool prp;                              ///< if preprocessing must be redone
+ bool HasSol;                           ///< if there is an available solution                  
+
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- Reopt_par reopt;
+ double reopt;
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
@@ -224,6 +235,37 @@ private:
  /// process all the pending modifications and compute the first item from 
  /// which to restart the DP algorithm (start_item)
  void process_outstanding_Modification();
+
+ /// compute the value of the objective once compute() has already been called
+ void compute_var_value();
+
+ /// compute solution
+ void compute_var_solution();
+
+ /// perform preprocessing
+ void preprocessing();
+
+ /// modifications
+ 
+ void capacity_Modification();
+
+ void sense_Modification();
+
+ void fixX_Modification( Block::Range rng );
+
+ void fixX_Modification( Block::c_Subset && nms );
+
+ void unFixX_Modification( Block::Range rng );
+
+ void unFixX_Modification( Block::c_Subset && nms );
+
+ void weight_Modification( Block::Range rng );
+
+ void weight_Modification( Block::c_Subset && nms );
+
+ void profit_Modification( Block::Range rng );
+
+ void profit_Modification( Block::c_Subset && nms );
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
