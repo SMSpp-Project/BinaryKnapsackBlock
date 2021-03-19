@@ -269,20 +269,35 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
  if( isEmpty != -1 )
   return( isEmpty );
 
- if( f_C >= 0 ){      // if the Capacity is positive then x = 0 is a feasible 
-  isEmpty = 0;        // solution and the problem is not empty
-  return( false );    
+ // check if there are fixed variables and compute the residual capacity
+ 
+ double C = f_C;
+
+ for( int i = 0 ; i < f_NItems ; i++ ){
+  if( is_fixed( i ) )
+   C -= v_W[ i ]; 
+ }
+
+ if( C >= 0 ){        // if the residual capacity is positive then a feasible 
+  isEmpty = 0;        // solution is composed by the value of the fixed 
+  return( false );    // variables and x = 0 for all the others
  }
 
  double neg_weights = 0;
 
- for( Index i = 0 ; i < v_W.size() ; i++ ){
+ for( Index i = 0 ; i < f_NItems ; i++ ){
+  
+  if( is_fixed( i ) )
+   continue; 
+
   if( v_W[ i ] < 0 ){
    neg_weights += v_W[ i ];
-   if( neg_weights <= f_C ){
+   
+   if( neg_weights <= C ){
     isEmpty = 0;
     return( false );
    }
+  
   }
  }
 
@@ -491,6 +506,8 @@ void BinaryKnapsackBlock::fix_x( bool value, Index i ,
  f_cond_lower = -Inf<double>();
  f_cond_upper = Inf<double>();
 
+ isEmpty = -1;
+
 if( not_dry_run( issueAMod ) ){
  v_x[ i ].set_value( value );
  v_x[ i ].is_fixed( true , issueAMod ); 
@@ -559,6 +576,8 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod,
  // reset conditional bounds
  f_cond_lower = -Inf<double>();
  f_cond_upper = Inf<double>();
+
+ isEmpty = -1;
  
  if( not_dry_run( issueAMod ) )
   v_x[ i ].is_fixed( false , issueAMod ); 
@@ -623,6 +642,8 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
+ isEmpty = -1;
+
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
   LinearFunction *lf = dynamic_cast<LinearFunction*>(v_cnst[0].get_function());
@@ -658,6 +679,8 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
  // reset conditional bounds
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
+
+ isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
@@ -701,6 +724,8 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
  // reset conditional bounds
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
+
+ isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
@@ -746,6 +771,8 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
+ isEmpty = -1;
+
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
   
@@ -786,6 +813,8 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
  // reset conditional bounds
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
+
+ isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
@@ -829,6 +858,8 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
+ isEmpty = -1;
+
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
   
@@ -869,6 +900,8 @@ void BinaryKnapsackBlock::chg_capacity( double NC ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
+ isEmpty = -1;
+
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
   f_C = NC; 
@@ -897,6 +930,8 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
  // reset conditional bounds
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
+
+ isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
@@ -987,6 +1022,8 @@ void BinaryKnapsackBlock::guts_of_destructor(){
  // reset conditional bounds
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
+
+ isEmpty = -1;
 
  // explicitly reset Constraint and Variables
  reset_static_constraints();
