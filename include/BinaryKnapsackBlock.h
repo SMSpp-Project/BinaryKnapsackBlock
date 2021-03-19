@@ -113,7 +113,7 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
 explicit BinaryKnapsackBlock( Block * father = nullptr )
   : Block( father ) , f_NItems( 0 ) , f_C( 0 ) , AR( 0 ) , 
     f_sense( 1 ) , f_cond_lower( - Inf<double>() ) , 
-    f_cond_upper( + Inf<double>() ) { }
+    f_cond_upper( + Inf<double>() ) , isEmpty( -1 ) { }
 
 /*--------------------------------------------------------------------------*/
  /// destructor of BinaryKnapsackBlock: deletes the abstract representation
@@ -646,9 +646,9 @@ void chg_capacity( double NC ,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the sense of the objective function
 
-void set_sense( bool sense ,
-                ModParam issueMod = eNoBlck ,
-                ModParam issueAMod = eNoBlck ); 
+void set_objective_sense( bool sense ,
+                          ModParam issueMod = eNoBlck ,
+                          ModParam issueAMod = eNoBlck ); 
 
 /**@} ----------------------------------------------------------------------*/
 /*-------------------- PROTECTED PART OF THE CLASS -------------------------*/
@@ -699,6 +699,10 @@ bool f_sense;                   ///< the sense of the objective
 
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
+
+int isEmpty;          
+///< if the problem is empty isEmpty = 1, if not isEmpty = 0, 
+///< if is_empty() has never been called isEmpty = -1
 
 std::vector< ColVariable > v_x;         ///< the static binary variables
 std::vector< FRowConstraint> v_cnst;    ///< the static constraint 

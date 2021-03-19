@@ -70,8 +70,8 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlock );
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-                        const std::vector<double> & Weights , 
-                        const std::vector<double> & Profits )
+                                const std::vector<double> & Weights , 
+                                const std::vector<double> & Profits )
 {
  
  // sanity checks 
@@ -96,8 +96,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-                        std::vector<double> && Weights , 
-                        std::vector<double> && Profits )
+                                std::vector<double> && Weights , 
+                                std::vector<double> && Profits )
 {
  
  // sanity checks 
@@ -265,19 +265,28 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
 /*--------------------------------------------------------------------------*/
 
 bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
-   
- if( f_C >= 0 )       // if the Capacity is positive then x = 0 is a feasible 
-  return( false );    // solution and the problem is not empty
+ 
+ if( isEmpty != -1 )
+  return( isEmpty );
+
+ if( f_C >= 0 ){      // if the Capacity is positive then x = 0 is a feasible 
+  isEmpty = 0;        // solution and the problem is not empty
+  return( false );    
+ }
 
  double neg_weights = 0;
 
  for( Index i = 0 ; i < v_W.size() ; i++ ){
   if( v_W[ i ] < 0 ){
    neg_weights += v_W[ i ];
-   if( neg_weights <= f_C )
+   if( neg_weights <= f_C ){
+    isEmpty = 0;
     return( false );
+   }
   }
  }
+
+ isEmpty = 1;
  return( true );
 }
 
@@ -300,7 +309,7 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
     BKB = new BinaryKnapsackBlock( father );
 
   BKB->load( f_NItems , f_C , v_W , v_P );
-  BKB->set_sense( f_sense );
+  BKB->set_objective_sense( f_sense );
 
   return( BKB );
 
@@ -490,8 +499,8 @@ if( not_dry_run( issueAMod ) ){
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
-          BinaryKnapsackBlockMod::eFixX , std::make_pair( i , i + 1 ) ) , 
-          Observer::par2chnl( issueMod ) );
+                BinaryKnapsackBlockMod::eFixX , std::make_pair( i , i + 1 ) ) , 
+                Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::fix_x )
 
@@ -513,8 +522,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec & value , Range rng ,
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
-          BinaryKnapsackBlockMod::eFixX , rng ) , 
-          Observer::par2chnl( issueMod ) );
+                           BinaryKnapsackBlockMod::eFixX , rng ) , 
+                           Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::fix_x )
 
@@ -531,8 +540,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec & value , Subset && nms ,
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(this,
-          BinaryKnapsackBlockMod::eFixX , std::move( nms ) ) , 
-          Observer::par2chnl( issueMod ) );
+                           BinaryKnapsackBlockMod::eFixX , std::move( nms ) ) , 
+                           Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::fix_x )
 
@@ -557,8 +566,8 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod,
  // issue physical Modification 
  if( issue_pmod( issueMod ) ) 
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
-          BinaryKnapsackBlockMod::eUnfixX , std::make_pair( i , i + 1 ) ) , 
-          Observer::par2chnl( issueMod ) );
+            BinaryKnapsackBlockMod::eUnfixX , std::make_pair( i , i + 1 ) ) , 
+            Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::unfix_x )
 
@@ -578,8 +587,8 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod,
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
-          BinaryKnapsackBlockMod::eUnfixX , rng ) , 
-          Observer::par2chnl( issueMod ) );
+                           BinaryKnapsackBlockMod::eUnfixX , rng ) , 
+                           Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::unfix_x )
 
@@ -594,8 +603,8 @@ void BinaryKnapsackBlock::unfix_x( Subset && nms , ModParam issueMod,
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(this,
-          BinaryKnapsackBlockMod::eUnfixX , std::move( nms ) ) , 
-          Observer::par2chnl( issueMod ) );
+                        BinaryKnapsackBlockMod::eUnfixX , std::move( nms ) ) , 
+                        Observer::par2chnl( issueMod ) );
 
 } // end( BinaryKnapsackBlock::unfix_x )
 
@@ -869,17 +878,18 @@ void BinaryKnapsackBlock::chg_capacity( double NC ,
   f_C = NC;
  
 
- if( issue_pmod( issueMod ) ) // issue physical Modification 
+ if( issue_pmod( issueMod ) ) // issue physical Modification
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockMod >( this ,
                            BinaryKnapsackBlockMod::eChgCapacity ) , 
                            Observer::par2chnl( issueMod ) );
+
 
  } // end( BinaryKnapsackBlock::chg_capacity )
 
  /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_sense( bool sense , ModParam issueMod , 
-                                     ModParam issueAMod ){
+void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod , 
+                                               ModParam issueAMod ){
 
  if( f_sense == sense ) // nothing to do
   return;
@@ -902,7 +912,7 @@ void BinaryKnapsackBlock::set_sense( bool sense , ModParam issueMod ,
                            BinaryKnapsackBlockMod::eChgSense ) , 
                            Observer::par2chnl( issueMod ) );
 
- } // end( BinaryKnapsackBlock::set_sense )
+ } // end( BinaryKnapsackBlock::set_objective_sense )
 
 
 /*--------------------------------------------------------------------------*/
@@ -1144,7 +1154,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
    auto obj = dynamic_cast< Objective * >( & f );
    if( tmod->of() == obj ){ 
     bool sense = tmod->type() == Objective::eMax ? 1 : 0;
-    set_sense( sense , make_par( eNoBlck , chnl ) , eDryRun );
+    set_objective_sense( sense , make_par( eNoBlck , chnl ) , eDryRun );
     return;
    }
    throw( std::invalid_argument("Modification to the wrong objective") );
