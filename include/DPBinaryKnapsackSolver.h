@@ -90,9 +90,8 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( - Inf< double >() ) , start_item( 0 ) , 
-                           besth( 0 ) , prp_W( 0 ) , prp_P( 0 ) ,  
-                           reload( false ) , prp( false ) , HasSol( false ) , 
-                           reopt( 0 ) {
+                           besth( 0 ) , reload( false ) , prp( false ) ,
+                           HasSol( false ) , reopt( 0 ){
                             G.resize( 1 );          // initialize dummy node 
                             G[ 0 ].lab.resize( 1 ); // in the origin
                             G[ 0 ].lab[ 0 ] = 0; 
@@ -197,19 +196,12 @@ protected:
 
  std::vector< slice > G;                ///< DP Graph 
 
- std::vector< int > items;              ///< indeces of NOT preprocessed items
  int start_item;                        ///< index of the starting item
  int besth;                             ///< "height" of the optimal value
 
 /* preprocessing data - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- int prp_W;
- ///< total weight of preprocessed items whose variables are set to 1
- double prp_P;           
- ///< total profit of preprocessed items whose variables are set to 1
-
- std::vector< int > ni;
- ///< indeces of NOT preprocessed items with negative weight
+ std::vector< int > items;              ///< preprocessing informations
 
  bool reload;                           ///< if the instance must be reloaded
  bool prp;                              ///< if preprocessing must be redone
