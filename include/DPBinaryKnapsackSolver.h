@@ -77,6 +77,12 @@ public:
   std::vector< bool > pred;
  } slice;
 
+ using Range = Block::Range;
+ using c_Range = Block::c_Range;
+
+ using Subset = Block::Subset;
+ using c_Subset = Block::c_Subset;
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -192,6 +198,8 @@ protected:
  double obj;                            ///< the value of the objective
  std::vector< bool > v_x;               ///< vector of binary variables
 
+ bool HasSol;                           ///< if there is an available solution  
+
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
  std::vector< slice > G;                ///< DP Graph 
@@ -204,8 +212,12 @@ protected:
  std::vector< int > items;              ///< preprocessing informations
 
  bool reload;                           ///< if the instance must be reloaded
+
+ Range prp_rng;
+ Subset prp_nms;
+
  bool prp;                              ///< if preprocessing must be redone
- bool HasSol;                           ///< if there is an available solution                  
+                
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -235,7 +247,9 @@ private:
  void compute_var_solution();
 
  /// perform preprocessing
- void preprocessing();
+ void preprocessing( Range rng );
+
+ void preprocessing( Subset & nms );
 
  /// modifications
  
@@ -243,21 +257,21 @@ private:
 
  void sense_Modification();
 
- void fixX_Modification( Block::Range rng );
+ void fixX_Modification( Range rng );
 
- void fixX_Modification( Block::c_Subset && nms );
+ void fixX_Modification( c_Subset && nms );
 
- void unFixX_Modification( Block::Range rng );
+ void unFixX_Modification( Range rng );
 
- void unFixX_Modification( Block::c_Subset && nms );
+ void unFixX_Modification( c_Subset && nms );
 
- void weight_Modification( Block::Range rng );
+ void weight_Modification( Range rng );
 
- void weight_Modification( Block::c_Subset && nms );
+ void weight_Modification( c_Subset && nms );
 
- void profit_Modification( Block::Range rng );
+ void profit_Modification( Range rng );
 
- void profit_Modification( Block::c_Subset && nms );
+ void profit_Modification( c_Subset && nms );
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/

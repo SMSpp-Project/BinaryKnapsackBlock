@@ -15,7 +15,13 @@
 
 using namespace SMSpp_di_unipi_it;
 
-using idx_type = ThinComputeInterface::idx_type; 
+using idx_type = ThinComputeInterface::idx_type;
+
+using Range = Block::Range;
+using c_Range = Block::c_Range;
+
+using Subset = Block::Subset;
+using c_Subset = Block::c_Subset; 
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------------- FUNCTIONS -------------------------------*/
@@ -111,8 +117,11 @@ for( int i = 0 ; i < f_NItems ; i++ ){
  }
 
  if( items[ i ] == -1 ){            // if i has negative weight and profit
-  C += v_W[ i ];
-  prp_P -= v_P[ i ];    
+  C -= v_W[ i ];
+  prp_P += v_P[ i ];
+
+  v_W[ i ] = - v_W[ i ];            // change the sign of the items with
+  v_P[ i ] = - v_P[ i ];            // negative weight and negative profit
  }
 
 } 
@@ -149,7 +158,7 @@ for( ; i < f_NItems ; i++ ){
 
   double p = v_P[ i ];        // profit of the current item
   int w = v_W[ i ];           // weight of the current item
-  
+
   // max "height" of the graph checking if the maximum capacity is reached
   maxnextlab = std::min( maxcurrlab + w , C );
 
@@ -209,23 +218,31 @@ for( ; i < f_NItems ; i++ ){
 G[ f_NItems ].lab.resize( maxcurrlab + 1 );
 std::copy( currlab.begin() , currlab.end() , G[ f_NItems ].lab.begin() );
 
-// find optimal value- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// find optimal value - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
 
 int maxh = std::min( maxcurrlab , C );
 
-obj = -Inf< double >();                 // Initialize objective value
+obj = - Inf< double >();                    // Initialize objective value
 
-for( int i = 0 ; i <= maxh ; i++ ){
+for( int i = 0 ; i <= maxh ; i++ ){ 
  if( G[ f_NItems ].lab[ i ] > obj ){
   obj = G[ f_NItems ].lab[ i ]; 
   besth = i;
  }
 }
 
-
 obj += prp_P;               // add the profit coming from the preprocessing
 
-start_item = + Inf< int >();     
+start_item = + Inf< int >();
+
+for( int i = 0 ; i < f_NItems ; i++ ){      // change again the signs of the 
+ if( items[ i ] == -1 ){                    // items with negative weight
+  v_W[ i ] = - v_W[ i ];                    // and negative profit
+  v_P[ i ] = - v_P[ i ];   
+ }  
+}     
+
+HasSol = false;
 
 return( kOK );
 
@@ -352,56 +369,21 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
    BKB->read_unlock();
 
- v_x.resize( f_NItems );
- items.resize( f_NItems );
- G.resize( f_NItems + 1 );
+ v_x.resize( f_NItems );            // resize vector of variables
  
- preprocessing();           // perform the preprocessing
+ items.resize( f_NItems );          // resize vector of items
+ 
+ G.resize( f_NItems + 1 );          // resize Graph
+
+ prp_nms.resize( f_NItems );
+ 
+ preprocessing( std::make_pair( 0 , f_NItems ) );  // perform the preprocessing
 
  reload = false;
 
  } // end if( f_Block )
 
 } // end( DPBinaryKnapsackSolver::load() )
-
-/*--------------------------------------------------------------------------*/
-
-void DPBinaryKnapsackSolver::compute_var_value(){
-
- int C = f_C;                // compute new capacity after the preprocessing
- double prp_P = 0;           // compute the profit coming from the preprocessing
-                
- for( int i = 0 ; i < f_NItems ; i++ ){
-
-  if( items[ i ] == 1 ){             // if i has been selected
-   C -= v_W[ i ];
-   prp_P += v_P[ i ];
-  }
-
-  if( items[ i ] == -1 ){            // if i has negative weight and profit
-   C += v_W[ i ];
-   prp_P -= v_P[ i ];    
-  }
-
- } 
-
- int maxcurrlab = G[ f_NItems ].lab.size() - 1; 
- int maxh = std::min( maxcurrlab , C );
-
- obj = -Inf< double >();                 // Initialize objective value
-
- for( int i = 0 ; i <= maxh ; i++ ){
-  if( G[ f_NItems ].lab[ i ] > obj ){
-   obj = G[ f_NItems ].lab[ i ]; 
-   besth = i;
-  }
- }
-
- // add the profit coming from the preprocessing
-
- obj += prp_P;
- 
-}
 
 /*--------------------------------------------------------------------------*/
 
@@ -417,8 +399,8 @@ void DPBinaryKnapsackSolver::compute_var_solution(){
   }
 
   if( G[ i + 1 ].pred[ besth ] ){
-   v_x[ i ] = 1; 
-   besth -= v_W[ i ];
+   v_x[ i ] = 1;
+   besth -= items[ i ] != -1 ? v_W[ i ] : - v_W[ i ];  
   }
   else
    v_x[ i ] = 0;
@@ -434,7 +416,7 @@ void DPBinaryKnapsackSolver::compute_var_solution(){
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::preprocessing(){
+void DPBinaryKnapsackSolver::preprocessing( Range rng ){
 
  // PREPROCESSING - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
  /*
@@ -448,7 +430,7 @@ void DPBinaryKnapsackSolver::preprocessing(){
 
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
-  for( int i = 0 ; i < f_NItems ; i++ ){
+  for( int i = rng.first ; i < rng.second ; i++ ){
    
    if( BKB->is_fixed( i ) ){
     items[ i ] = BKB->get_x( i );
@@ -467,12 +449,8 @@ void DPBinaryKnapsackSolver::preprocessing(){
     continue; 
    }
 
-   if( v_W[ i ] <= 0 ){              // if the item has negative weight 
-                                     // and negative profit   
-    v_W[ i ] = - v_W[ i ];           // change the sign of v_W[ i ] 
-    v_P[ i ] = - v_P[ i ];           // and v_P[ i ]
-
-    items[ i ] = -1;
+   if( v_W[ i ] <= 0 ){             // if the item has negative weight 
+    items[ i ] = -1;                // and negative profit set items to -1
     continue; 
    }
 
@@ -480,11 +458,58 @@ void DPBinaryKnapsackSolver::preprocessing(){
    
   }
    
-  start_item = 0;
+  start_item = rng.first;
 
-  prp = false;
+ } // end( preprocessing( Range ) )
 
- } // end( preprocessing() )
+/*--------------------------------------------------------------------------*/
+
+void DPBinaryKnapsackSolver::preprocessing( Subset & nms ){
+
+ // PREPROCESSING - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ /*
+ The following items are preprocessed:
+  
+  - Items i with negative weight and positive profit => set x[ i ] = 1
+ 
+  - Items i with positive weight and negative profit => set x[ i ] = 0
+
+                                                                           */
+
+  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+
+  for( auto i : nms ){
+   
+   if( BKB->is_fixed( i ) ){
+    items[ i ] = BKB->get_x( i );
+    continue;
+   }
+
+   // items to be picked
+   if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){
+    items[ i ] = 1;
+    continue;
+   }
+
+   // items not to be picked
+   if(  ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ){
+    items[ i ] = 0;
+    continue; 
+   }
+
+   if( v_W[ i ] <= 0 ){             // if the item has negative weight 
+    items[ i ] = -1;                // and negative profit set items to -1
+    continue; 
+   }
+
+   items[ i ] = -Inf< int >();
+   
+  }
+   
+  start_item = nms[ 0 ];
+
+ } // end( preprocessing( Subset ) )
+
 
 /*--------------------------------------------------------------------------*/
 
@@ -521,19 +546,12 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
  f_mod_lock.clear( std::memory_order_release );  // release lock
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ prp_rng.first = f_NItems;
+ prp_rng.second = 0;
+
+ std::fill( prp_nms.begin() , prp_nms.end() , 0 );
  
-  if( ! HasSol )                            // compute the current solution
-  compute_var_solution();                   // if is not already available
-
-
- for( int i = 0 ; i < f_NItems ; i++ ){
-  if( items[ i ] == -1 ){
-   v_W[ i ] = - v_W[ i ];
-   v_P[ i ] = - v_P[ i ];   
-  }  
- }
-
-
  for( auto mod : v_mod_tmp ){
   
   // BinaryKnapsackBlockMod - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -621,18 +639,24 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
 v_mod_tmp.clear();
 
-if( prp )
- preprocessing();
-else{
- 
- for( int i = 0 ; i < f_NItems ; i++ ){
-  if( items[ i ] == -1 ){
-   v_W[ i ] = - v_W[ i ];
-   v_P[ i ] = - v_P[ i ];   
-  }  
- }   
+if( prp_rng.first < prp_rng.second )
+ preprocessing( prp_rng );
 
+Subset nms;
+
+for( int i = 0 ; i < prp_rng.first ; i++ ){
+ if( prp_nms[ i ] )
+  nms.push_back( i );   
 }
+
+for( int i = prp_rng.second ; i < f_NItems ; i++ ){
+ if( prp_nms[ i ] )
+  nms.push_back( i );   
+} 
+
+if( nms.size() )
+ preprocessing( nms );
+
 
 }// end( process_outstanding_Modification() )
 
@@ -644,15 +668,37 @@ void DPBinaryKnapsackSolver::capacity_Modification(){
 
  int nC = std::floor( BKB->get_Capacity() );     // get new Capacity
 
- if( nC > f_C ){                    // if the new Capacity is > f_C
-  f_C = nC;
-  start_item = 0;
-  }
+ if( nC > f_C )             // if the new Capacity is > f_C
+  start_item = 0;           // resolve from the beginning
  else{                             
-  f_C = nC;                        // otherwise update the capacity
-  compute_var_value();             // compute the new optimal value
-  HasSol = false;                  // the solution must be recomputed   
+                                
+  int C = nC;               // otherwise only recompute the 
+  int prp_P = 0;            // optimal value
+
+  for( int i = 0 ; i < f_NItems ; i++ ){
+   if( items[ i ] == 1 || items[ i ] == -1 ){
+    C -= v_W[ i ];
+    prp_P += v_P[ i ];
+   }
+  }
+  
+  int maxh = std::min( besth , C );
+   
+  obj = - Inf< int >();
+
+  for( int i = 0 ; i <= maxh ; i++ ){
+   if( G[ f_NItems ].lab[ i ] > obj ){
+    obj = G[ f_NItems ].lab[ i ];
+    besth = i;    
+   }
+  }
+
+  obj += prp_P; 
+
+  HasSol = false;           // the solution must be recomputed (if necessary)   
  }
+
+ f_C = nC;                  // update the Capacity
 
 }
 
@@ -668,130 +714,51 @@ void DPBinaryKnapsackSolver::sense_Modification(){
   v_P[ i ] = - v_P[ i ]; 
  
 
- prp = true;
+ prp_rng.first = 0;
+ prp_rng.second = f_NItems;
 
 }
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::fixX_Modification( Block::Range rng ){
+void DPBinaryKnapsackSolver::fixX_Modification( Range rng ){
 
- if( prp )                      // if preprocessing is required return
-  return;               
-
- auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
-
- for( int i = rng.first ; i < rng.second ; i++ )        // update items
-  items[ i ] = BKB->get_x( i );
-
- bool r = true;                         // and check if the variables
-                                        // are already set to the correct
- int i = rng.first;                     // value
-
- while( r && i < rng.second ){
-  r = v_x[ i ] == BKB->get_x( i ) ? true : false;
-  i++;
- }
-
- if( r )                        // if all variables have the correct value
-  return;                       // nothing to do 
-
- start_item = std::min( start_item , int ( rng.first ) );  
+ prp_rng.first = std::min( prp_rng.first , rng.first );
+ prp_rng.second = std::max( prp_rng.second , rng.second );  
 
 }
 
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::fixX_Modification( Block::c_Subset && nms ){
+void DPBinaryKnapsackSolver::fixX_Modification( c_Subset && nms ){
  
- if( prp )                      // if preprocessing is required return
-  return;               
-
- auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
-
- for( auto i : nms )                    // update items
-  items[ i ] = BKB->get_x( i );
-
- bool r = true;                         // and check if the variables
-                                        // are already set to the correct 
- for( auto i : nms ){                   // value
-  
-  r = v_x[ i ] == BKB->get_x( i ) ? true : false;
-  
-  if( ! r )
-   break;  
- }                                       
- 
- if( r )                        // if all variables have the correct value
-  return;                       // nothing to do 
-
- start_item = std::min( start_item , int( nms[ 0 ] ) );  
+ for( auto i : nms )
+  prp_nms[ i ] = 1;  
 
 }
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::unFixX_Modification( Block::Range rng ){
+void DPBinaryKnapsackSolver::unFixX_Modification( Range rng ){
  
- prp = true;
- /*
- if( prp )                      // if preprocessing is required return
-  return;
-
- bool r = true;
-
- for( int i = rng.first ; i < rng.second ; i++ ){
-  
-  if( items[ i ] == 0 || items[ i ] == 1 ){
-   r = false;
-   
-   if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] <= 0 ) )
-    items[ i ] = -1;
-   else
-    items[ i ] = - Inf< int >();
-
-  }
-    
- }
-
- if( r )
-  return;  
- 
- start_item = std::min( start_item , int ( rng.first ) );*/
+ prp_rng.first = std::min( prp_rng.first , rng.first );
+ prp_rng.second = std::max( prp_rng.second , rng.second );  
 
 }
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::unFixX_Modification( Block::c_Subset && nms ){
+void DPBinaryKnapsackSolver::unFixX_Modification( c_Subset && nms ){
  
- prp = true;
- /*
- if( prp )                      // if preprocessing is required return
-  return;
- 
- bool r = true;
-
- for( auto i : nms ){
-  
-  if( items[ i ] != - Inf< int >() ){
-   r = false;
-   items[ i ] = - Inf< int >(); 
-  }
-    
- }
-
- if( r )
-  return;  
- 
- start_item = std::min( start_item , int ( nms[ 0 ] ) );*/
+ for( auto i : nms )
+  prp_nms[ i ] = 1;  
     
 }
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::weight_Modification( Block::Range rng ){
+void DPBinaryKnapsackSolver::weight_Modification( Range rng ){
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
@@ -806,13 +773,14 @@ void DPBinaryKnapsackSolver::weight_Modification( Block::Range rng ){
 
  }
 
- prp = true;
+ prp_rng.first = std::min( prp_rng.first , rng.first );
+ prp_rng.second = std::max( prp_rng.second , rng.second );  
  
 }
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::weight_Modification( Block::c_Subset && nms ){
+void DPBinaryKnapsackSolver::weight_Modification( c_Subset && nms ){
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
@@ -825,35 +793,36 @@ void DPBinaryKnapsackSolver::weight_Modification( Block::c_Subset && nms ){
    
   v_W[ i ] = nw;
 
- }
+  prp_nms[ i ] = 1;
 
- prp = true;
+ }
  
 }
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::profit_Modification( Block::Range rng ){
+void DPBinaryKnapsackSolver::profit_Modification( Range rng ){
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
  for( int i = rng.first ; i < rng.second ; i++ )
   v_P[ i ] = BKB->get_Profit( i );
 
- prp = true;    
+ prp_rng.first = std::min( prp_rng.first , rng.first );
+ prp_rng.second = std::max( prp_rng.second , rng.second );     
     
 }
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::profit_Modification( Block::c_Subset && nms ){
+void DPBinaryKnapsackSolver::profit_Modification( c_Subset && nms ){
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
- for( auto i : nms )
+ for( auto i : nms ){
   v_P[ i ] = BKB->get_Profit( i );
-
- prp = true;    
+  prp_nms[ i ] = 1;
+ }
 
 }
 
