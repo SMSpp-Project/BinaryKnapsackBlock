@@ -28,13 +28,13 @@ using c_Subset = Block::c_Subset;
 /*--------------------------------------------------------------------------*/
 
 void mergeRange( Range & rng1 , c_Range & rng2 ){
- 
+  
  if( rng2.first < rng1.first )
    rng1.first = rng2.first;
   
  if( rng2.second > rng1.second )
   rng1.second = rng2.second;  
-    
+
 }
 
 /*--------------------------------------------------------------------------*/
@@ -102,22 +102,6 @@ if( start_item == + Inf< int >() )  // if start_item == Inf it is assumed that
                                     // process_outstanding_Modification()
 
 int i = start_item;                 // otherwise start from start_item
-
-// reoptimization- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-/* The variable step defines how often the labels should be saved. 
- Each time i % step == 0 currlab is saved in G[ i ].lab. The frequency depends 
- on the reopt parameter.                                                     */ 
-
-int step = f_NItems;
-
-if( reopt != 0 )
- step = reopt > 0.5 ? 1 : std::floor( 1 / reopt );
-
-// start from the first item whose corresponding label is stored in G[ i ]
-// i.e. such that i % step == 0, and check that it is not a preprocessed item
-while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
- i--;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -287,8 +271,17 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ){
    if( value < 0 || value > 1 )
     throw(std::invalid_argument("dblReopt parameter must be in [ 0 , 1 ]"));
    
-   reopt = value;
+   // reoptimization- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+   /* The variable step defines how often the labels should be saved. 
+    Each time i % step == 0 currlab is saved in G[ i ].lab. The frequency  
+    depends on the reopt parameter.                                         */ 
+
+   reopt = value;
+   if( reopt != 0 )
+    step = reopt > 0.5 ? 1 : std::floor( 1 / reopt );
+   
+   start_item = 0;
    break;
   }  
  
@@ -372,6 +365,16 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
   modRng_items.second = 0;
   modSbst_items.resize( f_NItems );
 
+  Mod.resize( 6 );
+
+  for( auto & m : Mod ){
+   m.mod = false; 
+   m.rng.first = f_NItems;
+   m.rng.second = 0;
+  }
+
+  step = f_NItems;   
+
   preprocessing( std::make_pair( 0 , f_NItems ) );  // perform the preprocessing
 
   reload = false;
@@ -422,9 +425,23 @@ void DPBinaryKnapsackSolver::preprocessing( Range rng ){
   - Items i with positive weight and negative profit => set x[ i ] = 0
 
                                                                            */
-  if( rng.second <= rng.first )
-   return;  
+ if( rng.second <= rng.first )
+  return;  
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+int i = rng.first;
+ 
+// start from the first item whose corresponding label is stored in G[ i ]
+// i.e. such that i % step == 0, and check that it is not a preprocessed item
+while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
+ i--;
+ 
+if( i < start_item )
+ start_item = i;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
+    
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
   for( int i = rng.first ; i < rng.second ; i++ ){
@@ -455,9 +472,6 @@ void DPBinaryKnapsackSolver::preprocessing( Range rng ){
    
   }
   
-  if( rng.first < start_item )
-   start_item = rng.first; 
-
  } // end( preprocessing( Range ) )
 
 /*--------------------------------------------------------------------------*/
@@ -473,10 +487,24 @@ void DPBinaryKnapsackSolver::preprocessing( Subset & nms ){
   - Items i with positive weight and negative profit => set x[ i ] = 0
 
                                                                            */
-  if( nms.empty() )
-   return; 
+if( nms.empty() )
+ return;
 
-  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+int i = nms[ 0 ];
+ 
+// start from the first item whose corresponding label is stored in G[ i ]
+// i.e. such that i % step == 0, and check that it is not a preprocessed item
+while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
+ i--;
+ 
+if( i < start_item )
+ start_item = i;     
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
   for( auto i : nms ){
    
@@ -690,7 +718,13 @@ preprocessing( nms );
 modRng_items.first = f_NItems;
 modRng_items.second = 0;
 
-modSbst_items.clear(); 
+modSbst_items.clear();
+
+for( auto & m : Mod ){
+ m.mod = false; 
+ m.rng.first = f_NItems;
+ m.rng.second = 0;
+}  
 
 }// end( process_outstanding_Modification() )
 
@@ -734,8 +768,6 @@ void DPBinaryKnapsackSolver::capacity_Modification(){
 
  f_C = nC;                  // update the Capacity
 
- Mod[ 0 ].mod = false;
-
 }
 
 /*--------------------------------------------------------------------------*/
@@ -762,7 +794,6 @@ void DPBinaryKnapsackSolver::sense_Modification(){
  Mod[ 4 ].rng.first = 0;
  Mod[ 4 ].nms.clear();
 
- Mod[ 2 ].mod = false;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -770,10 +801,6 @@ void DPBinaryKnapsackSolver::sense_Modification(){
 void DPBinaryKnapsackSolver::fixX_Modification( Range rng ){
 
  mergeRange( modRng_items , rng );
-
- Mod[ 3 ].mod = false;
- Mod[ 3 ].rng.first = f_NItems;
- Mod[ 3 ].rng.first = 0;
 
 }
 
@@ -784,9 +811,6 @@ void DPBinaryKnapsackSolver::fixX_Modification( Subset & nms ){
  for( auto i : nms )                // or mergeSubset
   modSbst_items[ i ] = 1;   
 
- Mod[ 3 ].mod = false;
- Mod[ 3 ].nms.clear();
-
 }
 
 /*--------------------------------------------------------------------------*/
@@ -794,10 +818,6 @@ void DPBinaryKnapsackSolver::fixX_Modification( Subset & nms ){
 void DPBinaryKnapsackSolver::unFixX_Modification( Range rng ){
 
  mergeRange( modRng_items , rng );
-
- Mod[ 4 ].mod = false;
- Mod[ 4 ].rng.first = f_NItems;
- Mod[ 4 ].rng.first = 0;
 
 }
 
@@ -807,9 +827,6 @@ void DPBinaryKnapsackSolver::unFixX_Modification( Subset & nms ){
 
  for( auto i : nms )                // or mergeSubset
   modSbst_items[ i ] = 1;   
-
- Mod[ 4 ].mod = false;
- Mod[ 4 ].nms.clear(); 
 
 }
 
@@ -832,10 +849,6 @@ void DPBinaryKnapsackSolver::weight_Modification( Range rng ){
 
  mergeRange( modRng_items , rng );
 
- Mod[ 5 ].mod = false;
- Mod[ 5 ].rng.first = f_NItems;
- Mod[ 5 ].rng.first = 0;
- 
 }
 
 /*--------------------------------------------------------------------------*/
@@ -856,9 +869,6 @@ void DPBinaryKnapsackSolver::weight_Modification( Subset & nms ){
   modSbst_items[ i ] = 1;
  }
 
- Mod[ 5 ].mod = false;
- Mod[ 5 ].nms.clear();
- 
 }
 
 /*--------------------------------------------------------------------------*/
@@ -872,10 +882,6 @@ void DPBinaryKnapsackSolver::profit_Modification( Range rng ){
 
  mergeRange( modRng_items , rng );
 
- Mod[ 1 ].mod = false;
- Mod[ 1 ].rng.first = f_NItems;
- Mod[ 1 ].rng.first = 0;
-
 }
 
 /*--------------------------------------------------------------------------*/
@@ -888,8 +894,6 @@ void DPBinaryKnapsackSolver::profit_Modification( Subset & nms ){
   v_P[ i ] = BKB->get_Profit( i );
   modSbst_items[ i ] = 1;
  }
- Mod[ 1 ].mod = false;
- Mod[ 1 ].nms.clear(); 
 
 }
 

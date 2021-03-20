@@ -102,20 +102,13 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( - Inf< double >() ) , start_item( 0 ) , 
-                           besth( 0 ) , reload( false ) , prp( false ) ,
+                           besth( 0 ) , step( 0 ) , reload( false ) , 
                            HasSol( false ) , reopt( 0 ){
                             
                             G.resize( 1 );          // initialize dummy node 
                             G[ 0 ].lab.resize( 1 ); // in the origin
                             G[ 0 ].lab[ 0 ] = 0;
 
-                            Mod.resize( 6 );
-
-                            for( auto m : Mod ){
-                             m.mod = false; 
-                             m.rng.first = f_NItems;
-                             m.rng.second = 0;
-                            }  
                            }
 
 /*--------------------------------------------------------------------------*/
@@ -229,12 +222,11 @@ protected:
  std::vector< Modification > Mod;
 
  Range modRng_items;
- Subset modSbst_items; 
+ Subset modSbst_items;
+
+ int step; 
 
  bool reload;                           ///< if the instance must be reloaded
-
- bool prp;                              ///< if preprocessing must be redone
-                
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
