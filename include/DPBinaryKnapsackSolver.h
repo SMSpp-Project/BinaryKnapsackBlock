@@ -102,8 +102,8 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( - Inf< double >() ) , start_item( 0 ) , 
-                           besth( 0 ) , step( 0 ) , reload( false ) , 
-                           HasSol( false ) , reopt( 0 ){
+                           besth( 0 ) , step( 0 ) , HasSol( false ) ,
+                           reopt( 0 ){
                             
                             G.resize( 1 );          // initialize dummy node 
                             G[ 0 ].lab.resize( 1 ); // in the origin
@@ -225,8 +225,6 @@ protected:
  Subset modSbst_items;
 
  int step; 
-
- bool reload;                           ///< if the instance must be reloaded
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 

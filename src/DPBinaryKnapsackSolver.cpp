@@ -302,8 +302,8 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
  while( f_mod_lock.test_and_set( std::memory_order_acquire ) );
 
  const auto tmod = std::dynamic_pointer_cast< NBModification >( mod );
- if( tmod ){
-  reload = true;             // the Binary Knapsack instance must be re-loaded
+ if( tmod ){          
+  load();                   // the Binary Knapsack instance must be re-loaded
   v_mod.clear();
  }
  else
@@ -376,8 +376,6 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
   step = f_NItems;   
 
   preprocessing( std::make_pair( 0 , f_NItems ) );  // perform the preprocessing
-
-  reload = false;
 
  } // end if( f_Block )
 
@@ -534,9 +532,6 @@ if( i < start_item )
    
   }
 
-  if( nms[ 0 ] < start_item ) 
-   start_item = nms[ 0 ];
-
  } // end( preprocessing( Subset ) )
 
 
@@ -544,38 +539,50 @@ if( i < start_item )
 
 void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
- if( reload ){              // if a nuclear modification has 
-  load();                   // been issued previously
-  v_mod.clear();            // reload the instance
-  return;
- }
+if( start_item != + Inf< int >() ){ // start_item != + Inf means that:  
+ if( ! v_mod.empty() ){             // - compute is called for the first time
+  load();                           // - or a Nuclear modification has been
+  v_mod.clear();                    //   issued 
+ }                                  // - or reopt parameter has been modified
+ return;                            // In all cases it is not possible to 
+}                                   // reoptimize
 
- if( start_item != + Inf< int >() ){    // if compute is called for the first 
-                                        // time, clear all the modifications 
-  if( ! v_mod.empty() ){                // (if any) and reload the instance
-   load();
-   v_mod.clear();   
-  }
+// otherwise copy v_mod in a temporary list of modifications - - - - - - - - -
 
-  return;
- }
-
- // otherwise copy v_mod in a temporary list of modifications - - - - - - - -
-
- Lst_sp_Mod v_mod_tmp;                  // temporary list of modifications
+ Lst_sp_Mod v_mod_tmp;              // temporary list of modifications
 
  // try to acquire lock, spin on failure
 
  while( f_mod_lock.test_and_set( std::memory_order_acquire ) );
 
  for( auto mod : v_mod )
-  v_mod_tmp.push_back( mod );           // copy v_mod in v_mod_tmp
+  v_mod_tmp.push_back( mod );       // copy v_mod in v_mod_tmp
 
  v_mod.clear();
 
  f_mod_lock.clear( std::memory_order_release );  // release lock
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ /* Find the type of each Modification and store the necessary informations in
+  the Mod[] vector. Mod[] vector has 6 entries, one for each type of supported
+  Modification:
+  
+  - Mod[ 0 ] : Change Capacity
+  - Mod[ 1 ] : Change Profits
+  - Mod[ 2 ] : Change Sense of the Objective
+  - Mod[ 3 ] : Fix variables
+  - Mod[ 4 ] : Unfix variables
+  - Mod[ 5 ] : Change Weights  
+
+  Modifications are processed in this order. If multiples modification's object
+  of the same type are present, ranges or subsets of affected items are merged
+  before making the changes.
+
+  Since different type of Modifications require to redo the same preprocessing
+  phase, all the modified items are stored in modRng_items and modSbst_items
+  and the preprocessing is done only once at the end.                        */
+
 
  for( auto mod : v_mod_tmp ){
 
@@ -585,14 +592,14 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
    if( tmod ){ 
     switch( tmod->type() ){
 
-     case( BinaryKnapsackBlockMod::eChgCapacity ): 
+     case( BinaryKnapsackBlockMod::eChgCapacity ):  // Change Capacity
       Mod[ 0 ].mod = true; break;                      
 
-     case( BinaryKnapsackBlockMod::eChgSense ):     
-      Mod[ 2 ].mod = ! Mod[ 2 ].mod; break;                     
-
-    } 
-   } 
+     case( BinaryKnapsackBlockMod::eChgSense ):     // Change the sense of the     
+      Mod[ 2 ].mod = ! Mod[ 2 ].mod; break;         // objective                     
+                                                    // An even number of this 
+    }                                               // Modification has no
+   }                                                // effect
 
   // BinaryKnapsackBlockRngdMod - - - - - - - - - - - - - - - - - - - - - - - - 
   {
@@ -650,65 +657,45 @@ v_mod_tmp.clear();              // clear the temporary list of modification
 
 // Process all the modifications in the "correct" order - - - - - - - - - - - -
 
-for( int i = 0 ; i < 6 ; i++ ){
+if( Mod[ 0 ].mod )                      
+ capacity_Modification();       
 
- switch( i ){
-  
-  case( 0 ):{ 
-   if( Mod[ 0 ].mod )
-    capacity_Modification();   
-   break;
-  }
-
-  case( 1 ):{ 
-   if( Mod[ 1 ].mod ){
-    profit_Modification( Mod[ 1 ].rng );
-    profit_Modification( Mod[ 1 ].nms );
-   }
-   break;
-  }
-
-  case( 2 ):{ 
-   if( Mod[ 2 ].mod )
-    sense_Modification();
-   break;
-  }
-
-  case( 3 ):{ 
-   if( Mod[ 3 ].mod ){
-    fixX_Modification( Mod[ 3 ].rng );
-    fixX_Modification( Mod[ 3 ].nms );
-   }
-   break;
-  }
-
-  case( 4 ):{ 
-   if( Mod[ 4 ].mod ){
-    unFixX_Modification( Mod[ 4 ].rng );
-    unFixX_Modification( Mod[ 4 ].nms );
-   }
-   break;
-  }
-
-  case( 5 ):{ 
-   if( Mod[ 5 ].mod ){
-    weight_Modification( Mod[ 5 ].rng );
-    weight_Modification( Mod[ 5 ].nms );
-   }
-   break;
-  }
-    
- } 
-
+if( Mod[ 1 ].mod ){
+ profit_Modification( Mod[ 1 ].rng );
+ profit_Modification( Mod[ 1 ].nms );
 }
 
+if( Mod[ 2 ].mod )
+ sense_Modification();
+
+if( Mod[ 3 ].mod ){
+ fixX_Modification( Mod[ 3 ].rng );
+ fixX_Modification( Mod[ 3 ].nms );
+}
+
+if( Mod[ 4 ].mod ){
+ unFixX_Modification( Mod[ 4 ].rng );
+ unFixX_Modification( Mod[ 4 ].nms );
+}
+
+if( Mod[ 5 ].mod ){
+ weight_Modification( Mod[ 5 ].rng );
+ weight_Modification( Mod[ 5 ].nms );
+}
+
+    
 preprocessing( modRng_items );
 
 Subset nms; 
 
-for( int i = 0 ; i < f_NItems ; i++ ){
- if( modSbst_items[ i ] )
-  nms.push_back( i );   
+for( int i = 0 ; i < f_NItems ; i++ ){      
+
+ if( ! modSbst_items[ i ] )
+  continue;
+
+ if( i < modRng_items.first || i >= modRng_items.second )
+  nms.push_back( i ); 
+
 }
 
 preprocessing( nms );
