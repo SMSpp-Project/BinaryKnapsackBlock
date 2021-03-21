@@ -172,7 +172,14 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 /** @name Handling the parameters of the DPBinaryKnapsackSolver @{ */
 
 void set_par( idx_type par , double value ) override;
+void compute_start_item( int i ){ 
 
+ while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
+  i--;
+ 
+ if( i < start_item )
+  start_item = i;
+}
 /**@} ----------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
