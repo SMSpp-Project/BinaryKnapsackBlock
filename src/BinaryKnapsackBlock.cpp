@@ -549,10 +549,15 @@ void BinaryKnapsackBlock::fix_x( c_boolVec & value , Range rng ,
 void BinaryKnapsackBlock::fix_x( c_boolVec & value , Subset && nms , 
                                  ModParam issueMod, ModParam issueAMod ){
 
+ if( nms.empty() )
+  return;
+
  auto vi = value.begin();
 
  for( auto i : nms )
   fix_x( * vi++ , i , eDryRun , issueAMod );
+
+ std::sort( nms.begin() , nms.end() );
 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
@@ -616,8 +621,13 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod,
 void BinaryKnapsackBlock::unfix_x( Subset && nms , ModParam issueMod, 
                    ModParam issueAMod ){
 
+ if( nms.empty() )
+  return;
+
  for( auto i : nms )
   unfix_x( i , eDryRun , issueAMod );
+
+ std::sort( nms.begin() , nms.end() );
 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
