@@ -102,13 +102,23 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( - Inf< double >() ) , start_item( 0 ) , 
-                           besth( 0 ) , step( 0 ) , HasSol( false ) ,
-                           reopt( 0 ){
+                           step( 0 ) , HasSol( false ) , reopt( 0 ){
                             
                             G.resize( 1 );          // initialize dummy node 
                             G[ 0 ].lab.resize( 1 ); // in the origin
                             G[ 0 ].lab[ 0 ] = 0;
 
+                            modRng_items.first = + Inf< int >();
+                            modRng_items.second = 0;
+
+                            Mod.resize( 6 );
+
+                            for( auto & m : Mod ){
+                             m.mod = false; 
+                             m.rng.first = + Inf< int >();
+                             m.rng.second = 0;
+                            }
+                           
                            }
 
 /*--------------------------------------------------------------------------*/
@@ -172,13 +182,18 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 /** @name Handling the parameters of the DPBinaryKnapsackSolver @{ */
 
 void set_par( idx_type par , double value ) override;
-void compute_start_item( int i ){ 
+
+void compute_start_item(){ 
+
+ if( start_item == + Inf< int >() )
+  return;  
+
+ int i = start_item;
 
  while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
   i--;
  
- if( i < start_item )
-  start_item = i;
+ start_item = i;
 }
 /**@} ----------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
@@ -220,7 +235,6 @@ protected:
  std::vector< slice > G;                ///< DP Graph 
 
  int start_item;                        ///< index of the starting item
- int besth;                             ///< "height" of the optimal value
 
 /* preprocessing data - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -231,12 +245,11 @@ protected:
  Range modRng_items;
  Subset modSbst_items;
 
- int step; 
-
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  double reopt;
-
+ 
+ int step;
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
