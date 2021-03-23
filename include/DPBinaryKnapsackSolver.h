@@ -16,7 +16,6 @@
 
 #include "BinaryKnapsackBlock.h"
 
-
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -63,6 +62,12 @@ public:
 /*--------------------------------------------------------------------------*/
 /** @name Public types
  @{ */
+
+ using Range = Block::Range;
+ using c_Range = Block::c_Range;
+
+ using Subset = Block::Subset;
+ using c_Subset = Block::c_Subset;
     
  /// public enum for the reoptimization algorithmic parameter
 
@@ -77,11 +82,6 @@ public:
   std::vector< bool > pred;
  } slice;
 
- using Range = Block::Range;
- using c_Range = Block::c_Range;
-
- using Subset = Block::Subset;
- using c_Subset = Block::c_Subset;
 
  typedef struct{
   bool mod;
@@ -102,7 +102,7 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( - Inf< double >() ) , start_item( 0 ) , 
-                           step( 0 ) , HasSol( false ) , reopt( 0 ){
+                           HasSol( false ) , reopt( 0 ){
                             
                             G.resize( 1 );          // initialize dummy node 
                             G[ 0 ].lab.resize( 1 ); // in the origin
@@ -118,6 +118,8 @@ DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                              m.rng.first = + Inf< int >();
                              m.rng.second = 0;
                             }
+
+                            set_par( dblReopt , reopt );
                            
                            }
 
@@ -183,18 +185,6 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 
 void set_par( idx_type par , double value ) override;
 
-void compute_start_item(){ 
-
- if( start_item == + Inf< int >() )
-  return;  
-
- int i = start_item;
-
- while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
-  i--;
- 
- start_item = i;
-}
 /**@} ----------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
@@ -228,7 +218,7 @@ protected:
  double obj;                            ///< the value of the objective
  std::vector< bool > v_x;               ///< vector of binary variables
 
- bool HasSol;                           ///< if there is an available solution  
+ bool HasSol;                           ///< if a solution is available  
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
@@ -240,16 +230,17 @@ protected:
 
  std::vector< int > items;              ///< preprocessing informations
   
- std::vector< Modification > Mod;
+ std::vector< Modification > Mod;       ///< vector of modifications
 
- Range modRng_items;
- Subset modSbst_items;
+ Range modRng_items;                    ///< range of modified items
+ Subset modSbst_items;                  ///< subset of modified items
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- double reopt;
+ double reopt;                      
  
  int step;
+
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -260,24 +251,45 @@ private:
 /*--------------------------- PRIVATE METHODS ------------------------------*/
 /*--------------------------------------------------------------------------*/
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// load the Binary Knapsack instance and perform the preprocessing    
+
  void load();
 
- /// process all the pending modifications and compute the first item from 
- /// which to restart the DP algorithm (start_item)
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// process all the pending modifications 
+
  void process_outstanding_Modification();
 
- /// compute the value of the objective once compute() has already been called
- void compute_var_value();
-
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// compute solution
+
  void compute_var_solution();
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// compute the index of the item from which to restart the DP algorithm
+
+ void compute_start_item(){ 
+
+  if( start_item == + Inf< int >() )
+   return;  
+
+  int i = start_item;
+
+  while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
+   i--;
+  
+  start_item = i;
+ } 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// perform preprocessing
+
  void preprocessing( Range rng );
 
  void preprocessing( Subset & nms );
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// modifications
  
  void capacity_Modification();
