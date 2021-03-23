@@ -266,15 +266,15 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
 
 bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
  
- if( isEmpty != -1 )
-  return( isEmpty );
+// if( isEmpty != -1 )
+//  return( isEmpty );
 
  // check if there are fixed variables and compute the residual capacity
  
  double C = f_C;
 
  for( int i = 0 ; i < f_NItems ; i++ ){
-  if( is_fixed( i ) )
+  if( v_x[ i ].is_fixed()  && v_x[ i ].get_value() )
    C -= v_W[ i ]; 
  }
 
@@ -525,7 +525,6 @@ if( not_dry_run( issueAMod ) ){
 
 void BinaryKnapsackBlock::fix_x( c_boolVec & value , Range rng , 
                                  ModParam issueMod, ModParam issueAMod ){
-
 
  rng.second = std::min( rng.second , get_VarSize() );
  if( rng.second <= rng.first )  // nothing to do
