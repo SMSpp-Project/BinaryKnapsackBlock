@@ -60,8 +60,8 @@ namespace SMSpp_di_unipi_it
 * \f]
 * 
 * By default it is a maximization problem, but it is possible to change the 
-* sense of the objective with the method set_sense() that changes the value of
-* f_sense.
+* sense of the objective with the method set_objective_sense() that changes 
+* the value of f_sense.
 *
 *   - f_sense = 1 for a maximization problem
 *

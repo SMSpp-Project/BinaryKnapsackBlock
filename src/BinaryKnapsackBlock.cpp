@@ -184,7 +184,10 @@ void BinaryKnapsackBlock::generate_abstract_variables( Configuration * stvv )
 {
  if( AR & HasVar )  // the variables are there already
   return;           // nothing to do
-  
+ 
+ if( ! get_NItems() )
+  return;
+
  v_x.resize( get_NItems() );
    
   for( auto & var : v_x )
@@ -202,12 +205,15 @@ void BinaryKnapsackBlock::generate_abstract_constraints( Configuration * stcc )
  if( AR & HasCns )  // the constraint is there already
   return;           // nothing to do
 
+ if( ! get_NItems() )
+  return;
+
  v_cnst.resize( 1 );
 
  LinearFunction::v_coeff_pair w( get_NItems() );
  for( Index i = 0 ; i < get_NItems() ; i++ ){
-  w[ i ].first = &v_x[i];
-  w[ i ].second = v_W[i];
+  w[ i ].first = &v_x[ i ];
+  w[ i ].second = v_W[ i ];
  }
 
  v_cnst[ 0 ].set_function( new LinearFunction( std::move( w ) , 0 ) , eNoBlck );
@@ -226,15 +232,18 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc ){
  if( AR & HasObj )  // the objective is there already
   return;           // nothing to do 
 
+ if( ! get_NItems() )
+  return;
+
  LinearFunction::v_coeff_pair p( get_NItems() );
   for( Index i = 0 ; i < get_NItems() ; i++ ){
-   p[ i ].first = &v_x[i];
-   p[ i ].second = v_P[i];
+   p[ i ].first = &v_x[ i ];
+   p[ i ].second = v_P[ i ];
   }
 
  LinearFunction * obj = new LinearFunction( std::move( p ) , 0  );
  f.set_function( obj , eNoMod );
- f.set_sense( FRealObjective::eMax , eNoMod );
+ f.set_sense( f_sense , eNoMod );
  set_objective( & f , eNoMod );
  
  AR |= HasObj;
@@ -458,7 +467,7 @@ void BinaryKnapsackBlock::set_x( c_boolVec & xSol , c_Subset & nms ){
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::add_Modification( sp_Mod mod , ChnlName chnl ){
- 
+
  if( mod->concerns_Block() ) {
   mod->concerns_Block( false );
   guts_of_add_Modification( mod.get() , chnl );
@@ -498,8 +507,8 @@ void BinaryKnapsackBlock::fix_x( bool value, Index i ,
  if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid index item" ) );
 
- // if already fixed with the right value then nothing to do
- if( ( v_x[ i ].is_fixed() ) && ( v_x[ i ].get_value() == value ) )
+ // if i is already fixed return
+ if( v_x[ i ].is_fixed() )
   return;      
 
  // reset conditional bounds
@@ -509,7 +518,7 @@ void BinaryKnapsackBlock::fix_x( bool value, Index i ,
  isEmpty = -1;
 
 if( not_dry_run( issueAMod ) ){
- v_x[ i ].set_value( value );
+ v_x[ i ].set_value( value ); 
  v_x[ i ].is_fixed( true , issueAMod ); 
 }
  
@@ -902,8 +911,9 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
 void BinaryKnapsackBlock::chg_capacity( double NC , 
                           ModParam issueMod , ModParam issueAMod ){
 
- if( f_C == NC ) // nothing to do
+ if( f_C == NC )    // nothing to do
   return;
+
 
  // reset conditional bounds
  f_cond_lower = -Inf< double >();
