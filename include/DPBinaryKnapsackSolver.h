@@ -69,7 +69,7 @@ public:
  using Subset = Block::Subset;
  using c_Subset = Block::c_Subset;
     
- /// public enum for the reoptimization algorithmic parameter
+ /// public enum for the algorithmic parameters
 
  enum dbl_par_type_DPBKSlv{
   dblReopt = dblLastAlgPar,
@@ -102,7 +102,7 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( - Inf< double >() ) , start_item( 0 ) , 
-                           HasSol( false ) , reopt( 0 ){
+                           reopt( 0 ){
                             
                             G.resize( 1 );          // initialize dummy node 
                             G[ 0 ].lab.resize( 1 ); // in the origin
@@ -153,9 +153,15 @@ int compute( bool changedvars = true ) override;
 /** @name Accessing the found solutions (if any)
  *  @{ */
 
-//virtual OFValue get_lb( void ) override;
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// return a valid lower bound on the optimal objective function value
 
-//virtual OFValue get_ub( void ) override;
+virtual OFValue get_lb( void ) override{ return get_var_value(); }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// return a valid upper bound on the optimal objective function value
+
+virtual OFValue get_ub( void ) override{ return get_var_value(); }
 
 /*--------------------------------------------------------------------------*/
 /// write the "current" solution in the variables of the BinaryKnapsackBlock
@@ -218,15 +224,13 @@ protected:
  double obj;                            ///< the value of the objective
  std::vector< bool > v_x;               ///< vector of binary variables
 
- bool HasSol;                           ///< if a solution is available  
-
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
  std::vector< slice > G;                ///< DP Graph 
 
  int start_item;                        ///< index of the starting item
 
-/* preprocessing data - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/* preprocessing and modifications data - - - - - - - - - - - - - - - - - - */
 
  std::vector< int > items;              ///< preprocessing informations
   
@@ -237,7 +241,7 @@ protected:
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- double reopt;                      
+ double reopt;							            ///< reoptimization parameter                      
  
  int step;
 
@@ -267,48 +271,51 @@ private:
  void compute_var_solution();
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// compute the index of the item from which to restart the DP algorithm
-
- void compute_start_item(){ 
-
-  if( start_item == + Inf< int >() )
-   return;  
-
-  int i = start_item;
-
-  while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
-   i--;
-  
-  start_item = i;
- } 
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// perform preprocessing
 
  void preprocessing( Range rng );
 
  void preprocessing( Subset & nms );
-
+ 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// modifications
  
  void capacity_Modification();
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  void sense_Modification();
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  void fixX_Modification( Range rng );
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  void fixX_Modification( Subset & nms );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  void unFixX_Modification( Range rng );
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  void unFixX_Modification( Subset & nms );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  void weight_Modification( Range rng );
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  void weight_Modification( Subset & nms );
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  void profit_Modification( Range rng );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  void profit_Modification( Subset & nms );
 

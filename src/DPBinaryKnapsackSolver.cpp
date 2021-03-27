@@ -29,9 +29,11 @@ using c_Subset = Block::c_Subset;
 
 void mergeRange( Range & rng1 , c_Range & rng2 ){
 
- if( rng2.first < rng1.first )
-   rng1.first = rng2.first;
-  
+ // Merge two ranges rng1 and rng2 and put the result in rng1 
+
+ if( rng2.first < rng1.first )       
+   rng1.first = rng2.first;       
+                      
  if( rng2.second > rng1.second )
   rng1.second = rng2.second;  
 
@@ -41,7 +43,9 @@ void mergeRange( Range & rng1 , c_Range & rng2 ){
 
 Subset mergeSubset( Subset & nms1 , c_Subset & nms2 ){
 
- Subset dest;
+ // Merge two Subsets nms1 and nms2 and return the result
+
+ Subset dest;               
 
  std::set_union( nms1.begin(), nms1.end(),
                  nms2.begin(), nms2.end(),                 
@@ -91,6 +95,7 @@ process_outstanding_Modification();
 // check if the problem is empty - - - - - - - - - - - - - - - - - - - - - - -
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+ 
  if( BKB->is_empty() ){
   obj = - Inf< double >();
   return( kInfeasible );
@@ -99,13 +104,13 @@ process_outstanding_Modification();
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 /* start_item is the first item processed by the DP algorithm. If compute is
- called for the first time then i = 0 and the algorithm is entirely executed.
+ called for the first time then the algorithm is entirely executed.
  Otherwise process_outstanding_Modification(), after processing all the
  modifications, computes the index of the item from which to restart the 
  algorithm.                                                                 */
 
 if( start_item == + Inf< int >() )  // if start_item == Inf it is assumed that 
-    return( kOK );                  // everything has already been done in 
+ return( kOK );                     // everything has already been done in 
                                     // process_outstanding_Modification()
 
 int i = start_item;                 // otherwise start from start_item
@@ -118,11 +123,11 @@ double prp_P = 0;           // compute the profit coming from the preprocessing
 for( int i = 0 ; i < f_NItems ; i++ ){
 
  if( items[ i ] == 1 || items[ i ] == - 1 ){    // if i has been selected
-  C -= v_W[ i ];                                // or if it is negative
-  prp_P += v_P[ i ];
+  C -= v_W[ i ];                                // or if it has negative
+  prp_P += v_P[ i ];                            // weight and profit
  }
 
-} 
+}
 
 int maxcurrlab;                     // max current height of the graph
 int maxnextlab;                     // max next height of the graph    
@@ -130,10 +135,11 @@ int maxnextlab;                     // max next height of the graph
 std::vector< double > currlab;      // set of current labels
 std::vector< double > nextlab;      // set of next labels
 
-// Initialization- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Initialize maxcurrlab and currlab with data stored in G[ i ].lab
 
-maxcurrlab = G[ i ].lab.size() - 1; 
-maxcurrlab = std::min( maxcurrlab , C ); 
+maxcurrlab = G[ i ].lab.size() - 1;         
+maxcurrlab = std::min( maxcurrlab , C );    // Capacity may have been changed
 
 currlab.resize( maxcurrlab + 1 ); 
 std::copy( G[ i ].lab.begin() , G[ i ].lab.begin() + maxcurrlab + 1 , 
@@ -158,8 +164,8 @@ for( ; i < f_NItems ; i++ ){
 
   double p = items[ i ] != -1 ? v_P[ i ] : - v_P[ i ];  // profit of i   
   int w = items[ i ] != -1 ? v_W[ i ] : - v_W[ i ];     // weight of i                     
-/*
-  if( w > C ){                              // if the weight of the current  
+
+  /*if( w > C ){                              // if the weight of the current  
    items[ i ] = 0;                          // item exceed the Capacity 
    continue;                                // it can be preprocessed
   }*/
@@ -234,11 +240,11 @@ for( int i = 0 ; i <= maxh ; i++ ){
 
 G[ f_NItems ].lab.resize( besth + 1 ); 
 
-obj += prp_P;               // add the profit coming from the preprocessing
+obj += prp_P;             // add the profit coming from the preprocessing
 
 start_item = + Inf< int >();
 
-HasSol = false;
+v_x.clear();              // clear previous solutions (if any)
 
 return( kOK );
 
@@ -258,7 +264,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
   throw( std::invalid_argument( "Incompatible variables size" ) );
 
  if( start_item != + Inf< int >() )
-  throw( std::invalid_argument( "No available solution" ) );
+  throw( std::invalid_argument( "compute() must be called first" ) );
 
  // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - -
 
@@ -282,18 +288,17 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ){
 
    if( value < 0 || value > 1 )
     throw(std::invalid_argument("dblReopt parameter must be in [ 0 , 1 ]"));
-   
-   // reoptimization- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
    /* The variable step defines how often the labels should be saved. 
-    Each time i % step == 0 currlab is saved in G[ i ].lab. The frequency  
-    depends on the reopt parameter.                                         */ 
-
+    Each time i % step == 0 currlab is saved in G[ i ].lab. */
    reopt = value;
-   if( reopt != 0 )
+   
+   if( reopt < 1e-06 )
+    step = + Inf< int >();  // never save currlab
+   else
     step = reopt > 0.5 ? 1 : std::floor( 1 / reopt );
    
-   start_item = 0; 
+   start_item = 0;          // restart from 0 in the next call of compute()
    break;
   }  
  
@@ -314,7 +319,7 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
  while( f_mod_lock.test_and_set( std::memory_order_acquire ) );
 
  const auto tmod = std::dynamic_pointer_cast< NBModification >( mod );
- if( tmod ){          
+ if( tmod ){       
   load();                   // the Binary Knapsack instance must be re-loaded
   v_mod.clear();
  }
@@ -331,8 +336,8 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
  void DPBinaryKnapsackSolver::load(){
 
-  if( f_Block ){
-
+  if( f_Block ){ 
+  
    auto BKB = dynamic_cast< BinaryKnapsackBlock * >( f_Block );
 
    if( ! BKB )
@@ -367,14 +372,18 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
    BKB->read_unlock();
 
   // end load Binary Knapsack instance- - - - - - - - - - - - - - - - - - - -
-
-  v_x.resize( f_NItems );            // resize vector of variables
  
-  items.resize( f_NItems );          // resize vector of items
+  items.resize( f_NItems );           // resize vector of items
  
-  G.resize( f_NItems + 1 );          // resize Graph
+  G.resize( f_NItems + 1 );           // resize Graph
   
-  preprocessing( std::make_pair( 0 , f_NItems ) );  // preprocessing
+  preprocessing( std::make_pair( 0 , f_NItems ) );    // preprocessing
+
+  start_item = 0;
+
+  obj = -Inf< double >();
+
+  v_x.clear();                        // clear previous solution (if any)
 
  } // end if( f_Block )
 
@@ -384,9 +393,14 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
 void DPBinaryKnapsackSolver::compute_var_solution(){
 
+if( ! v_x.empty() )       // if the solution has already been computed
+ return;                  // return
+
 // reconstruct the optimal solution- - - - - - - - - - - - - - - - - - - - - -
 
  int besth = G[ f_NItems ].lab.size() - 1;
+
+ v_x.resize( f_NItems );
 
  for( int i = f_NItems - 1 ; i >= 0 ; i-- ){
 
@@ -406,9 +420,7 @@ void DPBinaryKnapsackSolver::compute_var_solution(){
    v_x[ i ] = ! v_x[ i ];
 
  }
-
- HasSol = true;    
-
+  
 }
 
 /*--------------------------------------------------------------------------*/
@@ -532,13 +544,22 @@ void DPBinaryKnapsackSolver::preprocessing( Subset & nms ){
 
 void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
-if( start_item != + Inf< int >() ){ // start_item != + Inf means that:  
- if( ! v_mod.empty() ){             // - compute is called for the first time
-  load();                           // - or a Nuclear modification has been
-  v_mod.clear();                    //   issued 
- }                                  // - or reopt parameter has been modified
- return;                            // In all cases it is not possible to 
-}                                   // reoptimize
+/* start_item != + Inf means that: 
+ 
+ - compute is called for the first time
+ - or a Nuclear modification has been issued 
+ - or the reopt parameter has been modified
+
+ In all cases it is not possible to reoptimize
+                                                                            */
+
+if( start_item != + Inf< int >() ){    
+ if( ! v_mod.empty() ){             // if there are any modifications 
+  load();                           // re-load the instance
+  v_mod.clear();                    // and clear v_mod  
+ }                                   
+ return;                            // in any case return                              
+}                                    
 
 // otherwise copy v_mod in a temporary list of modifications - - - - - - - - -
 
@@ -681,10 +702,22 @@ if( Mod[ 5 ].mod ){
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// compute start_item before re-doing the preprocessing- - - - - - - - - - - - 
 
-compute_start_item();               // start_item must be computed before 
-                                    // doing the preprocessing
+ if( start_item != + Inf< int >() ){
+  
+  int i = ( start_item / step ) * step;
+
+  while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
+   i--;
+  
+  start_item = i;
+ }
+
+// re-do preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
 preprocessing( modRng_items );
+
 preprocessing( modSbst_items );
 
 // re-initialize - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -711,53 +744,9 @@ void DPBinaryKnapsackSolver::capacity_Modification(){
 
  int nC = std::floor( BKB->get_Capacity() );     // get new Capacity
 
- if( nC > f_C ){            // if the new Capacity is > f_C
-  start_item = 0;           // resolve from the beginning
-  f_C = nC;                 // update the Capacity
- }
- else{                      // otherwise recompute the optimal value                    
-  
-  HasSol = false;           // also the solution must be recomputed                            
-                            // ( if necessary )
-  int C = nC;               
-  
-  f_C = nC;                 // update the capacity
+ start_item = nC > f_C ? 0 : std::min( f_NItems , start_item );
 
-  
-  // recompute the optimal value - - - - - - - - - - - - - - - - - - - - - - -
-
-  int prp_P = 0;            // profit coming from the preprocessing
-
-  for( int i = 0 ; i < f_NItems ; i++ ){
-   if( items[ i ] == 1 || items[ i ] == -1 ){
-    C -= v_W[ i ];
-    prp_P += v_P[ i ];
-   }
-  }
-  
-  if( C < 0 ){              // if C < 0 the new problem is empty
-   obj = - Inf< double >();
-   return;
-  }
-  
-  int besth = G[ f_NItems ].lab.size() - 1;
-  
-  int maxh = std::min( besth , C );
-   
-  obj = - Inf< int >();
-
-  for( int i = 0 ; i <= maxh ; i++ ){
-   if( G[ f_NItems ].lab[ i ] > obj ){
-    obj = G[ f_NItems ].lab[ i ];
-    besth = i;    
-   }
-  }
-
-  G[ f_NItems ].lab.resize( besth + 1 );
-
-  obj += prp_P; 
-  
- }
+ f_C = nC;                    // update the Capacity
 
 }
 
@@ -767,15 +756,15 @@ void DPBinaryKnapsackSolver::sense_Modification(){
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
  
- f_sense = BKB->get_objective_sense();
+ f_sense = BKB->get_objective_sense();  // update f_sense
 
- for( int i = 0 ; i < f_NItems ; i++ )
+ for( int i = 0 ; i < f_NItems ; i++ )  // change the sign of all profits
   v_P[ i ] = - v_P[ i ];
 
- modRng_items.first = 0;
+ modRng_items.first = 0;                // preprocessing must be re-done
  modRng_items.second = f_NItems;
 
- start_item = 0;
+ start_item = 0;                        // restart from the beginning 
 
  Mod[ 3 ].mod = false;                  // no need of fixX_Modification()                       
  Mod[ 4 ].mod = false;                  // and unfixX_Modification()
@@ -789,9 +778,9 @@ void DPBinaryKnapsackSolver::fixX_Modification( Range rng ){
  if( rng.second <= rng.first )
   return;
 
- mergeRange( modRng_items , rng );
+ mergeRange( modRng_items , rng ); 
 
- start_item = std::min( start_item , int( rng.first ) );
+ start_item = std::min( start_item , int( rng.first ) ); 
 
 }
 
@@ -814,7 +803,7 @@ void DPBinaryKnapsackSolver::unFixX_Modification( Range rng ){
 
  if( rng.second <= rng.first )
   return;
- 
+ for( int i = rng.first ; i < rng.second ; i++ ) 
  mergeRange( modRng_items , rng );
 
  start_item = std::min( start_item , int( rng.first ) );
@@ -850,7 +839,7 @@ void DPBinaryKnapsackSolver::weight_Modification( Range rng ){
   if( std::abs( nw - BKB->get_Weight( i ) ) > 1e06 )
    throw( std::invalid_argument( "Weights must be integers!" ) );
    
-  v_W[ i ] = nw;
+  v_W[ i ] = nw;          // update weight
 
  }
 
@@ -880,7 +869,7 @@ void DPBinaryKnapsackSolver::weight_Modification( Subset & nms ){
 
  }
 
- modSbst_items = mergeSubset( modSbst_items , nms );
+ modSbst_items = mergeSubset( modSbst_items , nms ) ;
 
  start_item = std::min( start_item , int( nms[ 0 ] ) );   
 
