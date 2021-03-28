@@ -233,7 +233,7 @@ protected:
 /* preprocessing and modifications data - - - - - - - - - - - - - - - - - - */
 
  std::vector< int > items;              ///< preprocessing informations
-  
+   
  std::vector< Modification > Mod;       ///< vector of modifications
 
  Range modRng_items;                    ///< range of modified items
@@ -241,7 +241,7 @@ protected:
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- double reopt;							            ///< reoptimization parameter                      
+ double reopt;                          ///< reoptimization parameter                      
  
  int step;
 

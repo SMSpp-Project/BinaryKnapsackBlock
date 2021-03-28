@@ -27,7 +27,7 @@ using c_Subset = Block::c_Subset;
 /*-------------------------------- FUNCTIONS -------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-void mergeRange( Range & rng1 , c_Range & rng2 ){
+void mergeRange( Range & rng1 , c_Range rng2 ){
 
  // Merge two ranges rng1 and rng2 and put the result in rng1 
 
@@ -41,9 +41,9 @@ void mergeRange( Range & rng1 , c_Range & rng2 ){
 
 /*--------------------------------------------------------------------------*/
 
-Subset mergeSubset( Subset & nms1 , c_Subset & nms2 ){
+void mergeSubset( Subset & nms1 , c_Subset & nms2 ){
 
- // Merge two Subsets nms1 and nms2 and return the result
+ // Merge two Subsets nms1 and nms2 and put the result in nms1
 
  Subset dest;               
 
@@ -51,8 +51,26 @@ Subset mergeSubset( Subset & nms1 , c_Subset & nms2 ){
                  nms2.begin(), nms2.end(),                 
                  std::back_inserter(dest) );
 
- return dest;
+ std::swap( dest , nms1 );
 }
+
+/*--------------------------------------------------------------------------*/
+
+void SbstRngdiff( Subset & nms , c_Range rng ){
+
+ // given a Subset nms and a Range rng, remove from nms the elements in rng 
+
+ Subset result;
+
+ for( auto i : nms ){
+  if( i < rng.first || i >= rng.second )
+   result.push_back( i ); 
+ }
+
+ std::swap( result , nms );
+
+}
+
 
 /*--------------------------------------------------------------------------*/
 /*----------------------------- STATIC MEMBERS -----------------------------*/
@@ -94,12 +112,12 @@ process_outstanding_Modification();
 
 // check if the problem is empty - - - - - - - - - - - - - - - - - - - - - - -
 
- auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
  
- if( BKB->is_empty() ){
-  obj = - Inf< double >();
-  return( kInfeasible );
- }
+if( BKB->is_empty() ){
+ obj = - Inf< double >();
+ return( kInfeasible );
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -244,7 +262,7 @@ obj += prp_P;             // add the profit coming from the preprocessing
 
 start_item = + Inf< int >();
 
-v_x.clear();              // clear previous solutions (if any)
+v_x.clear();              // clear previous solution (if any)
 
 return( kOK );
 
@@ -446,36 +464,36 @@ void DPBinaryKnapsackSolver::preprocessing( Range rng ){
  weights and the profits of the items for which items[ i ] = -1
                                                                            */
   
- if( rng.second <= rng.first )
+ if( rng.second <= rng.first )    // nothing to do
   return;   
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
  for( int i = rng.first ; i < rng.second ; i++ ){
    
-  if( BKB->is_fixed( i ) ){
+  if( BKB->is_fixed( i ) ){                         // fixed items
    items[ i ] = BKB->get_x( i );
    continue;
   }
 
-  // items to be select
-  if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){
+  if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){     // items to select
    items[ i ] = 1;
+   start_item = 0;
    continue;
   }
 
-  // items not to be select
-  if(  ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ){
+  if(  ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ){    // items not to select
    items[ i ] = 0;
    continue; 
   }
 
   if( v_W[ i ] <= 0 ){              // if the item has negative weight 
    items[ i ] = -1;                 // and negative profit set items to -1
+   start_item = 0;
    continue; 
   }
 
-  items[ i ] = 2;
+  items[ i ] = 2;                   // otherwise
    
  }
 
@@ -504,36 +522,36 @@ void DPBinaryKnapsackSolver::preprocessing( Subset & nms ){
  weights and the profits of the items for which items[ i ] = -1
                                                                            */
 
- if( nms.empty() )
+ if( nms.empty() )    // nothing to do
   return;
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
   for( auto i : nms ){
  
-   if( BKB->is_fixed( i ) ){
+   if( BKB->is_fixed( i ) ){                        // fixed items
     items[ i ] = BKB->get_x( i );
     continue;
    }
 
-   // items to be select
-   if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){
+   if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){    // items to select
     items[ i ] = 1;
+    start_item = 0;
     continue;
    }
 
-   // items not to be select
-   if(  ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ){
+   if(  ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ){   // items not to select
     items[ i ] = 0;
     continue; 
    }
 
    if( v_W[ i ] <= 0 ){             // if the item has negative weight 
     items[ i ] = -1;                // and negative profit set items to -1
+    start_item = 0;
     continue; 
    }
 
-   items[ i ] = 2;
+   items[ i ] = 2;                  // otherwise
    
   }
 
@@ -646,24 +664,16 @@ if( start_item != + Inf< int >() ){
     switch( tmod->type() ){
      
      case( BinaryKnapsackBlockMod::eChgProfit ):        
-      { Mod[ 1 ].mod = true; 
-        Mod[ 1 ].nms = mergeSubset( Mod[ 1 ].nms , tmod->nms() ); 
-        break; }  
+      { Mod[ 1 ].mod = true; mergeSubset( Mod[ 1 ].nms , tmod->nms() ); break; }  
 
      case( BinaryKnapsackBlockMod::eFixX ):             
-      { Mod[ 3 ].mod = true; 
-        Mod[ 3 ].nms = mergeSubset( Mod[ 3 ].nms , tmod->nms() ); 
-        break; }  
+      { Mod[ 3 ].mod = true; mergeSubset( Mod[ 3 ].nms , tmod->nms() ); break; }  
 
      case( BinaryKnapsackBlockMod::eUnfixX ):          
-      { Mod[ 4 ].mod = true; 
-        Mod[ 4 ].nms = mergeSubset( Mod[ 4 ].nms , tmod->nms() ); 
-        break; }  
+      { Mod[ 4 ].mod = true; mergeSubset( Mod[ 4 ].nms , tmod->nms() ); break; }  
 
      case( BinaryKnapsackBlockMod::eChgWeight ):
-      { Mod[ 5 ].mod = true; 
-        Mod[ 5 ].nms = mergeSubset( Mod[ 5 ].nms , tmod->nms() ); 
-        break; }  
+      { Mod[ 5 ].mod = true; mergeSubset( Mod[ 5 ].nms , tmod->nms() ); break; }  
     
     }
    }
@@ -702,7 +712,15 @@ if( Mod[ 5 ].mod ){
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// compute start_item before re-doing the preprocessing- - - - - - - - - - - - 
+// compute start_item- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+/* Each modification updates start_item with the first modified item. At this
+ point it is necessary to retrieve the first item smaller than start_item whose 
+ labels have been previously stored in G[ i ].lab.
+
+ The labels corresponding to i have been stored in G[ i ].lab if i % step == 0 
+ and i wasn't preprocessed. Therefore this computation must be done before 
+ ro-doing the preprocessing.                                                 */
 
  if( start_item != + Inf< int >() ){
   
@@ -717,6 +735,8 @@ if( Mod[ 5 ].mod ){
 // re-do preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 preprocessing( modRng_items );
+
+SbstRngdiff( modSbst_items , modRng_items ); 
 
 preprocessing( modSbst_items );
 
@@ -743,6 +763,10 @@ void DPBinaryKnapsackSolver::capacity_Modification(){
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
  int nC = std::floor( BKB->get_Capacity() );     // get new Capacity
+
+ /* If the new capacity is smaller than the previous one, restart the DP
+  algorithm from f_NItems, i.e. only recompute the optimal value. Otherwise
+  restart from the beginning.                                               */
 
  start_item = nC > f_C ? 0 : std::min( f_NItems , start_item );
 
@@ -791,7 +815,7 @@ void DPBinaryKnapsackSolver::fixX_Modification( Subset & nms ){
  if( nms.empty() )
   return;   
 
- modSbst_items = mergeSubset( modSbst_items , nms );
+ mergeSubset( modSbst_items , nms );
 
  start_item = std::min( start_item , int( nms[ 0 ] ) );  
 
@@ -803,7 +827,7 @@ void DPBinaryKnapsackSolver::unFixX_Modification( Range rng ){
 
  if( rng.second <= rng.first )
   return;
- for( int i = rng.first ; i < rng.second ; i++ ) 
+ 
  mergeRange( modRng_items , rng );
 
  start_item = std::min( start_item , int( rng.first ) );
@@ -817,7 +841,7 @@ void DPBinaryKnapsackSolver::unFixX_Modification( Subset & nms ){
  if( nms.empty() )
   return;   
 
- modSbst_items = mergeSubset( modSbst_items , nms );
+ mergeSubset( modSbst_items , nms );
 
  start_item = std::min( start_item , int( nms[ 0 ] ) );     
 
@@ -869,7 +893,7 @@ void DPBinaryKnapsackSolver::weight_Modification( Subset & nms ){
 
  }
 
- modSbst_items = mergeSubset( modSbst_items , nms ) ;
+ mergeSubset( modSbst_items , nms ) ;
 
  start_item = std::min( start_item , int( nms[ 0 ] ) );   
 
@@ -905,7 +929,7 @@ void DPBinaryKnapsackSolver::profit_Modification( Subset & nms ){
  for( auto i : nms )
   v_P[ i ] = f_sense ? BKB->get_Profit( i ) : - BKB->get_Profit( i );
  
- modSbst_items = mergeSubset( modSbst_items , nms );
+ mergeSubset( modSbst_items , nms );
 
  start_item = std::min( start_item , int( nms[ 0 ] ) );  
 
@@ -915,6 +939,13 @@ void DPBinaryKnapsackSolver::profit_Modification( Subset & nms ){
 /*--------------------------------------------------------------------------*/
 /*----------------- End File DPBinaryKnapsackSolver.cpp --------------------*/
 /*--------------------------------------------------------------------------*/
+
+
+
+
+
+
+
 
 
 
