@@ -478,7 +478,6 @@ void DPBinaryKnapsackSolver::preprocessing( Range rng ){
 
   if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){     // items to select
    items[ i ] = 1;
-   start_item = 0;
    continue;
   }
 
@@ -489,7 +488,6 @@ void DPBinaryKnapsackSolver::preprocessing( Range rng ){
 
   if( v_W[ i ] <= 0 ){              // if the item has negative weight 
    items[ i ] = -1;                 // and negative profit set items to -1
-   start_item = 0;
    continue; 
   }
 
@@ -863,6 +861,9 @@ void DPBinaryKnapsackSolver::weight_Modification( Range rng ){
   if( std::abs( nw - BKB->get_Weight( i ) ) > 1e06 )
    throw( std::invalid_argument( "Weights must be integers!" ) );
    
+  if( nw < 0 && nw < v_W[ i ] )			// it is not possible to re-optimize
+   start_item = 0;	
+
   v_W[ i ] = nw;          // update weight
 
  }
@@ -889,6 +890,9 @@ void DPBinaryKnapsackSolver::weight_Modification( Subset & nms ){
   if( std::abs( nw - BKB->get_Weight( i ) ) > 1e06 )
    throw( std::invalid_argument( "Weights must be integers" ) );
    
+  if( nw < 0 && nw < v_W[ i ] )			// it is not possible to re-optimize
+   start_item = 0;	  
+
   v_W[ i ] = nw;
 
  }
