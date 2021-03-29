@@ -83,12 +83,6 @@ public:
  } slice;
 
 
- typedef struct{
-  bool mod;
-  Range rng;
-  Subset nms;  
- } Modification;
-
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -110,14 +104,6 @@ DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
 
                             modRng_items.first = + Inf< int >();
                             modRng_items.second = 0;
-
-                            Mod.resize( 6 );
-
-                            for( auto & m : Mod ){
-                             m.mod = false; 
-                             m.rng.first = + Inf< int >();
-                             m.rng.second = 0;
-                            }
 
                             set_par( dblReopt , reopt );
                            
@@ -234,8 +220,6 @@ protected:
 
  std::vector< int > items;              ///< preprocessing informations
    
- std::vector< Modification > Mod;       ///< vector of modifications
-
  Range modRng_items;                    ///< range of modified items
  Subset modSbst_items;                  ///< subset of modified items
 
@@ -293,7 +277,7 @@ private:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- void fixX_Modification( Subset & nms );
+ void fixX_Modification( c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -301,7 +285,7 @@ private:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- void unFixX_Modification( Subset & nms );
+ void unFixX_Modification( c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -309,7 +293,7 @@ private:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- void weight_Modification( Subset & nms );
+ void weight_Modification( c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -317,7 +301,7 @@ private:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- void profit_Modification( Subset & nms );
+ void profit_Modification( c_Subset & nms );
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
