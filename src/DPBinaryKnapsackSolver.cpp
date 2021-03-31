@@ -23,6 +23,8 @@ using c_Range = Block::c_Range;
 using Subset = Block::Subset;
 using c_Subset = Block::c_Subset; 
 
+static constexpr double WeightIntegrality = 1e-06;
+
 /*--------------------------------------------------------------------------*/
 /*-------------------------------- FUNCTIONS -------------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -140,10 +142,12 @@ double prp_P = 0;           // compute the profit coming from the preprocessing
                 
 for( int i = 0 ; i < f_NItems ; i++ ){
 
- if( items[ i ] == 1 || items[ i ] == - 1 ){    // if i has been selected
-  C -= v_W[ i ];                                // or if it has negative
-  prp_P += v_P[ i ];                            // weight and profit
- }
+ if( ( items[ i ] & isFixed1 ) || ( items[ i ] & isNeg ) ){   
+
+  C -= v_W[ i ];           	// if i has been selected or if it has negative                     
+  prp_P += v_P[ i ];		// weight and profit, update C and prp_P                           
+							 
+ }							
 
 }
 
@@ -176,13 +180,19 @@ they will be used for reoptimization.
 // DP Algorithm- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 for( ; i < f_NItems ; i++ ){
+  
+  // if i has been preprocessed continue
+  if( ( items[ i ] & isFixed0 ) || ( items[ i ] & isFixed1 ) ) 	
+    continue;                              	 
 
-  if( items[ i ] == 0 || items[ i ] == 1 )      // if i has been preprocessed
-    continue;                                   // continue
+  double p = v_P[ i ];  					// profit of the current item   
+  int w = v_W[ i ] ;    	 				// weight of the current item
 
-  double p = items[ i ] != -1 ? v_P[ i ] : - v_P[ i ];  // profit of i   
-  int w = items[ i ] != -1 ? v_W[ i ] : - v_W[ i ];     // weight of i                     
-
+  if( items[ i ] & isNeg ){					// if the item has negative 
+   p = -p;									// profit and weight
+   w = -w;									// change the signs
+  }
+                     
   // max height of the graph checking if the maximum capacity is reached
   maxnextlab = std::min( maxcurrlab + w , C );
 
@@ -377,7 +387,7 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
    for( int i = 0 ; i < W.size() ; i++ ){   // load weights and check 
     v_W[ i ] = std::round( W[ i ] );        // that they are integers
 
-    if( std::abs( v_W[ i ] - W[ i ] ) > 1e-06 )
+    if( std::abs( v_W[ i ] - W[ i ] ) > WeightIntegrality )
      throw( std::invalid_argument( "Weights must be integers" ) );
 
    }
@@ -417,19 +427,24 @@ if( ! v_x.empty() )       // if the solution has already been computed
 
  for( int i = f_NItems - 1 ; i >= 0 ; i-- ){
 
-  if( items[ i ] == 0 || items[ i ] == 1 ){             // preprocessed items
-   v_x[ i ] = items[ i ];
-   continue;
+  if( items[ i ] & isFixed0 ){					// preprocessed items
+   v_x[ i ] = 0;
+   continue;	
   }
+
+  if( items[ i ] & isFixed1 ){
+   v_x[ i ] = 1;
+   continue;	
+  }  
 
   if( G[ i + 1 ].pred[ besth ] ){
    v_x[ i ] = 1;
-   besth -= items[ i ] != -1 ? v_W[ i ] : - v_W[ i ];  
+   besth -= items[ i ] & isNeg ? - v_W[ i ] : v_W[ i ];  
   }
   else
    v_x[ i ] = 0;
 
-  if( items[ i ] == -1 )            // items with negative weight and profit
+  if( items[ i ] & isNeg )            // items with negative weight and profit
    v_x[ i ] = ! v_x[ i ];
 
  }
@@ -465,29 +480,28 @@ void DPBinaryKnapsackSolver::preprocessing( Range rng ){
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
  for( int i = rng.first ; i < rng.second ; i++ ){
-   
-  if( BKB->is_fixed( i ) ){                         // fixed items
-   items[ i ] = BKB->get_x( i );
+  
+  items[ i ] = 0;							// initialize items[ i ]
+
+  if( BKB->is_fixed( i ) ){                 // fixed items
+
+   if( BKB->get_x( i ) )
+   	items[ i ] |= isFixed1;
+   else
+   	items[ i ] |= isFixed0;
+
    continue;
   }
 
-  if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){     // items to select
-   items[ i ] = 1;
-   continue;
-  }
+  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 ) 		// items to select
+   items[ i ] |= isFixed1;
 
-  if(  ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ){    // items not to select
-   items[ i ] = 0;
-   continue; 
-  }
+  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )		// items not to select
+   items[ i ] |= isFixed0;
 
-  if( v_W[ i ] <= 0 ){              // if the item has negative weight 
-   items[ i ] = -1;                 // and negative profit set items to -1
-   continue; 
-  }
+  if( v_W[ i ] < 0 && v_P[ i ] < 0 )		// items with negative weight 
+   items[ i ] |= isNeg;						// and negative profit  
 
-  items[ i ] = 2;                   // otherwise
-   
  }
 
 } // end( preprocessing( Range ) )
@@ -520,30 +534,29 @@ void DPBinaryKnapsackSolver::preprocessing( Subset & nms ){
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
-  for( auto i : nms ){
+ for( auto i : nms ){
  
-   if( BKB->is_fixed( i ) ){                        // fixed items
-    items[ i ] = BKB->get_x( i );
-    continue;
-   }
+  items[ i ] = 0;							// initialize items[ i ]
 
-   if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){    // items to select
-    items[ i ] = 1;
-    continue;
-   }
+  if( BKB->is_fixed( i ) ){                 // fixed items
 
-   if(  ( v_W[ i ] >= 0 ) && ( v_P[ i ] <= 0 ) ){   // items not to select
-    items[ i ] = 0;
-    continue; 
-   }
+   if( BKB->get_x( i ) )
+   	items[ i ] |= isFixed1;
+   else
+   	items[ i ] |= isFixed0;
 
-   if( v_W[ i ] <= 0 ){             // if the item has negative weight 
-    items[ i ] = -1;                // and negative profit set items to -1
-    continue; 
-   }
+   continue;
+  }
 
-   items[ i ] = 2;                  // otherwise
-   
+  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 ) 		// items to select
+   items[ i ] |= isFixed1;
+
+  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )		// items not to select
+   items[ i ] |= isFixed0;
+
+  if( v_W[ i ] < 0 && v_P[ i ] < 0 )		// items with negative weight 
+   items[ i ] |= isNeg;						// and negative profit  
+
   }
 
  } // end( preprocessing( Subset ) )
@@ -591,6 +604,8 @@ if( start_item != + Inf< int >() ){
   phase, all the modified items are stored in modRng_items and modSbst_items
   and the preprocessing is done only once at the end.                        */
 
+
+ auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
  for( auto mod : v_mod_tmp ){
 
@@ -674,7 +689,8 @@ v_mod_tmp.clear();              // clear the temporary list of modification
   
   int i = ( start_item / step ) * step;
 
-  while( i > 0 && ( i % step != 0 || items[ i ] == 0 || items[ i ] == 1 ) ) 
+  while( i > 0 && ( i % step != 0 || 
+  	               ( items[ i ] & isFixed0 ) || ( items[ i ] & isFixed1 ) ) ) 
    i--;
   
   start_item = i;
@@ -763,10 +779,10 @@ void DPBinaryKnapsackSolver::unFixX_Modification( Range rng ){
 
  for( int i = rng.first ; i < rng.second ; i++ ){
 
-  if( v_W[ i ] > 0 && items[ i ] == 1 )
+  if( v_W[ i ] > 0 && ( items[ i ] & isFixed1 ) )
    start_item = 0;
 
-  if( v_W[ i ] < 0 && items[ i ] == 0 )
+  if( v_W[ i ] < 0 && ( items[ i ] & isFixed0 ) )
    start_item = 0;      
     
  }
@@ -785,10 +801,10 @@ void DPBinaryKnapsackSolver::unFixX_Modification( c_Subset & nms ){
 
  for( auto i : nms ){
 
-  if( v_W[ i ] > 0 && items[ i ] == 1 )
+  if( v_W[ i ] > 0 && ( items[ i ] & isFixed1 ) )
    start_item = 0;
 
-  if( v_W[ i ] < 0 && items[ i ] == 0 )
+  if( v_W[ i ] < 0 && ( items[ i ] & isFixed0 ) )
    start_item = 0;      
     
  }

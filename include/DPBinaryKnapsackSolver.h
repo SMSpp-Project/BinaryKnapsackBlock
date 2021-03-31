@@ -82,6 +82,11 @@ public:
   std::vector< bool > pred;
  } slice;
 
+enum : char{
+ isFixed0 = 1,
+ isFixed1 = 2,
+ isNeg = 4,
+ };
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
@@ -142,12 +147,12 @@ int compute( bool changedvars = true ) override;
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// return a valid lower bound on the optimal objective function value
 
-virtual OFValue get_lb( void ) override{ return get_var_value(); }
+OFValue get_lb( void ) override{ return get_var_value(); }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// return a valid upper bound on the optimal objective function value
 
-virtual OFValue get_ub( void ) override{ return get_var_value(); }
+OFValue get_ub( void ) override{ return get_var_value(); }
 
 /*--------------------------------------------------------------------------*/
 /// write the "current" solution in the variables of the BinaryKnapsackBlock
@@ -218,7 +223,7 @@ protected:
 
 /* preprocessing and modifications data - - - - - - - - - - - - - - - - - - */
 
- std::vector< int > items;              ///< preprocessing informations
+ std::vector< char > items;    			///< preprocessing informations
    
  Range modRng_items;                    ///< range of modified items
  Subset modSbst_items;                  ///< subset of modified items
