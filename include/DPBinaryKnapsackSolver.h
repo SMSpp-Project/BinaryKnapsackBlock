@@ -107,9 +107,6 @@ DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                             G[ 0 ].lab.resize( 1 ); // in the origin
                             G[ 0 ].lab[ 0 ] = 0;
 
-                            modRng_items.first = + Inf< int >();
-                            modRng_items.second = 0;
-
                             set_par( dblReopt , reopt );
                            
                            }
@@ -221,12 +218,9 @@ protected:
 
  int start_item;                        ///< index of the starting item
 
-/* preprocessing and modifications data - - - - - - - - - - - - - - - - - - */
+/* preprocessing data - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- std::vector< char > items;    			///< preprocessing informations
-   
- Range modRng_items;                    ///< range of modified items
- Subset modSbst_items;                  ///< subset of modified items
+ std::vector< char > items;             ///< preprocessing informations
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -255,59 +249,12 @@ private:
  void process_outstanding_Modification();
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// compute solution
-
- void compute_var_solution();
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// perform preprocessing
 
  void preprocessing( Range rng );
 
  void preprocessing( Subset & nms );
  
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// modifications
- 
- void capacity_Modification();
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void sense_Modification();
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void fixX_Modification( Range rng );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void fixX_Modification( c_Subset & nms );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void unFixX_Modification( Range rng );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void unFixX_Modification( c_Subset & nms );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void weight_Modification( Range rng );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void weight_Modification( c_Subset & nms );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void profit_Modification( Range rng );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void profit_Modification( c_Subset & nms );
-
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
 /*--------------------------------------------------------------------------*/
