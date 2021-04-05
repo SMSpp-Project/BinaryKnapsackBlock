@@ -23,55 +23,9 @@ using c_Range = Block::c_Range;
 using Subset = Block::Subset;
 using c_Subset = Block::c_Subset; 
 
-static constexpr double WeightIntegrality = 1e-06;
-
 /*--------------------------------------------------------------------------*/
 /*-------------------------------- FUNCTIONS -------------------------------*/
 /*--------------------------------------------------------------------------*/
-
-void mergeRange( Range & rng1 , c_Range rng2 ){
-
- // Merge two ranges rng1 and rng2 and put the result in rng1 
-
- if( rng2.first < rng1.first )       
-   rng1.first = rng2.first;       
-                      
- if( rng2.second > rng1.second )
-  rng1.second = rng2.second;  
-
-}
-
-/*--------------------------------------------------------------------------*/
-
-void mergeSubset( Subset & nms1 , c_Subset & nms2 ){
-
- // Merge two Subsets nms1 and nms2 and put the result in nms1
-
- Subset dest;               
-
- std::set_union( nms1.begin(), nms1.end(),
-                 nms2.begin(), nms2.end(),                 
-                 std::back_inserter(dest) );
-
- std::swap( dest , nms1 );
-}
-
-/*--------------------------------------------------------------------------*/
-
-void SbstRngdiff( Subset & nms , c_Range rng ){
-
- // given a Subset nms and a Range rng, remove from nms the elements in rng 
-
- Subset result;
-
- for( auto i : nms ){
-  if( i < rng.first || i >= rng.second )
-   result.push_back( i ); 
- }
-
- std::swap( result , nms );
-
-}
 
 
 /*--------------------------------------------------------------------------*/
@@ -123,11 +77,11 @@ if( BKB->is_empty() ){
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-/* start_item is the first item processed by the DP algorithm. If compute is
- called for the first time then the algorithm is entirely executed.
- Otherwise process_outstanding_Modification(), after processing all the
- modifications, computes the index of the item from which to restart the 
- algorithm.                                                                 */
+// start_item is the first item processed by the DP algorithm. If compute is
+// called for the first time, the algorithm is entirely executed.
+// Otherwise process_outstanding_Modification(), after processing all the
+// modifications, computes the index of the item from which to restart the 
+// algorithm.                                                                 
 
 if( start_item == + Inf< int >() )  // if start_item == Inf it is assumed that 
  return( kOK );                     // everything has already been done in 
@@ -139,10 +93,10 @@ int i = start_item;                 // otherwise start from start_item
 
 int C = f_C;                // compute new capacity after the preprocessing
 double prp_P = 0;           // compute the profit coming from the preprocessing
-                
+             
 for( int i = 0 ; i < f_NItems ; i++ ){
 
- if( ( items[ i ] & isFixed1 ) || ( items[ i ] & isNeg ) ){   
+ if( isFixed1( i ) || isNeg( i ) ){  
 
   C -= v_W[ i ];            // if i has been selected or if it has negative                     
   prp_P += v_P[ i ];        // weight and profit, update C and prp_P                           
@@ -151,11 +105,14 @@ for( int i = 0 ; i < f_NItems ; i++ ){
 
 }
 
-int maxcurrlab;                     // max current height of the graph
-int maxnextlab;                     // max next height of the graph    
+int maxcurrlab;                         // max current height of the graph
+int maxnextlab;                         // max next height of the graph    
 
-std::vector< double > currlab;      // set of current labels
-std::vector< double > nextlab;      // set of next labels
+std::vector< double > currlab;          // set of current labels
+std::vector< double > nextlab;          // set of next labels
+                     
+G[ 0 ].lab.resize( 1 );                 // initialize dummy node              
+G[ 0 ].lab[ 0 ] = 0;                    // in the origin
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Initialize maxcurrlab and currlab with data stored in G[ i ].lab
@@ -168,32 +125,37 @@ std::copy( G[ i ].lab.begin() , G[ i ].lab.begin() + maxcurrlab + 1 ,
            currlab.begin() );
 
 // DYNAMIC PROGRAMMING - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-/*
-At each iteration the algorithm computes the maximum height of the constructed 
-graph in order to allocate only the necessary memory to store the current 
-labels.
 
-According to the reopt parameter, labels can be stored in G[ i ].lab so that
-they will be used for reoptimization.
-                                                                            */
+// At each iteration the algorithm computes the maximum height of the 
+// constructed graph in order to allocate only the necessary memory to store  
+// the current labels.
+//
+// According to the reopt parameter, labels can be saved in G[ i ].lab so that
+// they will be used for reoptimization.
+                                                                            
 
 // DP Algorithm- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 for( ; i < f_NItems ; i++ ){
   
-  // if i has been preprocessed continue
-  if( ( items[ i ] & isFixed0 ) || ( items[ i ] & isFixed1 ) )  
-    continue;                                
+  G[ i ].lab.clear();               // clear previous labels (if any) 
+  
+  
+  if( isFixed( i ) )                // if i is fixed (or preprocessed) 
+   continue;                        // continue       
 
-  double p = v_P[ i ];                      // profit of the current item   
-  int w = v_W[ i ] ;                        // weight of the current item
+  double p = v_P[ i ];              // profit of the current item   
+  int w = v_W[ i ] ;                // weight of the current item
 
-  if( items[ i ] & isNeg ){                 // if the item has negative 
-   p = -p;                                  // profit and weight
-   w = -w;                                  // change the signs
+  if( isNeg( i ) ){                 // if the item has negative 
+   p = -p;                          // profit and weight
+   w = -w;                          // change both signs
   }
-                     
-  // max height of the graph checking if the maximum capacity is reached
+
+  if( w > C )                       // if the weight exceed the capacity
+   continue;                        // continue
+                    
+  // max height of the graph
   maxnextlab = std::min( maxcurrlab + w , C );
 
   // Initialize labels 
@@ -212,7 +174,7 @@ for( ; i < f_NItems ; i++ ){
     continue;                       // (currlab = -Inf) or if it does  
                                     // not have a better label continue                 
  
-   bestlab = currlab[ j ];          // update bestlab
+   bestlab = currlab[ j ];                      // update bestlab
 
    if( currlab[ j ] > nextlab[ j ] ){           // horizontal arc
     G[ i + 1 ].pred[ j ] = false;               
@@ -231,7 +193,7 @@ for( ; i < f_NItems ; i++ ){
 
  // reoptimization- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- if( ( i % step == 0 ) && ( i != start_item ) ){ 
+ if( i % step == 0  ){ 
   G[ i ].lab.resize( maxcurrlab + 1 ); 
   std::copy( currlab.begin() , currlab.end() , G[ i ].lab.begin() );
  }
@@ -279,24 +241,28 @@ return( kOK );
 
 void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
 
- // check if the BinaryKnapsackBlock uses the correct abstract representation
- 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
- 
+
+ // check if the BinaryKnapsackBlock uses the correct abstract representation
  if( BKB->get_NItems() != BKB->get_VarSize() )
   throw( std::invalid_argument( "Incompatible variables size" ) );
 
+ // check if compute has been called before
  if( start_item != + Inf< int >() )
   throw( std::invalid_argument( "compute() must be called first" ) );
 
- // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - -
-
- if( ! v_x.empty() ){           // if the solution has already been computed
-  BKB->set_x( v_x );            // write it in the BinaryKnapsackBlock and
-  return;                       // return
+ // check if the solution has already been computed
+ if( ! v_x.empty() ){           
+  BKB->set_x( v_x );        // write the solution in the BinaryKnapsackBlock 
+  return;                     
  }         
 
- // otherwise compute the solution - - - - - - - - - - - - - - - - - - - - - 
+ // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - -
+ // for each item check if it is fixed (because the corresponding variable is
+ // fixed or the item has been preprocessed) or if its weight exceeds the 
+ // total capacity and updates the variables accordingly. Reconstruct the 
+ // rest of the solution from G[ i ].pred. For the "negative items" (with 
+ // negative weight and profit) change x with 1 - x
 
  int besth = G[ f_NItems ].lab.size() - 1;
 
@@ -304,31 +270,38 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
 
  for( int i = f_NItems - 1 ; i >= 0 ; i-- ){
 
-  if( items[ i ] & isFixed0 ){                  // preprocessed items
+  if( isFixed0( i ) ){                          // items fixed to 0
    v_x[ i ] = 0;
    continue;    
   }
 
-  if( items[ i ] & isFixed1 ){
+  if( isFixed1( i ) ){                          // items fixed to 1
    v_x[ i ] = 1;
    continue;    
   }  
 
+  int w = isNeg( i ) ? - v_W[ i ] : v_W[ i ];   // weight of the current item
+  
+  if( w > besth ){                              // items whose weight exceeds
+   v_x[ i ] = 0;                                // the total capacity
+   continue; 
+  }
+
   if( G[ i + 1 ].pred[ besth ] ){
-   v_x[ i ] = 1;
-   besth -= items[ i ] & isNeg ? - v_W[ i ] : v_W[ i ];  
+   v_x[ i ] = 1; 
+   besth -= w;  
   }
   else
    v_x[ i ] = 0;
 
-  if( items[ i ] & isNeg )            // items with negative weight and profit
+  if( isNeg( i ) )                  // items with negative weight and profit
    v_x[ i ] = ! v_x[ i ];
 
  }
 
- // write the current solution in the BinaryKnapsackBlock
-
- BKB->set_x( v_x );
+ // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+ 
+ BKB->set_x( v_x );         // write the solution in the BinaryKnapsackBlock
 
 }
  
@@ -340,17 +313,17 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ){
  
  switch( par ){
  
+  // Reoptimization parameter- - - - - - - - - - - - - - - - - - - - - - - - - 
+
   case( dblReopt ):{
 
    if( value < 0 || value > 1 )
     throw(std::invalid_argument("dblReopt parameter must be in [ 0 , 1 ]"));
 
-   /* The variable step defines how often the labels should be saved. 
-    Each time i % step == 0 currlab is saved in G[ i ].lab. */
    reopt = value;
    
    if( reopt < 1e-06 )
-    step = + Inf< int >();  // never save currlab
+    step = + Inf< int >();  // never save labels
    else
     step = reopt > 0.5 ? 1 : std::floor( 1 / reopt );
    
@@ -358,6 +331,8 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ){
    break;
   }  
  
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
  } // end( switch( par ) )
 
 }
@@ -399,22 +374,29 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
    if( ! BKB )
     throw( std::invalid_argument( "Block must be a BinaryKnapsackBlock" ) );
 
-   // try to read
-   if( ! BKB->read_lock() )
-    throw(std::logic_error("cannot acquire read_lock on BinariKnapsackBlock"));
-
+   // read the block
+   bool owned = BKB->is_owned_by( f_id );
+      
+   if( !owned && !BKB->read_lock() )
+    throw std::runtime_error( "Unable to read the Block" );
+   
    // load Binary Knapsack instance - - - - - - - - - - - - - - - - - - - - - 
 
    f_sense = BKB->get_objective_sense();    // get the sense of the objective
+
    f_NItems = BKB->get_NItems();            // get the number of items
+
    f_C = std::floor( BKB->get_Capacity() ); // get the Capacity
 
    v_P.resize( f_NItems );                  
-   const auto & P = BKB->get_Profits();     // get profits and if the sense
-   for( int i = 0 ; i < P.size() ; i++ )    // is minimization change the sign 
-    v_P[ i ] = f_sense ? P[ i ] : - P[ i ]; // of the profits 
+
+   const auto & P = BKB->get_Profits();     // get profits  
+                                             
+   for( int i = 0 ; i < P.size() ; i++ )    // if the sense is minimization 
+    v_P[ i ] = f_sense ? P[ i ] : - P[ i ]; // change the sign of the profits 
 
    v_W.resize( f_NItems );                  // prepare vector of weights
+
    const auto & W = BKB->get_Weights();
 
    for( int i = 0 ; i < W.size() ; i++ ){   // load weights and check 
@@ -425,21 +407,18 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
    }
 
+  if( !owned )
    BKB->read_unlock();
 
   // end load Binary Knapsack instance- - - - - - - - - - - - - - - - - - - -
  
-  items.resize( f_NItems );           // resize vector of items
- 
-  G.resize( f_NItems + 1 );           // resize Graph
+  G.clear();                            // clear previous graph (if any)  
+
+  G.resize( f_NItems + 1 );             // resize Graph
   
-  preprocessing( std::make_pair( 0 , f_NItems ) );    // preprocessing
+  start_item = 0;                       // (re-)start from the beginning
 
-  start_item = 0;
-
-  obj = -Inf< double >();
-
-  v_x.clear();                        // clear previous solution (if any)
+  v_x.clear();                          // clear previous solution (if any)
 
  } // end if( f_Block )
 
@@ -447,137 +426,10 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::preprocessing( Range rng ){
-
- // PREPROCESSING - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
- /*
- The following items are preprocessed:
-  
-  - Items i with negative weight and positive profit => set x[ i ] = 1
-  - Items i with positive weight and negative profit => set x[ i ] = 0
-  - Fixed items are preprocessed according to their current value
-
-  The vector items is filled as follows:
-
-   - items[ i ] = -1    if i has negative weight and negative profit
-   - items[ i ] = 0     if i is preprocessed and x[ i ] = 0
-   - items[ i ] = 1     if i is preprocessed and x[ i ] = 1
-   - items[ i ] = 2     otherwise
-
- The DP algorithm discards the preprocessed items and changes the sign of the
- weights and the profits of the items for which items[ i ] = -1
-                                                                           */
-  
- if( rng.second <= rng.first )    // nothing to do
-  return;   
-
- auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
-
- for( int i = rng.first ; i < rng.second ; i++ ){
-  
-  items[ i ] = 0;                           // initialize items[ i ]
-
-  if( BKB->is_fixed( i ) ){                 // fixed items
-
-   if( BKB->get_x( i ) )
-    items[ i ] |= isFixed1;
-   else
-    items[ i ] |= isFixed0;
-
-   continue;
-  }
-
-  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 )      // items to select
-   items[ i ] |= isFixed1;
-
-  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )      // items not to select
-   items[ i ] |= isFixed0;
-
-  if( v_W[ i ] < 0 && v_P[ i ] < 0 )        // items with negative weight 
-   items[ i ] |= isNeg;                     // and negative profit  
-
- }
-
-} // end( preprocessing( Range ) )
-
-/*--------------------------------------------------------------------------*/
-
-void DPBinaryKnapsackSolver::preprocessing( Subset & nms ){
-
- // PREPROCESSING - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
- /*
- The following items are preprocessed:
-  
-  - Items i with negative weight and positive profit => set x[ i ] = 1
-  - Items i with positive weight and negative profit => set x[ i ] = 0
-  - Fixed items are preprocessed according to their current value
-
-  The vector items is filled as follows:
-
-   - items[ i ] = -1    if i has negative weight and negative profit
-   - items[ i ] = 0     if i is preprocessed and x[ i ] = 0
-   - items[ i ] = 1     if i is preprocessed and x[ i ] = 1
-   - items[ i ] = 2     otherwise
-
- The DP algorithm discards the preprocessed items and changes the sign of the
- weights and the profits of the items for which items[ i ] = -1
-                                                                           */
-
- if( nms.empty() )    // nothing to do
-  return;
-
- auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
-
- for( auto i : nms ){
- 
-  items[ i ] = 0;                           // initialize items[ i ]
-
-  if( BKB->is_fixed( i ) ){                 // fixed items
-
-   if( BKB->get_x( i ) )
-    items[ i ] |= isFixed1;
-   else
-    items[ i ] |= isFixed0;
-
-   continue;
-  }
-
-  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 )      // items to select
-   items[ i ] |= isFixed1;
-
-  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )      // items not to select
-   items[ i ] |= isFixed0;
-
-  if( v_W[ i ] < 0 && v_P[ i ] < 0 )        // items with negative weight 
-   items[ i ] |= isNeg;                     // and negative profit  
-
-  }
-
- } // end( preprocessing( Subset ) )
-
-
-/*--------------------------------------------------------------------------*/
 
 void DPBinaryKnapsackSolver::process_outstanding_Modification(){
-
-/* start_item != + Inf means that: 
- 
- - compute is called for the first time
- - or a Nuclear modification has been issued 
- - or the reopt parameter has been modified
-
- In all cases it is not possible to reoptimize
-                                                                            */
-
-if( start_item != + Inf< int >() ){    
- if( ! v_mod.empty() ){             // if there are any modifications 
-  load();                           // re-load the instance
-  v_mod.clear();                    // and clear v_mod  
- }                                   
- return;                            // in any case return                              
-}                                    
-
-// otherwise copy v_mod in a temporary list of modifications - - - - - - - - -
+                                 
+// copy v_mod in a temporary list of modifications - - - - - - - - - - - - - - 
 
  Lst_sp_Mod v_mod_tmp;              // temporary list of modifications
 
@@ -592,14 +444,7 @@ if( start_item != + Inf< int >() ){
 
  f_mod_lock.clear( std::memory_order_release );  // release lock
 
- // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
- /* Since different type of Modifications require to redo the same preprocessing
-  phase, all the modified items are stored in modRng_items and modSbst_items
-  and the preprocessing is done only once at the end.                        */
-
- Range modRng_items( + Inf< int >() , 0 );
- Subset modSbst_items;
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
@@ -608,28 +453,29 @@ if( start_item != + Inf< int >() ){
   // BinaryKnapsackBlockMod - - - - - - - - - - - - - - - - - - - - - - - - - -
   
   const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
+
    if( tmod ){ 
     switch( tmod->type() ){ 
 
     // Change Capacity- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // If the new capacity is smaller than the previous one, restart the DP
+    // algorithm from f_NItems, i.e. only recompute the optimal value
+    // Otherwise restart from the first item   
     
      case( BinaryKnapsackBlockMod::eChgCapacity ): {
      
-      int nC = std::floor( BKB->get_Capacity() );     // get new Capacity
-
-      /* If the new capacity is smaller than the previous one, restart the DP
-       algorithm from f_NItems, i.e. only recompute the optimal value. Otherwise
-       restart from the beginning.                                             */
+      int nC = std::floor( BKB->get_Capacity() );   // get new Capacity
 
       start_item = nC > f_C ? 0 : std::min( f_NItems , start_item );
 
-      f_C = nC;                    // update the Capacity
+      f_C = nC;                                     // update the Capacity
  
       break;
      }                    
 
     // Change Objective Sense - - - - - - - - - - - - - - - - - - - - - - - - - 
-    
+    // Change the sign of all profits and restart from the first item
+
      case( BinaryKnapsackBlockMod::eChgSense ):{        
       
       f_sense = BKB->get_objective_sense();  // update f_sense
@@ -637,16 +483,15 @@ if( start_item != + Inf< int >() ){
       for( int i = 0 ; i < f_NItems ; i++ )  // change the sign of all profits
        v_P[ i ] = - v_P[ i ];
 
-      modRng_items.first = 0;                // preprocessing must be re-done
-      modRng_items.second = f_NItems;
-
       start_item = 0;                        // restart from the beginning 
-
-
+    
       break;
      }                                      
     }                                               
-   }                                                
+   }
+ }
+
+for( auto mod : v_mod_tmp ){                                                
 
   // BinaryKnapsackBlockRngdMod - - - - - - - - - - - - - - - - - - - - - - - - 
   {
@@ -656,13 +501,12 @@ if( start_item != + Inf< int >() ){
     switch( tmod->type() ){
     
      // change Profits- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-    
+     // update modified profits according to f_sense and update start_item
+
      case( BinaryKnapsackBlockMod::eChgProfit ):{          
-      
+     
       for( int i = tmod->rng().first ; i < tmod->rng().second ; i++ )
        v_P[ i ] = f_sense ? BKB->get_Profit( i ) : - BKB->get_Profit( i );
-
-      mergeRange( modRng_items , tmod->rng() );
 
       start_item = std::min( start_item , int( tmod->rng().first ) );
 
@@ -670,56 +514,37 @@ if( start_item != + Inf< int >() ){
      } 
     
     // fix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
-    
-     case( BinaryKnapsackBlockMod::eFixX ):{                
-      
-      mergeRange( modRng_items , tmod->rng() ); 
+    // update start item with the first fixed item
 
-      start_item = std::min( start_item , int( tmod->rng().first ) ); 
-
-      break;
-     } 
+     case( BinaryKnapsackBlockMod::eFixX ):               
+      { start_item = std::min( start_item , int( tmod->rng().first ) ); break; }
     
     // unfix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // unfix a variable x could possibily increase the residual capacity 
+    // making reoptimization not exploitable 
 
-     case( BinaryKnapsackBlockMod::eUnfixX ):{          
-      
-      mergeRange( modRng_items , tmod->rng() );
-
-      for( int i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
-
-       if( v_W[ i ] > 0 && ( items[ i ] & isFixed1 ) )
-        start_item = 0;
-
-       if( v_W[ i ] < 0 && ( items[ i ] & isFixed0 ) )
-        start_item = 0;      
-    
-       }
-
-      start_item = std::min( start_item , int( tmod->rng().first ) );
-
-      break;
-     } 
+     case( BinaryKnapsackBlockMod::eUnfixX ): start_item = 0; break;         
 
     // change Weights - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    // update modified weights checking the integrality property. 
+    // check also if a new weight could increase the residual capacity making
+    // reoptimization not exploitable 
 
      case( BinaryKnapsackBlockMod::eChgWeight ):{    
        
       for( int i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
   
-       int nw = std::round( BKB->get_Weight( i ) ); 
+       int nw = std::round( BKB->get_Weight( i ) );     // new weight
   
        if( std::abs( nw - BKB->get_Weight( i ) ) > WeightIntegrality )
         throw( std::invalid_argument( "Weights must be integers!" ) );
    
-       if( nw < 0 && nw < v_W[ i ] )         // it is not possible to re-optimize
+       if( nw < 0 && nw < v_W[ i ] )        // it is not possible to re-optimize
         start_item = 0;  
 
-       v_W[ i ] = nw;          // update weight
+       v_W[ i ] = nw;                       // update weight
 
       }
-
-      mergeRange( modRng_items , tmod->rng() );
 
       start_item = std::min( start_item , int( tmod->rng().first ) );
 
@@ -739,13 +564,12 @@ if( start_item != + Inf< int >() ){
     switch( tmod->type() ){
     
      // change Profits- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-    
+     // update modified profits according to f_sense and update start_item 
+
      case( BinaryKnapsackBlockMod::eChgProfit ):{          
-      
+     
       for( auto i : tmod->nms() )
        v_P[ i ] = f_sense ? BKB->get_Profit( i ) : - BKB->get_Profit( i );
-
-      mergeSubset( modSbst_items , tmod->nms() );
 
       start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) );
 
@@ -753,56 +577,37 @@ if( start_item != + Inf< int >() ){
      } 
     
     // fix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
-    
-     case( BinaryKnapsackBlockMod::eFixX ):{                
-      
-      mergeSubset( modSbst_items , tmod->nms() ); 
+    // update start item with the first fixed item 
 
-      start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) ); 
-
-      break;
-     } 
+     case( BinaryKnapsackBlockMod::eFixX ):                
+      { start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) ); break; }
     
     // unfix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    // unfix a variable x could possibily increase the residual capacity 
+    // making reoptimization not exploitable 
 
-     case( BinaryKnapsackBlockMod::eUnfixX ):{          
-      
-      mergeSubset( modSbst_items , tmod->nms() );
-
-      for( auto i : tmod->nms() ){
-
-       if( v_W[ i ] > 0 && ( items[ i ] & isFixed1 ) )
-        start_item = 0;
-
-       if( v_W[ i ] < 0 && ( items[ i ] & isFixed0 ) )
-        start_item = 0;      
-    
-       }
-
-      start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) );
-
-      break;
-     } 
+     case( BinaryKnapsackBlockMod::eUnfixX ): start_item = 0; break;
 
     // change Weights - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    // update modified weights checking the integrality property. 
+    // check also if a new weight could increase the residual capacity making
+    // reoptimization not exploitable 
 
      case( BinaryKnapsackBlockMod::eChgWeight ):{    
        
       for( auto i : tmod->nms() ){
   
-       int nw = std::round( BKB->get_Weight( i ) ); 
+       int nw = std::round( BKB->get_Weight( i ) );     // new weight
   
        if( std::abs( nw - BKB->get_Weight( i ) ) > WeightIntegrality )
         throw( std::invalid_argument( "Weights must be integers!" ) );
    
-       if( nw < 0 && nw < v_W[ i ] )         // it is not possible to re-optimize
+       if( nw < 0 && nw < v_W[ i ] )        // it is not possible to re-optimize
         start_item = 0;  
 
-       v_W[ i ] = nw;          // update weight
+       v_W[ i ] = nw;                       // update weight
 
       }
-
-      mergeSubset( modSbst_items , tmod->nms() );
 
       start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) );
 
@@ -819,35 +624,25 @@ if( start_item != + Inf< int >() ){
 v_mod_tmp.clear();              // clear the temporary list of modification
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 // compute start_item- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-/* Each modification updates start_item with the first modified item. At this
- point it is necessary to retrieve the first item smaller than start_item whose 
- labels have been previously stored in G[ i ].lab.
+// Each modification updated start_item with the first modified item. At this
+// point it is necessary to retrieve the first item smaller than start_item  
+// whose corresponding labels have been previously stored in G[ i ].lab. 
+// Note that even if i % step == 0, G[ i ].lab could be empty if item i has
+// been previously preprocessed.
 
- The labels corresponding to i have been stored in G[ i ].lab if i % step == 0 
- and i wasn't preprocessed. Therefore this computation must be done before 
- ro-doing the preprocessing.                                                 */
 
  if( start_item != + Inf< int >() ){
   
   int i = ( start_item / step ) * step;
 
-  while( i > 0 && ( i % step != 0 || 
-                   ( items[ i ] & isFixed0 ) || ( items[ i ] & isFixed1 ) ) ) 
+  while( i > 0 && ( i % step != 0 ||  G[ i ].lab.empty() ) )
    i--;
   
   start_item = i;
  }
-
-// re-do preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-preprocessing( modRng_items );
-
-SbstRngdiff( modSbst_items , modRng_items ); 
-
-preprocessing( modSbst_items );
-
 
 }// end( process_outstanding_Modification() )
 

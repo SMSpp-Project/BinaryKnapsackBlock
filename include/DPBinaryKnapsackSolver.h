@@ -45,7 +45,7 @@ namespace SMSpp_di_unipi_it
  * sense of the problem encoded in the BinaryKnapsackBlock can be either Min 
  * or Max and all the necessary transformations are automatically handled. 
  *
- * The implemented algorithm also manages the presence of items with negative 
+ * The implemented algorithm also handles the presence of items with negative 
  * weights.                                                                 */                         
 
 
@@ -63,30 +63,33 @@ public:
 /** @name Public types
  @{ */
 
+ using Index = Block::Index;
+ using c_Index = Block::c_Index;   
+
  using Range = Block::Range;
  using c_Range = Block::c_Range;
 
  using Subset = Block::Subset;
  using c_Subset = Block::c_Subset;
     
- /// public enum for the algorithmic parameters
-
- enum dbl_par_type_DPBKSlv{
-  dblReopt = dblLastAlgPar,
- };
-
- /// define struct for data stored in a graph G constructed by the DP algorithm
+ /// struct for data stored in a graph G constructed by the DP algorithm
 
  typedef struct{
-  std::vector< double > lab;
-  std::vector< bool > pred;
+  std::vector< double > lab;            ///< vector of labels
+  std::vector< bool > pred;             ///< vector of predecessors
  } slice;
 
-enum : char{
- isFixed0 = 1,
- isFixed1 = 2,
- isNeg = 4,
+ /// public enum for the algorithmic parameters - - - - - - - - - - - - - - - 
+
+ enum dbl_par_type_DPBKSlv{
+  dblReopt = dblLastAlgPar,             ///< reoptimization parameter
  };
+
+
+
+ /// tolerance for integrality property of weights
+
+ static constexpr double WeightIntegrality = 1e-06;
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
@@ -102,10 +105,6 @@ enum : char{
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( - Inf< double >() ) , start_item( 0 ) , 
                            reopt( 0 ){
-                            
-                            G.resize( 1 );          // initialize dummy node 
-                            G[ 0 ].lab.resize( 1 ); // in the origin
-                            G[ 0 ].lab[ 0 ] = 0;
 
                             set_par( dblReopt , reopt );
                            
@@ -143,29 +142,31 @@ int compute( bool changedvars = true ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// return a valid lower bound on the optimal objective function value
+/** Return a valid lower bound on the optimal objective function value.
+* get_lb() must be called after compute() has been called. */
 
 OFValue get_lb( void ) override{ return get_var_value(); }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// return a valid upper bound on the optimal objective function value
+/** Return a valid upper bound on the optimal objective function value.
+* get_ub() must be called after compute() has been called. */
 
 OFValue get_ub( void ) override{ return get_var_value(); }
 
 /*--------------------------------------------------------------------------*/
-/// write the "current" solution in the variables of the BinaryKnapsackBlock
+/// write the current solution in the variables of the BinaryKnapsackBlock
 
 void get_var_solution( Configuration * solc = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/
 /// return the value of the (current) solution
-/** Return the the value of the current solution. The DP algorithm solves the 
- * maximization problem. If the problem encoded in the BinaryKnapsackBlock is
- * a minimization problem, when the instance is loaded the signs of all 
- * profits are changed and f_sense is set to 0. The sign of obj must change
- * according to f_sense. */
+/** Return the the value of the current solution. 
+ * Since the implemented DP algorithm always solves the maximization problem,
+ * the sign of the value of the solution must change according to the real 
+ * sense (f_sense) of the problem encoded in the BinaryKnapsackBlock. */
 
 OFValue get_var_value() override { return f_sense ? obj : - obj; }
-
 
 /**@} ----------------------------------------------------------------------*/
 /*-------------- METHODS FOR READING THE DATA OF THE Solver ----------------*/
@@ -176,6 +177,23 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 /*------------------- METHODS FOR HANDLING THE PARAMETERS ------------------*/
 /*--------------------------------------------------------------------------*/
 /** @name Handling the parameters of the DPBinaryKnapsackSolver @{ */
+
+/*--------------------------------------------------------------------------*/
+/// set the "double" parameters of DPBinaryKnapsackSolver
+/* set the "double" parameters of DPBinaryKnapsackSolver.
+ * 
+ * The only parameter currently present is:
+ * 
+ * - dblReopt [0]: Reoptimization parameter. Accepted values in [ 0 , 1 ] 
+ *                 dblReopt roughly defines how often the labels computed at
+ *                 each iteration of the DP algorithm should be saved.
+ *                 
+ *                 - 0 if no labels should be saved  
+ *                 - 1 if all labels should be saved 
+ *                 Intermediate values define a "step" s.t. each time the 
+ *                 index i of an item is a multiple of step , the labels
+ *                 computed at the corresponding iteration should be saved 
+ *                 (unless i is preprocessed).                              */
 
 void set_par( idx_type par , double value ) override;
 
@@ -218,15 +236,11 @@ protected:
 
  int start_item;                        ///< index of the starting item
 
-/* preprocessing data - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- std::vector< char > items;             ///< preprocessing informations
-
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  double reopt;                          ///< reoptimization parameter                      
  
- int step;
+ int step;                              ///< reoptimization step 
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
@@ -249,11 +263,75 @@ private:
  void process_outstanding_Modification();
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// perform preprocessing
+/// return true if item i is fixed to 0 because the variable is fixed or the
+/// item can be preprocessed (i.e. it has positive weight and negative profit)  
 
- void preprocessing( Range rng );
+ bool isFixed0( Index i ){
+  
+  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
- void preprocessing( Subset & nms );
+  if( BKB->is_fixed( i ) ){
+   
+   if( BKB->get_x( i ) == 0 )
+    return( true );
+   
+   return( false );
+  }
+   
+  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 ) 
+   return( true );  
+
+  return( false );
+
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// return true if item i is fixed to 1 because the variable is fixed or the
+/// item can be preprocessed (i.e. it has negative weight and positive profit)  
+
+ bool isFixed1( Index i ){
+  
+  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+
+  if( BKB->is_fixed( i ) ){
+   
+   if( BKB->get_x( i ) == 1 )
+    return( true );
+   
+   return( false );
+  }
+   
+  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 ) 
+   return( true );  
+
+  return( false );
+  
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// return true if item i is fixed because the variable is fixed or the item
+/// can be preprocessed  
+
+ bool isFixed( Index i ){
+  return( isFixed0( i ) || isFixed1( i ) );  
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// return true if the item is not fixed and it has negative weight and profit
+/// isNeg( i ) is true for the "negative" items processed by the DP algorithm
+/// [see details in compute()]. 
+
+ bool isNeg( Index i ){
+ 
+  if( isFixed( i ) )
+   return( false ); 
+
+  if( v_W[ i ] < 0 && v_P[ i ] < 0 )
+   return( true );
+
+  return( false );
+
+ }
  
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
