@@ -82,7 +82,11 @@ public:
  /// public enum for the algorithmic parameters - - - - - - - - - - - - - - - 
 
  enum dbl_par_type_DPBKSlv{
+
   dblReopt = dblLastAlgPar,             ///< reoptimization parameter
+  
+  dblLastDPBKSlvPar
+
  };
 
 
@@ -197,6 +201,33 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 
 void set_par( idx_type par , double value ) override;
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+idx_type get_num_dbl_par( void ) const override{
+ return( idx_type( dblLastDPBKSlvPar ) );
+}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ 
+double get_dbl_par( const idx_type par ) const override{
+  
+ if( par == dblReopt )
+  return( reopt );
+
+ return( Solver::get_dflt_dbl_par( par ) );
+}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+idx_type dbl_par_str2idx( const std::string & name ) const override {
+ 
+ const auto it = dbl_pars_map.find( name );
+ if( it != dbl_pars_map.end() )
+  return( it->second );
+ 
+ return( Solver::dbl_par_str2idx( name ) );
+}
+
 /**@} ----------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
@@ -241,6 +272,12 @@ protected:
  double reopt;                          ///< reoptimization parameter                      
  
  int step;                              ///< reoptimization step 
+
+
+// static fields - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ const static std::map< std::string , idx_type > dbl_pars_map;
+ ///< the (static const) map for double parameters names
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/

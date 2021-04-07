@@ -36,6 +36,14 @@ using c_Subset = Block::c_Subset;
 
 SMSpp_insert_in_factory_cpp_1( DPBinaryKnapsackSolver );
 
+// define and initialize here the map for double parameters names
+const std::map< std::string , DPBinaryKnapsackSolver::idx_type >
+ DPBinaryKnapsackSolver::dbl_pars_map = {
+ 
+ { "dblReopt" , DPBinaryKnapsackSolver::dblReopt }
+ 
+ };
+
 /*--------------------------------------------------------------------------*/
 /*------------------ METHODS OF DPBinaryKnapsackSolver ---------------------*/
 /*--------------------------------------------------------------------------*/
