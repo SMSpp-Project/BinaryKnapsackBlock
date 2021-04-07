@@ -122,6 +122,8 @@ std::vector< double > nextlab;          // set of next labels
 G[ 0 ].lab.resize( 1 );                 // initialize dummy node              
 G[ 0 ].lab[ 0 ] = 0;                    // in the origin
 
+int step = reopt < 1e-03 ? + Inf< int >() : std::ceil( 1 / reopt );
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Initialize maxcurrlab and currlab with data stored in G[ i ].lab
 
@@ -200,7 +202,7 @@ for( ; i < f_NItems ; i++ ){
   }
 
  // reoptimization- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
+ 
  if( i % step == 0  ){ 
   G[ i ].lab.resize( maxcurrlab + 1 ); 
   std::copy( currlab.begin() , currlab.end() , G[ i ].lab.begin() );
@@ -330,12 +332,8 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ){
 
    reopt = value;
    
-   if( reopt < 1e-06 )
-    step = + Inf< int >();  // never save labels
-   else
-    step = reopt > 0.5 ? 1 : std::floor( 1 / reopt );
-   
    start_item = 0;          // restart from 0 in the next call of compute()
+
    break;
   }  
  
@@ -641,6 +639,7 @@ v_mod_tmp.clear();              // clear the temporary list of modification
 // Note that even if i % step == 0, G[ i ].lab could be empty if item i has
 // been previously preprocessed.
 
+ int step = reopt < 1e-03 ? + Inf< int >() : std::ceil( 1 / reopt );
 
  if( start_item != + Inf< int >() ){
   

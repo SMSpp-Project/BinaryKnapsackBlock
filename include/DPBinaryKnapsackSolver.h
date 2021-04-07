@@ -108,11 +108,7 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
                            obj( - Inf< double >() ) , start_item( 0 ) , 
-                           reopt( 0 ){
-
-                            set_par( dblReopt , reopt );
-                           
-                           }
+                           reopt( 0 ){}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -271,9 +267,6 @@ protected:
 
  double reopt;                          ///< reoptimization parameter                      
  
- int step;                              ///< reoptimization step 
-
-
 // static fields - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  const static std::map< std::string , idx_type > dbl_pars_map;
