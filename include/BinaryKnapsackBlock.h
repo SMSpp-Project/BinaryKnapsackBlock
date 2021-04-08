@@ -63,9 +63,9 @@ namespace SMSpp_di_unipi_it
 * sense of the objective with the method set_objective_sense() that changes 
 * the value of f_sense.
 *
-*   - f_sense = 1 for a maximization problem
+*   - f_sense = true for a maximization problem
 *
-*   - f_sense = 0 for a minimization problem
+*   - f_sense = false for a minimization problem
 * 
 * The set of items is assumed not to be changed (save for changing weights and
 * profits, and for items to be fixed or unfixed). */
@@ -112,7 +112,7 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
 
 explicit BinaryKnapsackBlock( Block * father = nullptr )
   : Block( father ) , f_NItems( 0 ) , f_C( 0 ) , AR( 0 ) , 
-    f_sense( 1 ) , f_cond_lower( - Inf<double>() ) , 
+    f_sense( true ) , f_cond_lower( - Inf<double>() ) , 
     f_cond_upper( + Inf<double>() ) , isEmpty( -1 ) { }
 
 /*--------------------------------------------------------------------------*/
