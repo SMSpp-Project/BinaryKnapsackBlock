@@ -35,18 +35,15 @@ namespace SMSpp_di_unipi_it
 /*--------------------------------------------------------------------------*/
 /// Dynamic Programming Solver for BinaryKnapsackBlock
 /** The DPBinaryKnapsackSolver implements the Solver interface for the Binary
- * Knapsack Problem described by a BinaryKnapsackBlock using the standard 
- * Dynamic Programming approach.
+ * Knapsack Problem [see BinaryKnapsackBlock.h] using the standard Dynamic
+ * Programming approach.
  *
- * The algorithm assumes that weights of the items are integers, otherwise an
- * exception is thrown. Capacity and Profits can be double. 
+ * The algorithm assumes that the weights of the items are integers; otherwise
+ * an exception is thrown. Capacity and Profits can be double.
  *
- * Even if compute() always solves the maximization problem, the objective
- * sense of the problem encoded in the BinaryKnapsackBlock can be either Min 
- * or Max and all the necessary transformations are automatically handled. 
- *
- * The implemented algorithm also handles the presence of items with negative 
- * weights.                                                                 */                         
+ * There are no restrictions on the weights and profits sign (both positive 
+ * and negative values ​​are allowed), and the objective sense of the 
+ * problem can be either Min or Max.                                        */                       
 
 
 class DPBinaryKnapsackSolver : public Solver {
@@ -72,8 +69,8 @@ public:
  using Subset = Block::Subset;
  using c_Subset = Block::c_Subset;
     
- /// struct for data stored in a graph G constructed by the DP algorithm
-
+ /// data structure for the graph G constructed by the DP algorithm - - - - -
+ 
  typedef struct{
   std::vector< double > lab;            ///< vector of labels
   std::vector< bool > pred;             ///< vector of predecessors
@@ -89,9 +86,7 @@ public:
 
  };
 
-
-
- /// tolerance for integrality property of weights
+ /// tolerance for integrality property of weights- - - - - - - - - - - - - -
 
  static constexpr double WeightIntegrality = 1e-06;
 
@@ -106,9 +101,9 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
-DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , f_sense( 1 ),
-                           obj( - Inf< double >() ) , start_item( 0 ) , 
-                           reopt( 0 ){}
+DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , 
+                           f_sense( true ), obj( - Inf< double >() ) , 
+                           start_item( 0 ) , reopt( 0 ){}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -131,6 +126,106 @@ void set_Block( Block * block ) override;
 /*--------------------------------------------------------------------------*/
 /** @name Solving the Binary Knapsack encoded by the current 
  * BinaryKnapsackBlock @{ */
+
+/// Solve the Binary Knapsack Problem encoded in the BinaryKnapsackBlock
+/** Solve the Binary Knapsack Problem encoded in the BinaryKnapsackBlock,
+* using the standard Dynamic Programming approach. 
+*
+* The implemented algorithm processes one item at a time and iteratevily  
+* constructs a graph G with the solutions of each sub-problem.
+*
+* In particular, the graph G is constructed as follows: 
+*
+* let SP( i , j ) the sub-problem where the objective is to select a subset 
+* of the first i items, that maximizes the total profit and whose total 
+* weight is equal to j. For each of these sub-problems, let consider a node 
+* u_{ i , j } with two outgoing oriented arcs: 
+*
+*  - An "horizontal" arc: ( u_{ i , j } , u_{ i + 1 , j } ) with "cost" 0                
+*                          
+*  - A "diagonal" arc: ( u_{ i , j } , u_{ i + 1 , j + w } ) with "cost" p
+*                       
+* where w and p are the weight and the profit of the ( i + 1 )-th item. 
+* The Binary Knapsack problem is equivalent to finding a path in this graph
+* that maximizes the total profit, from a "dummy" node u_{ 0 , 0 } to a node 
+* u_{ f_NItems , j } with j <= Capacity of the Knapsack. In a solution path, 
+* traversing a "diagonal" arc means that the ( i + 1 )-th item has been 
+* selected, whereas traversing an "horizontal" arc is equivalent to discard
+* the item.  
+* 
+* Therefore, G is implemented as a vector with ( f_NItems + 1 ) entries, one
+* for each item + the "dummy" node. Each entry contains a "slice" that is a  
+* data structure with two vectors:  G[ i ].lab (or "labels") and G[ i ].pred 
+* (or "predecessors").
+*
+* Labels (of type double) and predecessors (of type bool) are vectors s.t.
+*   
+*   G[ i ].lab[ j ]  corresponds to node u_{ i , j } and contains the optimal 
+*                    value of SP( i , j )
+*
+*   G[ i ].pred[ j ] correspond to the arc that has been selected in order
+*                    to obtained the value in G[ i ].lab[ j ]. 
+*                    It is true if G[ i ].lab[ j ] has been obtained by
+*                    traversing a "diagonal" arc, i.e. the corresponding
+*                    solution contains the i-th item. It is false otherwise.     
+*
+* At each iteration i, each entry of G[ i + 1 ].lab is computed starting 
+* from G[ i ].lab, by comparing the profits of all the possible path reaching
+* the corresponding node (choosing the best one), and G[ i ].pred is updated 
+* accordingly.
+* 
+* Eventually G[ f_NItems ].lab contains the optimal values of the problems 
+* with all items. The optimal value of the Binary Knapsack problem is the
+* the best value among those in G[ f_NItems ].lab[ j ] with j <= Capacity of 
+* the Knapsack, and the optimal solution can be reconstructed from the vectors 
+* of predecessors.
+*
+* Note that:
+*
+*
+* - There is no need to store the vectors of labels, since each of them 
+*   requires only the labels of the previous iteration to be computed. 
+*   Therefore, only two vectors of labels are used: one for the current 
+*   labels (currlab) and one for the next labels (nextlab). 
+*   However, for reoptimization purposes, some of them are stored in 
+*   G[ i ].lab according to the reopt algorithmic parameter.
+*
+*
+* - Some of the items are pre-processed and, therefore, discarded from the
+*   computation. An item i is pre-processed if:
+*
+*       - the corresponding variable is fixed 
+*       - it has positive weight and negative profit -> set v_x[ i ] = 0
+*       - it has negative weight and positive profit -> set v_x[ i ] = 1
+*  
+*   These conditions are checked at the beginning of each iteration by
+*   calling the methods is_fixed0() and is_fixed1().
+*
+*
+* - The algorithm, as described above, only deal with item with positive 
+*   weights. However, items with negative weight can be treated as follows:
+*   
+*   - if the weight is negative but the profit is positive, then the item is
+*     pre-processed.
+*
+*   - if both weight and profit are negative, the idea is to "select" the 
+*     item, and therefore only update the capacity and the profit of the 
+*     solution, but discarding it from the computation. Then consider "another"  
+*     item with the same weight and profit but of opposite signs (both 
+*     positive). At the end of the algorithm, if the added item has been 
+*     selected, it neutralizes the effect of the initial selection, i.e. it is
+*     equivalent to not select the original item. Conversly, if the added item
+*     has not been selected, it is equivalent to select the original item.
+*     The method is_Neg() returns true if this transformation must be done,
+*     and it is called at each iteration and when the solution has to be
+*     be reconstructed.
+*
+*
+* - The implemented algorithm always solves a maximization problem. However,
+*   this is not restrictive because the interface automatically manages all   
+*   the necessary transformation, i.e. it changes the signs of the profits
+*   when the instance is loaded and set f_sense accordingly. 
+*                                                                           */
 
 int compute( bool changedvars = true ) override;
 
@@ -185,15 +280,17 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  * The only parameter currently present is:
  * 
  * - dblReopt [0]: Reoptimization parameter. Accepted values in [ 0 , 1 ] 
- *                 dblReopt roughly defines how often the labels computed at
- *                 each iteration of the DP algorithm should be saved.
+ *                 dblReopt defines how often the labels computed at each
+ *                 iteration of the DP algorithm are saved.
  *                 
- *                 - 0 if no labels should be saved  
- *                 - 1 if all labels should be saved 
+ *                 - 0 if no labels are saved
+ *  
+ *                 - 1 if all labels are saved
+ * 
  *                 Intermediate values define a "step" s.t. each time the 
  *                 index i of an item is a multiple of step , the labels
- *                 computed at the corresponding iteration should be saved 
- *                 (unless i is preprocessed).                              */
+ *                 computed at the corresponding iteration are saved in 
+ *                 G[ i ].lab (unless i is pre-processed).                 */
 
 void set_par( idx_type par , double value ) override;
 
@@ -348,8 +445,8 @@ private:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// return true if the item is not fixed and it has negative weight and profit
-/// isNeg( i ) is true for the "negative" items processed by the DP algorithm
-/// [see details in compute()]. 
+/// isNeg( i ) is true if the item is not fixed and it has negative weight 
+/// and profit [see details in compute()]. 
 
  bool isNeg( Index i ){
  

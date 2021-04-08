@@ -122,6 +122,9 @@ std::vector< double > nextlab;          // set of next labels
 G[ 0 ].lab.resize( 1 );                 // initialize dummy node              
 G[ 0 ].lab[ 0 ] = 0;                    // in the origin
 
+
+// each time i % step == 0, currlab is saved in G[ i ].lab
+// the frequency depends on the reopt parameter
 int step = reopt < 1e-03 ? + Inf< int >() : std::ceil( 1 / reopt );
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
