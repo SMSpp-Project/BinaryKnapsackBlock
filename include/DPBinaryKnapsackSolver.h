@@ -141,7 +141,7 @@ void set_Block( Block * block ) override;
 * weight is equal to j. For each of these sub-problems, let consider a node 
 * u_{ i , j } with two outgoing oriented arcs: 
 *
-*  - An "horizontal" arc: ( u_{ i , j } , u_{ i + 1 , j } ) with "cost" 0                
+*  - A "horizontal" arc: ( u_{ i , j } , u_{ i + 1 , j } ) with "cost" 0                
 *                          
 *  - A "diagonal" arc: ( u_{ i , j } , u_{ i + 1 , j + w } ) with "cost" p
 *                       
@@ -149,8 +149,8 @@ void set_Block( Block * block ) override;
 * The Binary Knapsack problem is equivalent to finding a path in this graph
 * that maximizes the total profit, from a "dummy" node u_{ 0 , 0 } to a node 
 * u_{ f_NItems , j } with j <= Capacity of the Knapsack. In a solution path, 
-* traversing a "diagonal" arc means that the ( i + 1 )-th item has been 
-* selected, whereas traversing an "horizontal" arc is equivalent to discard
+* selecting a "diagonal" arc means that the ( i + 1 )-th item has been 
+* selected, whereas selecting a "horizontal" arc is equivalent to discard
 * the item.  
 * 
 * Therefore, G is implemented as a vector with ( f_NItems + 1 ) entries, one
@@ -163,10 +163,10 @@ void set_Block( Block * block ) override;
 *   G[ i ].lab[ j ]  corresponds to node u_{ i , j } and contains the optimal 
 *                    value of SP( i , j )
 *
-*   G[ i ].pred[ j ] correspond to the arc that has been selected in order
+*   G[ i ].pred[ j ] corresponds to the arc that has been selected in order
 *                    to obtained the value in G[ i ].lab[ j ]. 
 *                    It is true if G[ i ].lab[ j ] has been obtained by
-*                    traversing a "diagonal" arc, i.e. the corresponding
+*                    selecting a "diagonal" arc, i.e. the corresponding
 *                    solution contains the i-th item. It is false otherwise.     
 *
 * At each iteration i, each entry of G[ i + 1 ].lab is computed starting 
