@@ -275,9 +275,6 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
 
 bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
  
-// if( isEmpty != -1 )
-//  return( isEmpty );
-
  // check if there are fixed variables and compute the residual capacity
  
  double C = f_C;
@@ -287,10 +284,9 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
    C -= v_W[ i ]; 
  }
 
- if( C >= 0 ){        // if the residual capacity is positive then a feasible 
-  isEmpty = 0;        // solution is composed by the value of the fixed 
-  return( false );    // variables and x = 0 for all the others
- }
+ if( C >= 0 )                
+  return( false );    
+ 
 
  double neg_weights = 0;
 
@@ -302,15 +298,12 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
   if( v_W[ i ] < 0 ){
    neg_weights += v_W[ i ];
    
-   if( neg_weights <= C ){
-    isEmpty = 0;
+   if( neg_weights <= C )
     return( false );
-   }
-  
+   
   }
  }
 
- isEmpty = 1;
  return( true );
 }
 
@@ -515,7 +508,6 @@ void BinaryKnapsackBlock::fix_x( bool value, Index i ,
  f_cond_lower = -Inf<double>();
  f_cond_upper = Inf<double>();
 
- isEmpty = -1;
 
 if( not_dry_run( issueAMod ) ){
  v_x[ i ].set_value( value ); 
@@ -589,8 +581,6 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod,
  // reset conditional bounds
  f_cond_lower = -Inf<double>();
  f_cond_upper = Inf<double>();
-
- isEmpty = -1;
  
  if( not_dry_run( issueAMod ) )
   v_x[ i ].is_fixed( false , issueAMod ); 
@@ -660,7 +650,6 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
- isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
@@ -698,7 +687,6 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
- isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
@@ -743,7 +731,6 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
- isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
@@ -789,7 +776,6 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
- isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
@@ -832,7 +818,6 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
- isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
@@ -876,7 +861,6 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
- isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
@@ -919,7 +903,6 @@ void BinaryKnapsackBlock::chg_capacity( double NC ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
- isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
@@ -950,7 +933,6 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
 
- isEmpty = -1;
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
@@ -1041,8 +1023,6 @@ void BinaryKnapsackBlock::guts_of_destructor(){
  // reset conditional bounds
  f_cond_lower = -Inf< double >();
  f_cond_upper = +Inf< double >();
-
- isEmpty = -1;
 
  // explicitly reset Constraint and Variables
  reset_static_constraints();
@@ -1227,47 +1207,37 @@ void BinaryKnapsackBlock::compute_conditional_bounds(){
 f_cond_lower = 0;
 f_cond_upper = 0;
 
-if( f_sense ){  // if it is a maximization problem
- for( Index i = 0 ; i < get_NItems() ; i++ ){
+for( Index i = 0 ; i < f_NItems ; i++ ){
+ 
+ double w = v_W[ i ];                           // weight of the current item
+ double p = f_sense ? v_P[ i ] : -v_P[ i ];     // profit of the current item
 
-  // items contained in the optimal solution 
-  if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] >= 0 ) ){ 
-   f_cond_lower += v_P[ i ];                
-   f_cond_upper += v_P[ i ];
-   continue;
-  }
-
-  // items not contained in the optimal solution
-  if( ( v_W[ i ] >= 0 ) && ( v_P[ i ] < 0 ) )
-   continue;
-
-  // remaining items
-  if( v_P[ i ] > 0 )
-   f_cond_upper += v_P[ i ];
-  else 
-   f_cond_lower += v_P[ i ];
+ // items contained in the optimal solution
+ if( w <= 0 && p >= 0 ){
+  f_cond_lower += p;                
+  f_cond_upper += p;  
+  continue;
  }
-} else { // otherwise it is a minimization problem
- for( Index i = 0 ; i < get_NItems() ; i++ ){
 
-  // items contained in the optimal solution 
-  if( ( v_W[ i ] <= 0 ) && ( v_P[ i ] <= 0 ) ){ 
-   f_cond_lower += v_P[ i ];                
-   f_cond_upper += v_P[ i ];
-   continue;
-  }
+ // items not contained in the optimal solution
+ if( w >= 0 && p <= 0 )
+  continue;
 
-  // items not contained in the optimal solution
-  if( ( v_W[ i ] >= 0 ) && ( v_P[ i ] > 0 ) )
-   continue;
+ // remaining items
+ if( p > 0 )
+  f_cond_upper += p;
+ else 
+  f_cond_lower += p;
 
-  // remaining items
-  if( v_P[ i ] > 0 )
-   f_cond_upper += v_P[ i ];
-  else 
-   f_cond_lower += v_P[ i ];
- }
 }
+
+// if it is a minimization problem
+if( ! f_sense ){
+ f_cond_lower = -f_cond_lower;
+ f_cond_upper = -f_cond_upper;
+ std::swap( f_cond_lower , f_cond_upper );  
+}
+
 }
 
 /*--------------------------------------------------------------------------*/
