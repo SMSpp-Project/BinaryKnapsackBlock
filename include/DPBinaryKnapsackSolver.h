@@ -178,7 +178,7 @@ void set_Block( Block * block ) override;
 * Eventually G[ f_NItems ].lab contains the optimal values of the problems 
 * containing all the items. The optimal value of the Binary Knapsack problem 
 * is the the best value among those in G[ f_NItems ].lab[ j ] with j less or 
-* equal to the Capacity of the Knapsack, and the optimal solution can be 
+* equal then the Capacity of the Knapsack, and the optimal solution can be 
 * reconstructed from the vectors of predecessors.
 *
 * Note that:
@@ -198,7 +198,7 @@ void set_Block( Block * block ) override;
 *       - the corresponding variable is fixed 
 *       - it has positive weight and negative profit -> set v_x[ i ] = 0
 *       - it has negative weight and positive profit -> set v_x[ i ] = 1
-*       - if its weight exceeds the "residual" capacity, i.e. the capacity
+*       - its weight exceeds the "residual" capacity, i.e. the capacity
 *         obtained subtrancting the weight of the items that are fixed to 1           
 *
 *   These conditions are checked at the beginning of each iteration. The last
@@ -206,7 +206,7 @@ void set_Block( Block * block ) override;
 *   the methods is_fixed0() and is_fixed1().
 *
 *
-* - The algorithm, as described above, only deal with item with positive 
+* - The algorithm, as described above, only deals with item with positive 
 *   weights. However, items with negative weight can be treated as follows:
 *   
 *   - if the weight is negative but the profit is positive, then the item is
@@ -400,16 +400,14 @@ private:
   
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
-  if( BKB->is_fixed( i ) ){
+  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 0 )      // if the variable 
+   return( true );                                      // is fixed to 0
+
+  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 1 )      // if the variable 
+   return( false );                                     // is fixed to 1
    
-   if( BKB->get_x( i ) == 0 )
-    return( true );
-   
-   return( false );
-  }
-   
-  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 ) 
-   return( true );  
+  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )          // if the item has positive
+   return( true );                              // weight and negative profit
 
   return( false );
 
@@ -423,16 +421,14 @@ private:
   
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
-  if( BKB->is_fixed( i ) ){
+  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 0 )      // if the variable 
+   return( false );                                     // is fixed to 0
+
+  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 1 )      // if the variable 
+   return( true );                                      // is fixed to 1
    
-   if( BKB->get_x( i ) == 1 )
-    return( true );
-   
-   return( false );
-  }
-   
-  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 ) 
-   return( true );  
+  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 )          // if the item has negative
+   return( true );                              // weight and positive profit
 
   return( false );
   
