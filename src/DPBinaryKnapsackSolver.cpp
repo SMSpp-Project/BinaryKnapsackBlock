@@ -69,8 +69,7 @@ void DPBinaryKnapsackSolver::set_Block( Block * block ){
 
 int DPBinaryKnapsackSolver::compute( bool changedvars ){
 
-// process all the pending modifications and compute the first item from 
-// which to restart the DP algorithm (start_item)
+// process all the pending modifications and compute start_item 
 
 process_outstanding_Modification(); 
 
@@ -84,12 +83,9 @@ if( BKB->is_empty() ){
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-// start_item is the first item processed by the DP algorithm. If compute is
-// called for the first time, the algorithm is entirely executed.
-// Otherwise process_outstanding_Modification(), after processing all the
-// modifications, computes the index of the item from which to restart the 
-// algorithm.                                                                 
+// start_item is the first item processed by the DP algorithm. If compute() is
+// called for the first time, start_item = 0 and the algorithm is entirely 
+// executed. Otherwise it is computed in process_outstanding_Modification()                                                               
 
 if( start_item == + Inf< int >() )  // if start_item == Inf it is assumed that 
  return( kOK );                     // everything has already been done in 
@@ -98,20 +94,22 @@ if( start_item == + Inf< int >() )  // if start_item == Inf it is assumed that
 int i = start_item;                 // otherwise start from start_item
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// As some of the items may be pre-processed, it is necessary to update
+// the capacity by subtracting the weight of the items that are fixed to 1, 
+// also saving their profits which need to be added to the objective
 
-int C = f_C;                // compute new capacity after the preprocessing
-double prp_P = 0;           // compute the profit coming from the preprocessing
+int C = f_C;                            // "residual" capacity
+double prp_P = 0;                       // "residual" profit
              
-for( int i = 0 ; i < f_NItems ; i++ ){
 
- if( isFixed1( i ) || isNeg( i ) ){  
-
-  C -= v_W[ i ];            // if i has been selected or if it has negative                     
-  prp_P += v_P[ i ];        // weight and profit, update C and prp_P                           
-                             
+for( int i = 0 ; i < f_NItems ; i++ ){  // also the items with both negative
+ if( isFixed1( i ) || isNeg( i ) ){     // weight and profit are treated as if
+  C -= v_W[ i ];                        // they were fixed to 1         
+  prp_P += v_P[ i ];                                  
  }                          
-
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 int maxcurrlab;                         // max current height of the graph
 int maxnextlab;                         // max next height of the graph    
@@ -124,7 +122,6 @@ G[ 0 ].lab[ 0 ] = 0;                    // in the origin
 
 
 // each time i % step == 0, currlab is saved in G[ i ].lab
-// the frequency depends on the reopt parameter
 int step = reopt < 1e-03 ? + Inf< int >() : std::ceil( 1 / reopt );
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -141,7 +138,7 @@ std::copy( G[ i ].lab.begin() , G[ i ].lab.begin() + maxcurrlab + 1 ,
 
 // At each iteration the algorithm computes the maximum height of the 
 // constructed graph in order to allocate only the necessary memory to store  
-// the current labels.
+// the next labels.
 //
 // According to the reopt parameter, labels can be saved in G[ i ].lab so that
 // they will be used for reoptimization.
@@ -151,58 +148,57 @@ std::copy( G[ i ].lab.begin() , G[ i ].lab.begin() + maxcurrlab + 1 ,
 
 for( ; i < f_NItems ; i++ ){
   
-  G[ i ].lab.clear();               // clear previous labels (if any) 
-  
-  
-  if( isFixed( i ) )                // if i is fixed (or preprocessed) 
-   continue;                        // continue       
+ G[ i ].lab.clear();                // clear previous labels (if any) 
+   
+ if( isFixed( i ) )                 // if i is fixed (or pre-processed) 
+  continue;                         // continue       
 
-  double p = v_P[ i ];              // profit of the current item   
-  int w = v_W[ i ] ;                // weight of the current item
+ double p = v_P[ i ];               // profit of the current item   
+ int w = v_W[ i ] ;                 // weight of the current item
 
-  if( isNeg( i ) ){                 // if the item has negative 
-   p = -p;                          // profit and weight
-   w = -w;                          // change both signs
-  }
+ if( isNeg( i ) ){                  // if the item has negative 
+  p = -p;                           // profit and weight
+  w = -w;                           // change both signs
+ }
 
-  if( w > C )                       // if the weight exceed the capacity
-   continue;                        // continue
+ if( w > C )                        // if the weight exceeds the capacity
+  continue;                         // continue
                     
-  // max height of the graph
-  maxnextlab = std::min( maxcurrlab + w , C );
+ // max height of the graph
+ maxnextlab = std::min( maxcurrlab + w , C );
 
-  // Initialize labels 
-  nextlab.resize( maxnextlab + 1 );
-  std::fill( nextlab.begin() , nextlab.end() , - Inf< double >() );
+ // Initialize labels 
+ nextlab.resize( maxnextlab + 1 );
+ std::fill( nextlab.begin() , nextlab.end() , - Inf< double >() );
 
-  // Allocate predecessors
-  G[ i + 1 ].pred.resize( maxnextlab + 1 );
+ // Allocate predecessors
+ G[ i + 1 ].pred.resize( maxnextlab + 1 );
 
-  // Initialize the best label among those of this slice 
-  double bestlab = -Inf< double >();
+ // Initialize the best label among those of this slice 
+ double bestlab = -Inf< double >();
 
-  for( int j = 0 ; j <= maxcurrlab ; j++ ){
+ for( int j = 0 ; j <= maxcurrlab ; j++ ){
                                                 
-   if( currlab[ j ] <= bestlab )    // if the node does not exists 
-    continue;                       // (currlab = -Inf) or if it does  
+  if( currlab[ j ] <= bestlab )     // if the node does not exists 
+   continue;                        // (currlab = -Inf) or if it does  
                                     // not have a better label continue                 
  
-   bestlab = currlab[ j ];                      // update bestlab
+  bestlab = currlab[ j ];                       // update bestlab
 
-   if( currlab[ j ] > nextlab[ j ] ){           // horizontal arc
-    G[ i + 1 ].pred[ j ] = false;               
-    nextlab[ j ] = currlab[ j ];
-   }
-
-   if( j + w > C )                              // check if the maximum 
-    continue;                                   // capacity is reached
-
-   if( currlab[ j ] + p > nextlab[ j + w ] ){   // diagonal arc 
-    G[ i + 1 ].pred[ j + w ] = true;            
-    nextlab[ j + w ] = currlab[ j ] + p;
-   }
-
+  if( currlab[ j ] > nextlab[ j ] ){            // horizontal arc
+   G[ i + 1 ].pred[ j ] = false;               
+   nextlab[ j ] = currlab[ j ];
   }
+
+  if( j + w > C )                               // check if the maximum 
+   continue;                                    // capacity is reached
+
+  if( currlab[ j ] + p > nextlab[ j + w ] ){    // diagonal arc 
+   G[ i + 1 ].pred[ j + w ] = true;            
+   nextlab[ j + w ] = currlab[ j ] + p;
+  }
+
+ }
 
  // reoptimization- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
@@ -295,10 +291,10 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
 
   int w = isNeg( i ) ? - v_W[ i ] : v_W[ i ];   // weight of the current item
   
-  if( w > besth ){                              // items whose weight exceeds
-   v_x[ i ] = 0;                                // the total capacity
-   continue; 
-  }
+  if( w > besth ){                              // if w > besth either the 
+   v_x[ i ] = 0;                                // weight exceeds the capacity 
+   continue;                                    // or it has surely not been
+  }                                             // selected
 
   if( G[ i + 1 ].pred[ besth ] ){
    v_x[ i ] = 1; 
@@ -457,6 +453,10 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
+// Any changes in Profits must be processed only AFTER checking the changes 
+// on the sense of the Objective. Hence v_mod_tmp is scanned twice, checking
+// modifications on Capacity and Objective sense first 
+
  for( auto mod : v_mod_tmp ){
 
   // BinaryKnapsackBlockMod - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -529,14 +529,14 @@ for( auto mod : v_mod_tmp ){
       { start_item = std::min( start_item , int( tmod->rng().first ) ); break; }
     
     // unfix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // unfix a variable x could possibily increase the residual capacity 
-    // making reoptimization not exploitable 
+    // unfix a variable x could increase the residual capacity making
+    // reoptimization not exploitable 
 
      case( BinaryKnapsackBlockMod::eUnfixX ): start_item = 0; break;         
 
     // change Weights - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     // update modified weights checking the integrality property. 
-    // check also if a new weight could increase the residual capacity making
+    // check also if a new weight increases the residual capacity making
     // reoptimization not exploitable 
 
      case( BinaryKnapsackBlockMod::eChgWeight ):{    
@@ -592,14 +592,14 @@ for( auto mod : v_mod_tmp ){
       { start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) ); break; }
     
     // unfix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // unfix a variable x could possibily increase the residual capacity 
-    // making reoptimization not exploitable 
+    // unfix a variable x could increase the residual capacity making
+    // reoptimization not exploitable 
 
      case( BinaryKnapsackBlockMod::eUnfixX ): start_item = 0; break;
 
     // change Weights - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     // update modified weights checking the integrality property. 
-    // check also if a new weight could increase the residual capacity making
+    // check also if a new weight increases the residual capacity making
     // reoptimization not exploitable 
 
      case( BinaryKnapsackBlockMod::eChgWeight ):{    

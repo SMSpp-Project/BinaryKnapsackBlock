@@ -196,7 +196,7 @@ void generate_abstract_constraints( Configuration * stcc = nullptr ) override;
   *
   * The objective function is represented as a LinearFunction whose 
   * coefficients are the profits of the items. The sense of the objective is
-  * maximization.  */
+  * maximization or minimization according to f_sense.  */
 
 void generate_objective( Configuration * objc = nullptr ) override;
 
@@ -935,7 +935,7 @@ public:
 
 /*------------------------------- FRIENDS ----------------------------------*/
 
- friend BinaryKnapsackBlock;  ///< make BinaryKnapsackBlock friend
+ friend BinaryKnapsackBlock;        ///< make BinaryKnapsackBlock friend
 
 /*----------- CONSTRUCTING AND DESTRUCTING BinaryKnapsackSolution ----------*/
 
@@ -982,7 +982,7 @@ public:
 /// vector containing the values of the current solution. It contains doubles
 /// to allow to store scaled solutions of some double factor
 
-std::vector<double> v_x;   ///< the variables
+std::vector< double > v_x;      ///< the variables
 
 /*--------------------------------------------------------------------------*/
 

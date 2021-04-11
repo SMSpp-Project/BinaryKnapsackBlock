@@ -38,8 +38,9 @@ namespace SMSpp_di_unipi_it
  * Knapsack Problem [see BinaryKnapsackBlock.h] using the standard Dynamic
  * Programming approach.
  *
- * The algorithm assumes that the weights of the items are integers; otherwise
- * an exception is thrown. Capacity and Profits can be double.
+ * The algorithm assumes that the weights of the items are integers (any non
+ * integer weight will lead to exception been thrown). Capacity and Profits 
+ * can be double.
  *
  * There are no restrictions on the weights and profits sign (both positive 
  * and negative values ​​are allowed), and the objective sense of the 
@@ -163,11 +164,11 @@ void set_Block( Block * block ) override;
 *   G[ i ].lab[ j ]  corresponds to node u_{ i , j } and contains the optimal 
 *                    value of SP( i , j )
 *
-*   G[ i ].pred[ j ] corresponds to the arc that has been selected in order
-*                    to obtained the value in G[ i ].lab[ j ]. 
-*                    It is true if G[ i ].lab[ j ] has been obtained by
-*                    selecting a "diagonal" arc, i.e. the corresponding
-*                    solution contains the i-th item. It is false otherwise.     
+*   G[ i ].pred[ j ] corresponds to the last arc that has been selected in 
+*                    order to obtain the value in G[ i ].lab[ j ]. 
+*                    It is true if it is a "diagonal" arc, i.e. the 
+*                    corresponding solution contains the i-th item; it is 
+*                    false otherwise.     
 *
 * At each iteration i, each entry of G[ i + 1 ].lab is computed starting 
 * from G[ i ].lab, by comparing the profits of all the possible path reaching
@@ -175,10 +176,10 @@ void set_Block( Block * block ) override;
 * accordingly.
 * 
 * Eventually G[ f_NItems ].lab contains the optimal values of the problems 
-* with all items. The optimal value of the Binary Knapsack problem is the
-* the best value among those in G[ f_NItems ].lab[ j ] with j <= Capacity of 
-* the Knapsack, and the optimal solution can be reconstructed from the vectors 
-* of predecessors.
+* containing all the items. The optimal value of the Binary Knapsack problem 
+* is the the best value among those in G[ f_NItems ].lab[ j ] with j less or 
+* equal to the Capacity of the Knapsack, and the optimal solution can be 
+* reconstructed from the vectors of predecessors.
 *
 * Note that:
 *
@@ -197,9 +198,12 @@ void set_Block( Block * block ) override;
 *       - the corresponding variable is fixed 
 *       - it has positive weight and negative profit -> set v_x[ i ] = 0
 *       - it has negative weight and positive profit -> set v_x[ i ] = 1
-*  
-*   These conditions are checked at the beginning of each iteration by
-*   calling the methods is_fixed0() and is_fixed1().
+*       - if its weight exceeds the "residual" capacity, i.e. the capacity
+*         obtained subtrancting the weight of the items that are fixed to 1           
+*
+*   These conditions are checked at the beginning of each iteration. The last
+*   one is directly checked, whereas the first three are checked by calling
+*   the methods is_fixed0() and is_fixed1().
 *
 *
 * - The algorithm, as described above, only deal with item with positive 
@@ -216,15 +220,14 @@ void set_Block( Block * block ) override;
 *     selected, it neutralizes the effect of the initial selection, i.e. it is
 *     equivalent to not select the original item. Conversly, if the added item
 *     has not been selected, it is equivalent to select the original item.
-*     The method is_Neg() returns true if this transformation must be done,
-*     and it is called at each iteration and when the solution has to be
-*     be reconstructed.
+*     The method is_Neg() returns true if this transformation must be done.
 *
 *
 * - The implemented algorithm always solves a maximization problem. However,
-*   this is not restrictive because the interface automatically manages all   
-*   the necessary transformation, i.e. it changes the signs of the profits
-*   when the instance is loaded and set f_sense accordingly. 
+*   if the problem encoded in the BinaryKnapsackBlock is a minimization one,
+*   the signs of all the profits are changed immediately when the instance is
+*   loaded and f_sense is set accordingly. The sign of the objective can then
+*   be properly changed when needed. 
 *                                                                           */
 
 int compute( bool changedvars = true ) override;
