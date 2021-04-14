@@ -438,8 +438,8 @@ private:
 /// return true if item i is fixed because the variable is fixed or the item
 /// can be preprocessed  
 
- bool isFixed( Index i ){
-  return( isFixed0( i ) || isFixed1( i ) );  
+ bool isFixed( Index i ){                       // if the variable is fixed
+  return( isFixed0( i ) || isFixed1( i ) );     // to 1 or to 0
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -449,11 +449,11 @@ private:
 
  bool isNeg( Index i ){
  
-  if( isFixed( i ) )
+  if( isFixed( i ) )                        // if the variable is fixed
    return( false ); 
 
-  if( v_W[ i ] < 0 && v_P[ i ] < 0 )
-   return( true );
+  if( v_W[ i ] < 0 && v_P[ i ] < 0 )        // if the weight and the profit
+   return( true );                          // are negative
 
   return( false );
 
