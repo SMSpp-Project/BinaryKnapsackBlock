@@ -77,7 +77,7 @@ process_outstanding_Modification();
 
 auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
  
-if( BKB->is_empty() ){
+if( BKB->is_empty() ){ 
  obj = - Inf< double >();
  return( kInfeasible );
 }
@@ -147,7 +147,7 @@ maxcurrlab = currlab.size() - 1;
 
 for( ; i < f_NItems ; i++ ){
 
- // reoptimization- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ // reoptimization - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
  if( i % step == 0  ) 
   G[ i ].lab = currlab;             // save labels in G[ i ].lab
@@ -219,12 +219,12 @@ std::swap( G[ f_NItems ].lab , currlab );
 
 // find optimal value - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
 
-int maxh = std::min( maxcurrlab , C );
+maxcurrlab = std::min( maxcurrlab , C );    // Capacity may have been changed
 int besth;
 
 obj = - Inf< double >();                    // Initialize objective value
 
-for( int i = 0 ; i <= maxh ; i++ ){ 
+for( int i = 0 ; i <= maxcurrlab ; i++ ){ 
  if( G[ f_NItems ].lab[ i ] > obj ){
   obj = G[ f_NItems ].lab[ i ]; 
   besth = i;
@@ -260,7 +260,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
   throw( std::invalid_argument( "compute() must be called first" ) );
 
  // check if the solution has already been computed
- if( ! v_x.empty() ){           
+ if( ! v_x.empty() ){       
   BKB->set_x( v_x );        // write the solution in the BinaryKnapsackBlock 
   return;                     
  }         
@@ -291,7 +291,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
   int w = isNeg( i ) ? - v_W[ i ] : v_W[ i ];   // weight of the current item
   
   if( w > besth ){                              // if w > besth either the 
-   v_x[ i ] = 0;                                // weight exceeds the capacity 
+   v_x[ i ] = isNeg( i ) ? 1 : 0;               // weight exceeds the capacity 
    continue;                                    // or it has surely not been
   }                                             // selected
 
@@ -456,11 +456,13 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 // on the sense of the Objective. Hence v_mod_tmp is scanned twice, checking
 // modifications on Capacity and Objective sense first 
 
- for( auto mod : v_mod_tmp ){
+ auto mod = v_mod_tmp.begin(); 
+
+ while( mod != v_mod_tmp.end() ){
 
   // BinaryKnapsackBlockMod- - - - - - - - - - - - - - - - - - - - - - - - - -
   
-  const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
+  const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod->get() );
 
    if( tmod ){ 
     switch( tmod->type() ){ 
@@ -477,7 +479,8 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
       start_item = nC > f_C ? 0 : std::min( f_NItems , start_item );
 
       f_C = nC;                                     // update the Capacity
- 
+      
+      mod = v_mod_tmp.erase( mod );
       break;
      }                    
 
@@ -492,11 +495,17 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
        v_P[ i ] = - v_P[ i ];
 
       start_item = 0;                        // restart from the beginning 
-    
+      
+      mod = v_mod_tmp.erase( mod );
       break;
      }                                      
-    }                                               
+     
+     default: mod++;
+    
+    }                                              
    }
+   else
+    mod = v_mod_tmp.erase( mod );   // it is not a physical modification
  }
 
 for( auto mod : v_mod_tmp ){                                                
