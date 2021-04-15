@@ -5,17 +5,14 @@ split to two different projects):
 
 - `BinaryKnapsackBlock`, a SMS++ :Block for the Binary Knapsack Problem
 
-- `DP BinaryKnapsackSolver`, a SMS++ :Solver for BinaryKnapsackBlock based on
-  a trivial implementation of the standard Dynamic Programming approach,
-  with the significant assumption that the items with the "wrong sign"
-  (in a maximization problem, having a negative weight and a positive cost)
-  are "few" w.r.t. those with the "right sign" (in a maximization problem,
-  having both weight and cost positive)
+- `DPBinaryKnapsackSolver`, a SMS++ :Solver for BinaryKnapsackBlock based on
+  a trivial implementation of the standard Dynamic Programming approach
 
 
 ## Getting started
 
-These instructions will let you build MCFBlock and MCFSolver on your system.
+These instructions will let you build BinaryKnapsackBlock and 
+DPBinaryKnapsackSolver on your system.
 
 
 ### Requirements
