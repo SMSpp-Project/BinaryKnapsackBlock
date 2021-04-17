@@ -961,9 +961,9 @@ void BinaryKnapsackBlock::print( std::ostream & output ) const {
  output << "Number of items: " << f_NItems << std::endl; 
  output << "Capacity: " << f_C << std::endl;
  
- std::cout << "\tWeights\tProfits\n";
+ output << "\tWeights\tProfits\n";
  for( int i = 0 ; i < f_NItems ; i++ )
-  std::cout << "Item " << i << "\t" << v_W[i] << "\t" << v_P[i] << std::endl;
+  output << "Item " << i << "\t" << v_W[i] << "\t" << v_P[i] << std::endl;
 
 }
 
