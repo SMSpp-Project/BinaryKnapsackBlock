@@ -102,7 +102,7 @@ int C = f_C;                            // "residual" capacity
 double prp_P = 0;                       // "residual" profit
              
 
-for( int i = 0 ; i < f_NItems ; i++ ){  // also the items with both negative
+for( int i = 0 ; i < f_N ; i++ ){       // also the items with both negative
  if( isFixed1( i ) || isNeg( i ) ){     // weight and profit are treated as if
   C -= v_W[ i ];                        // they were fixed to 1         
   prp_P += v_P[ i ];                                  
@@ -145,7 +145,7 @@ maxcurrlab = currlab.size() - 1;
 
 // DP Algorithm- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-for( ; i < f_NItems ; i++ ){
+for( ; i < f_N ; i++ ){
 
  // reoptimization - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
@@ -213,9 +213,9 @@ for( ; i < f_NItems ; i++ ){
 
 } // end( DP algorithm )- - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-// always save last labels in G[ f_NItems ].lab
+// always save last labels in G[ f_N ].lab
 
-std::swap( G[ f_NItems ].lab , currlab );
+std::swap( G[ f_N ].lab , currlab );
 
 // find optimal value - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
 
@@ -225,13 +225,13 @@ int besth;
 obj = - Inf< double >();                    // Initialize objective value
 
 for( int i = 0 ; i <= maxcurrlab ; i++ ){ 
- if( G[ f_NItems ].lab[ i ] > obj ){
-  obj = G[ f_NItems ].lab[ i ]; 
+ if( G[ f_N ].lab[ i ] > obj ){
+  obj = G[ f_N ].lab[ i ]; 
   besth = i;
  }
 }
 
-G[ f_NItems ].lab.resize( besth + 1 ); 
+G[ f_N ].lab.resize( besth + 1 ); 
 
 obj += prp_P;             // add the profit coming from the preprocessing
 
@@ -272,11 +272,11 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
  // rest of the solution from G[ i ].pred. For the "negative items" (with 
  // negative weight and profit) change x with 1 - x
 
- int besth = G[ f_NItems ].lab.size() - 1;
+ int besth = G[ f_N ].lab.size() - 1;
 
- v_x.resize( f_NItems );
+ v_x.resize( f_N );
 
- for( int i = f_NItems - 1 ; i >= 0 ; i-- ){
+ for( int i = f_N - 1 ; i >= 0 ; i-- ){
 
   if( isFixed0( i ) ){                          // items fixed to 0
    v_x[ i ] = 0;
@@ -388,18 +388,18 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
    f_sense = BKB->get_objective_sense();    // get the sense of the objective
 
-   f_NItems = BKB->get_NItems();            // get the number of items
+   f_N = BKB->get_NItems();                 // get the number of items
 
    f_C = std::floor( BKB->get_Capacity() ); // get the Capacity
 
-   v_P.resize( f_NItems );                  
+   v_P.resize( f_N );                  
 
    const auto & P = BKB->get_Profits();     // get profits  
                                              
    for( int i = 0 ; i < P.size() ; i++ )    // if the sense is minimization 
     v_P[ i ] = f_sense ? P[ i ] : - P[ i ]; // change the sign of the profits 
 
-   v_W.resize( f_NItems );                  // prepare vector of weights
+   v_W.resize( f_N );                       // prepare vector of weights
 
    const auto & W = BKB->get_Weights();
 
@@ -418,7 +418,7 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
  
   G.clear();                            // clear previous graph (if any)  
 
-  G.resize( f_NItems + 1 );             // resize Graph
+  G.resize( f_N + 1 );                  // resize Graph
   
   start_item = 0;                       // (re-)start from the beginning
 
@@ -469,14 +469,14 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
     // Change Capacity - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     // If the new capacity is smaller than the previous one, restart the DP
-    // algorithm from f_NItems, i.e. only recompute the optimal value
+    // algorithm from f_N, i.e. only recompute the optimal value
     // Otherwise restart from the first item   
     
      case( BinaryKnapsackBlockMod::eChgCapacity ): {
      
       int nC = std::floor( BKB->get_Capacity() );   // get new Capacity
 
-      start_item = nC > f_C ? 0 : std::min( f_NItems , start_item );
+      start_item = nC > f_C ? 0 : std::min( f_N , start_item );
 
       f_C = nC;                                     // update the Capacity
       
@@ -491,7 +491,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
       
       f_sense = BKB->get_objective_sense();  // update f_sense
 
-      for( int i = 0 ; i < f_NItems ; i++ )  // change the sign of all profits
+      for( int i = 0 ; i < f_N ; i++ )       // change the sign of all profits
        v_P[ i ] = - v_P[ i ];
 
       start_item = 0;                        // restart from the beginning 

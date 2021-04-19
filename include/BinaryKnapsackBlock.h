@@ -111,7 +111,7 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
   * also be used as the void constructor. */
 
 explicit BinaryKnapsackBlock( Block * father = nullptr )
-  : Block( father ) , f_NItems( 0 ) , f_C( 0 ) , AR( 0 ) , 
+  : Block( father ) , f_N( 0 ) , f_C( 0 ) , AR( 0 ) , 
     f_sense( true ) , f_cond_lower( - Inf<double>() ) , 
     f_cond_upper( + Inf<double>() ) { }
 
@@ -290,7 +290,7 @@ double get_valid_lower_bound( bool conditional = false )
 /*--------------------------------------------------------------------------*/
  /// get the number of items
 
-Index get_NItems() const { return( f_NItems ); }
+Index get_NItems() const { return( f_N ); }
 
 /*--------------------------------------------------------------------------*/
  /// get the capacity of the Knapsack
@@ -681,7 +681,7 @@ void load( std::istream & input ) override;
 /*--------------------------- PROTECTED FIELDS  ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-Index f_NItems;                 ///< the number of Items 
+Index f_N;                 ///< the number of Items 
 double f_C;                     ///< the Capacity of the Knapsack
 std::vector<double> v_W;        ///< vector of Weights          
 std::vector<double> v_P;        ///< vector of Profits
@@ -702,7 +702,7 @@ double f_cond_upper;            ///< conditional upper bound, can be infinite
 
 std::vector< ColVariable > v_x;         ///< the static binary variables
 std::vector< FRowConstraint > v_cnst;   ///< the static constraint 
-FRealObjective f;                       ///< the (linear) objective function
+FRealObjective f_obj;                       ///< the (linear) objective function
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PRIVATE PART OF THE CLASS --------------------------*/

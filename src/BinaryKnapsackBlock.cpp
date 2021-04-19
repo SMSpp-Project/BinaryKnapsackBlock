@@ -115,7 +115,7 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  
- f_NItems = n;
+ f_N = n;
  f_C = Capacity;
 
  v_W = std::move( Weights );  
@@ -145,7 +145,7 @@ void BinaryKnapsackBlock::deserialize( const netCDF::NcGroup & group ){
  netCDF::NcDim ni = group.getDim( "NItems" );
  if( ni.isNull() )
   throw( std::logic_error( "NItems dimension is required" ) );
- f_NItems = ni.getSize();
+ f_N = ni.getSize();
 
  netCDF::NcDim c = group.getDim( "Capacity" );
  if( c.isNull() )
@@ -156,14 +156,14 @@ void BinaryKnapsackBlock::deserialize( const netCDF::NcGroup & group ){
  if( w.isNull() )
   throw( std::logic_error( "Weights are required" ) );
  
- v_W.resize( f_NItems );
+ v_W.resize( f_N );
  w.getVar( v_W.data() );
 
  netCDF::NcVar p = group.getVar( "Profits" );
  if( p.isNull() )
   throw( std::logic_error( "Profits are required" ) );
  
- v_P.resize( f_NItems );
+ v_P.resize( f_N );
  p.getVar( v_P.data() );
 
  generate_abstract_variables();
@@ -242,9 +242,9 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc ){
   }
 
  LinearFunction * obj = new LinearFunction( std::move( p ) , 0  );
- f.set_function( obj , eNoMod );
- f.set_sense( f_sense , eNoMod );
- set_objective( & f , eNoMod );
+ f_obj.set_function( obj , eNoMod );
+ f_obj.set_sense( f_sense , eNoMod );
+ set_objective( & f_obj , eNoMod );
  
  AR |= HasObj;
 }
@@ -279,7 +279,7 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
  
  double C = f_C;
 
- for( int i = 0 ; i < f_NItems ; i++ ){
+ for( int i = 0 ; i < f_N ; i++ ){
   if( v_x[ i ].is_fixed()  && v_x[ i ].get_value() )
    C -= v_W[ i ]; 
  }
@@ -290,7 +290,7 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
 
  double neg_weights = 0;
 
- for( Index i = 0 ; i < f_NItems ; i++ ){
+ for( Index i = 0 ; i < f_N ; i++ ){
   
   if( is_fixed( i ) )
    continue; 
@@ -325,7 +325,7 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
  } else
     BKB = new BinaryKnapsackBlock( father );
 
-  BKB->load( f_NItems , f_C , v_W , v_P );
+  BKB->load( f_N , f_C , v_W , v_P );
   BKB->set_objective_sense( f_sense );
 
   return( BKB );
@@ -784,7 +784,7 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
   v_P[ item ] = NProfit; 
 
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( f.get_function() );
+  LinearFunction *lf = dynamic_cast<LinearFunction*>( f_obj.get_function() );
   lf->modify_coefficient( item , NProfit , issueAMod );
  } 
  else if( not_dry_run( issueMod ) ) // otherwise only physical representation 
@@ -827,7 +827,7 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
              v_P.begin() + rng.first );
   
   // abstract representation  
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( f.get_function() );
+  LinearFunction *lf = dynamic_cast<LinearFunction*>( f_obj.get_function() );
   lf->modify_coefficients( std::vector<double>( NProfit , 
                     NProfit + ( rng.second - rng.first ) ) , rng , issueAMod );
  } 
@@ -869,7 +869,7 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
   copyidx( v_P , nms , NProfit );
   
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( f.get_function() );
+  LinearFunction *lf = dynamic_cast<LinearFunction*>( f_obj.get_function() );
   lf->modify_coefficients( std::vector<double>( NProfit , 
                            NProfit + nms.size() ) , 
                            Subset( nms ) , issueAMod );
@@ -937,7 +937,7 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
   f_sense = sense; 
-  f.set_sense( sense , issueAMod );
+  f_obj.set_sense( sense , issueAMod );
  } 
  else if( not_dry_run( issueMod ) ) // otherwise only physical representation 
   f_sense = sense;
@@ -958,11 +958,11 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
 void BinaryKnapsackBlock::print( std::ostream & output ) const {
  
  output << "BinaryKnapsackBlock\n";
- output << "Number of items: " << f_NItems << std::endl; 
+ output << "Number of items: " << f_N << std::endl; 
  output << "Capacity: " << f_C << std::endl;
  
  output << "\tWeights\tProfits\n";
- for( int i = 0 ; i < f_NItems ; i++ )
+ for( int i = 0 ; i < f_N ; i++ )
   output << "Item " << i << "\t" << v_W[i] << "\t" << v_P[i] << std::endl;
 
 }
@@ -977,21 +977,21 @@ void BinaryKnapsackBlock::load( std::istream & input ){
   guts_of_destructor();
 
 // read problem data
-if( !( input >> f_NItems ) )
+if( !( input >> f_N ) )
  throw( std::invalid_argument( "error reading number of items" ) );
 
 if( !( input >> f_C ) )
  throw( std::invalid_argument( "error reading Capacity" ) );
 
-v_W.resize( f_NItems );
-v_P.resize( f_NItems );
+v_W.resize( f_N );
+v_P.resize( f_N );
 
-for( Index i = 0 ; i < f_NItems ; i++ ){
+for( Index i = 0 ; i < f_N ; i++ ){
  if( !( input >> v_W[i] ) )
   throw( std::invalid_argument( "error reading Weights" ) );
 }
 
-for( Index i = 0 ; i < f_NItems ; i++ ){
+for( Index i = 0 ; i < f_N ; i++ ){
  if( !( input >> v_P[i] ) )
   throw( std::invalid_argument( "error reading Profits" ) );
 }
@@ -1016,7 +1016,7 @@ void BinaryKnapsackBlock::guts_of_destructor(){
   c.clear();
  v_cnst.clear();
  // clear the objective function
- f.clear();
+ f_obj.clear();
  // clear all variables
  v_x.clear();
 
@@ -1051,7 +1051,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   // if the AR of the objective exists
   if( AR & HasObj ){ 
    // get the objective function
-   auto lfo = dynamic_cast< LinearFunction * >( f.get_function() ); 
+   auto lfo = dynamic_cast< LinearFunction * >( f_obj.get_function() ); 
    // and check if the modification is on the objective  
     if( lf == lfo ){ 
      // vector of new profits 
@@ -1103,7 +1103,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   // if the AR of the objective exists
   if( AR & HasObj ){
    // get the objective function
-   auto lfo = dynamic_cast< LinearFunction * >( f.get_function() ); 
+   auto lfo = dynamic_cast< LinearFunction * >( f_obj.get_function() ); 
    // and check if the modification is on the objective  
     if( lf == lfo ){
      // vector of new profits 
@@ -1187,7 +1187,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   if( !( AR & HasObj ) ) // check if the objective exists
    throw(std::invalid_argument("Modification to non-constructed objective"));
 
-   auto obj = dynamic_cast< Objective * >( & f );
+   auto obj = dynamic_cast< Objective * >( & f_obj );
    if( tmod->of() == obj ){ 
     bool sense = tmod->type() == Objective::eMax ? 1 : 0;
     set_objective_sense( sense , make_par( eNoBlck , chnl ) , eDryRun );
@@ -1207,7 +1207,7 @@ void BinaryKnapsackBlock::compute_conditional_bounds(){
 f_cond_lower = 0;
 f_cond_upper = 0;
 
-for( Index i = 0 ; i < f_NItems ; i++ ){
+for( Index i = 0 ; i < f_N ; i++ ){
  
  double w = v_W[ i ];                           // weight of the current item
  double p = f_sense ? v_P[ i ] : -v_P[ i ];     // profit of the current item

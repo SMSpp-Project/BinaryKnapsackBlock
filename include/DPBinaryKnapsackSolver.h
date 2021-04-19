@@ -102,7 +102,7 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
-DPBinaryKnapsackSolver() : Solver() , f_NItems( 0 ) , f_C( 0 ) , 
+DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , 
                            f_sense( true ), obj( - Inf< double >() ) , 
                            start_item( 0 ) , reopt( 0 ){}
 
@@ -149,12 +149,12 @@ void set_Block( Block * block ) override;
 * where w and p are the weight and the profit of the ( i + 1 )-th item. 
 * The Binary Knapsack problem is equivalent to finding a path in this graph
 * that maximizes the total profit, from a "dummy" node u_{ 0 , 0 } to a node 
-* u_{ f_NItems , j } with j <= Capacity of the Knapsack. In a solution path, 
+* u_{ f_N , j } with j <= Capacity of the Knapsack. In a solution path, 
 * selecting a "diagonal" arc means that the ( i + 1 )-th item has been 
 * selected, whereas selecting a "horizontal" arc is equivalent to discard
 * the item.  
 * 
-* Therefore, G is implemented as a vector with ( f_NItems + 1 ) entries, one
+* Therefore, G is implemented as a vector with ( f_N + 1 ) entries, one
 * for each item + the "dummy" node. Each entry contains a "slice" that is a  
 * data structure with two vectors:  G[ i ].lab (or "labels") and G[ i ].pred 
 * (or "predecessors").
@@ -175,9 +175,9 @@ void set_Block( Block * block ) override;
 * the corresponding node (choosing the best one), and G[ i ].pred is updated 
 * accordingly.
 * 
-* Eventually G[ f_NItems ].lab contains the optimal values of the problems 
+* Eventually G[ f_N ].lab contains the optimal values of the problems 
 * containing all the items. The optimal value of the Binary Knapsack problem 
-* is the the best value among those in G[ f_NItems ].lab[ j ] with j less or 
+* is the the best value among those in G[ f_N ].lab[ j ] with j less or 
 * equal then the Capacity of the Knapsack, and the optimal solution can be 
 * reconstructed from the vectors of predecessors.
 *
@@ -348,7 +348,7 @@ protected:
 
 /* data of the Binary Knapsack instance - - - - - - - - - - - - - - - - - - */
 
- int f_NItems;                          ///< the number of Items 
+ int f_N;                          		///< the number of Items 
  int f_C;                               ///< the Capacity of the Knapsack
  std::vector< int > v_W;                ///< vector of Weights          
  std::vector< double > v_P;             ///< vector of Profits
