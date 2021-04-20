@@ -90,6 +90,10 @@ typedef std::vector<double>::iterator dblVec_it;
 typedef std::vector<bool> boolVec;
 typedef const boolVec c_boolVec;
 
+/// tolerance for binary variables - - - - - - - - - - - - - - - - - - - - - -
+
+static constexpr double BinaryTol = 1e-12;
+
 
 /**@} ----------------------------------------------------------------------*/
 /*------------------------------- FRIENDS ----------------------------------*/
