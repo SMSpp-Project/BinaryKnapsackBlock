@@ -266,7 +266,7 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
 // do it using the physical representation
  double tot_weight = 0; 
  for( Index i = 0 ; i < v_W.size() ; i++ )
-  tot_weight += v_W[ i ] * v_x[ i ].get_value();
+  tot_weight += v_W[ i ] * get_x( i ); 
 
  return( tot_weight <= f_C ? true : false );    
 }
@@ -279,7 +279,7 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
  
  double C = f_C;
 
- for( int i = 0 ; i < f_N ; i++ ){
+ for( Index i = 0 ; i < f_N ; i++ ){
   if( v_x[ i ].is_fixed()  && v_x[ i ].get_value() )
    C -= v_W[ i ]; 
  }
@@ -962,7 +962,7 @@ void BinaryKnapsackBlock::print( std::ostream & output ) const {
  output << "Capacity: " << f_C << std::endl;
  
  output << "\tWeights\tProfits\n";
- for( int i = 0 ; i < f_N ; i++ )
+ for( Index i = 0 ; i < f_N ; i++ )
   output << "Item " << i << "\t" << v_W[i] << "\t" << v_P[i] << std::endl;
 
 }

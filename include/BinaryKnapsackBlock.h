@@ -92,7 +92,7 @@ typedef const boolVec c_boolVec;
 
 /// tolerance for binary variables - - - - - - - - - - - - - - - - - - - - - -
 
-static constexpr double BinaryTol = 1e-12;
+static constexpr double BinaryTol = 1e-9;
 
 
 /**@} ----------------------------------------------------------------------*/
@@ -436,7 +436,7 @@ bool get_x( Index i );
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution
 
-void get_x( boolVec & xSol , Range rng = Range(0 , Inf<Index>()));
+void get_x( boolVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the solution for an arbitrary subset of items
@@ -456,7 +456,7 @@ void set_x( Index i , bool value );
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set a contiguous interval of the solution
 
-void set_x( c_boolVec & xSol , Range rng = Range(0 , Inf<Index>()));
+void set_x( c_boolVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the solution for an arbitrary subset of items
@@ -685,7 +685,7 @@ void load( std::istream & input ) override;
 /*--------------------------- PROTECTED FIELDS  ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-Index f_N;                 ///< the number of Items 
+Index f_N;                 		///< the number of Items 
 double f_C;                     ///< the Capacity of the Knapsack
 std::vector<double> v_W;        ///< vector of Weights          
 std::vector<double> v_P;        ///< vector of Profits
@@ -706,7 +706,7 @@ double f_cond_upper;            ///< conditional upper bound, can be infinite
 
 std::vector< ColVariable > v_x;         ///< the static binary variables
 std::vector< FRowConstraint > v_cnst;   ///< the static constraint 
-FRealObjective f_obj;                       ///< the (linear) objective function
+FRealObjective f_obj;                   ///< the (linear) objective function
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PRIVATE PART OF THE CLASS --------------------------*/
