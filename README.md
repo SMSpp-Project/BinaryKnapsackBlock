@@ -95,12 +95,7 @@ SMS++/lib/makefile-inc
 ```
 
   file is provided for allowing external makefiles to ensure that the library
-  is up-to-date (useful in case one is actually developing it). The simplest
-  way to learn how to use it is to check the makefiles of the tester
-
-```sh
-MCFBlock/test/makefile
-```
+  is up-to-date (useful in case one is actually developing it).
 
   Note that the "basic" makefile macros
 
