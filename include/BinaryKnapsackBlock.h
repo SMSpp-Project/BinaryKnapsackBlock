@@ -685,7 +685,7 @@ void load( std::istream & input ) override;
 /*--------------------------- PROTECTED FIELDS  ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-Index f_N;                 		///< the number of Items 
+Index f_N;                      ///< the number of Items 
 double f_C;                     ///< the Capacity of the Knapsack
 std::vector<double> v_W;        ///< vector of Weights          
 std::vector<double> v_P;        ///< vector of Profits
@@ -959,7 +959,7 @@ public:
 
  void write( Block * const block ) override final;
 
- void serialize( netCDF::NcGroup & group )  override final;
+ void serialize( netCDF::NcGroup & group ) const override final;
 
  void print( std::ostream & output );
 
@@ -989,6 +989,8 @@ public:
 std::vector< double > v_x;      ///< the variables
 
 /*--------------------------------------------------------------------------*/
+
+SMSpp_insert_in_factory_h;
 
 }; // end( class( BinaryKnapsackSolution ) )
 

@@ -65,6 +65,10 @@ static void copyidx( std::vector<T> & vec , c_Subset & nms ,
 
 SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlock );
 
+// register BinaryKnapsackSolution to the Solution factory
+
+SMSpp_insert_in_factory_cpp_1( BinaryKnapsackSolution );
+
 /*--------------------------------------------------------------------------*/
 /*-------------------- METHODS OF BinaryKnapsackBlock ----------------------*/
 /*--------------------------------------------------------------------------*/
@@ -1300,7 +1304,7 @@ void BinaryKnapsackSolution::write( Block * const block ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackSolution::serialize( netCDF::NcGroup & group ){
+void BinaryKnapsackSolution::serialize( netCDF::NcGroup & group ) const {
  if( ! v_x.empty() ) {
   netCDF::NcDim ni = group.addDim( "n" , v_x.size() ); 
 ( group.addVar( "x" , netCDF::NcDouble() , ni ) ).putVar( v_x.data() );

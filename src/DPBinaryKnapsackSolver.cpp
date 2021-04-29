@@ -521,7 +521,7 @@ for( auto mod : v_mod_tmp ){
 
      case( BinaryKnapsackBlockMod::eChgProfit ):{          
      
-      for( int i = tmod->rng().first ; i < tmod->rng().second ; i++ )
+      for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ )
        v_P[ i ] = f_sense ? BKB->get_Profit( i ) : - BKB->get_Profit( i );
 
       start_item = std::min( start_item , int( tmod->rng().first ) );
@@ -548,7 +548,7 @@ for( auto mod : v_mod_tmp ){
 
      case( BinaryKnapsackBlockMod::eChgWeight ):{    
        
-      for( int i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
+      for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
   
        int nw = std::round( BKB->get_Weight( i ) );     // new weight
   
