@@ -25,48 +25,6 @@ DPBinaryKnapsackSolver on your system.
 
 TODO: still to be implemented
 
-Configure and build the library with:
-
-```sh
-mkdir build
-cd build
-cmake ..
-make
-```
-
-The library has the same configuration options of
-[SMS++](https://gitlab.com/smspp/smspp-project/-/wikis/Customize-the-configuration).
-
-
-```sh
-sudo make install
-```
-
-
-### Usage with CMake
-
-After the library is built, you can use it in your CMake project with:
-
-```cmake
-find_package(MCFBlock)
-target_link_libraries(<my_target> SMS++::MCFBlock)
-```
-
-
-### Running the tests with CMake
-
-A unit test will be built with the library.
-To disable it, set the option `BUILD_TESTING` to `OFF`.
-
-The test takes an instance of a MCF in DIMACS or NC4 format. The MCF problem
-is then repeatedly solved with several changes in costs/capacities/deficits,
-arcs openings/closures and arcs additions/deletions. The same operations are
-performed on the two solvers, and the results are compared.
-
-The test can be run manually, using the provided batch file,
-or using `ctest` from the build directory.
-
-
 ### Build and install with makefiles
 
 Carefully hand-crafted makefiles have also been developed for those unwilling
@@ -110,12 +68,7 @@ SMS++/lib/makefile-inc
 ```
 
   file is provided for allowing external makefiles to ensure that the library
-  is up-to-date (useful in case one is actually developing it). The simplest
-  way to learn how to use it is to check the makefiles of the tester
-
-```sh
-MCFBlock/test/makefile
-```
+  is up-to-date (useful in case one is actually developing it).
 
   Note that the "basic" makefile macros
 
@@ -133,7 +86,7 @@ SW =
 ## Getting help
 
 If you need support, you want to submit bugs or propose a new feature, you can
-[open a new issue](https://gitlab.com/smspp/mcfblock/-/issues/new).
+[open a new issue](https://gitlab.com/smspp/binaryknapsackblock/-/issues/new).
 
 ## Contributing
 
