@@ -23,8 +23,6 @@ DPBinaryKnapsackSolver on your system.
 
 ### Build and install with CMake
 
-TODO: still to be implemented
-
 Configure and build the library with:
 
 ```sh
@@ -37,6 +35,7 @@ make
 The library has the same configuration options of
 [SMS++](https://gitlab.com/smspp/smspp-project/-/wikis/Customize-the-configuration).
 
+Optionally, install the library in the system with:
 
 ```sh
 sudo make install
@@ -48,23 +47,9 @@ sudo make install
 After the library is built, you can use it in your CMake project with:
 
 ```cmake
-find_package(MCFBlock)
-target_link_libraries(<my_target> SMS++::MCFBlock)
+find_package(BinaryKnapsackBlock)
+target_link_libraries(<my_target> SMS++::BinaryKnapsackBlock)
 ```
-
-
-### Running the tests with CMake
-
-A unit test will be built with the library.
-To disable it, set the option `BUILD_TESTING` to `OFF`.
-
-The test takes an instance of a MCF in DIMACS or NC4 format. The MCF problem
-is then repeatedly solved with several changes in costs/capacities/deficits,
-arcs openings/closures and arcs additions/deletions. The same operations are
-performed on the two solvers, and the results are compared.
-
-The test can be run manually, using the provided batch file,
-or using `ctest` from the build directory.
 
 
 ### Build and install with makefiles
@@ -133,7 +118,7 @@ SW =
 ## Getting help
 
 If you need support, you want to submit bugs or propose a new feature, you can
-[open a new issue](https://gitlab.com/smspp/mcfblock/-/issues/new).
+[open a new issue](https://gitlab.com/smspp/binaryknapsackblock/-/issues/new).
 
 ## Contributing
 
