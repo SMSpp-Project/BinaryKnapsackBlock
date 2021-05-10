@@ -293,7 +293,7 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  *                 Intermediate values define a "step" s.t. each time the 
  *                 index i of an item is a multiple of step , the labels
  *                 computed at the corresponding iteration are saved in 
- *                 G[ i ].lab (unless i is pre-processed).                 */
+ *                 G[ i ].lab.                                             */
 
 void set_par( idx_type par , double value ) override;
 
@@ -348,7 +348,7 @@ protected:
 
 /* data of the Binary Knapsack instance - - - - - - - - - - - - - - - - - - */
 
- int f_N;                          		///< the number of Items 
+ int f_N;                               ///< the number of Items 
  int f_C;                               ///< the Capacity of the Knapsack
  std::vector< int > v_W;                ///< vector of Weights          
  std::vector< double > v_P;             ///< vector of Profits
