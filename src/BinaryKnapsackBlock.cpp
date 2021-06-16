@@ -257,59 +257,55 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc ){
 /*--------------------- Methods for checking the Block ---------------------*/
 /*--------------------------------------------------------------------------*/
 
-bool BinaryKnapsackBlock::is_feasible( bool useabstract , 
-                                      Configuration * fsbc ){
- if( useabstract ) {
-  // do it using the abstract representation
-  if( ! ( AR & HasCns ) )
-   throw( std::logic_error( "Constraint required for is_feasible( true , )") );
+bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
+				       Configuration * fsbc )
+{
+ if( useabstract && ( AR & HasCns ) ) {
+  // do it using the abstract representation, if there is
    
   return( v_cnst[ 0 ].rel_viol() > 0 ? false : true );
-}
+  }
 
-// do it using the physical representation
+ // do it using the physical representation
  double tot_weight = 0; 
- for( Index i = 0 ; i < v_W.size() ; i++ )
+ for( Index i = 0 ; i < v_W.size() ; ++i )
   tot_weight += v_W[ i ] * get_x( i ); 
 
- return( tot_weight <= f_C ? true : false );    
-}
+ return( tot_weight <= f_C );
+ }
 
 /*--------------------------------------------------------------------------*/
 
-bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc ){
- 
- // check if there are fixed variables and compute the residual capacity
+bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc )
+{
+  // check if there are fixed variables and compute the residual capacity
  
  double C = f_C;
 
- for( Index i = 0 ; i < f_N ; i++ ){
+ for( Index i = 0 ; i < f_N ; ++i ) {
   if( v_x[ i ].is_fixed()  && v_x[ i ].get_value() )
    C -= v_W[ i ]; 
- }
+  }
 
- if( C >= 0 )                
+ if( C >= 0 )
   return( false );    
  
-
  double neg_weights = 0;
 
- for( Index i = 0 ; i < f_N ; i++ ){
-  
+ for( Index i = 0 ; i < f_N ; ++i ) {
   if( is_fixed( i ) )
    continue; 
 
-  if( v_W[ i ] < 0 ){
+  if( v_W[ i ] < 0 ) {
    neg_weights += v_W[ i ];
    
    if( neg_weights <= C )
     return( false );
-   
+   }
   }
- }
 
  return( true );
-}
+ }
 
 /* -------------------------------------------------------------------------*/
 /*------------------------- Methods for R3 Blocks --------------------------*/
