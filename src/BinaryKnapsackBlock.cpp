@@ -262,8 +262,11 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
 {
  if( useabstract && ( AR & HasCns ) ) {
   // do it using the abstract representation, if there is
-   
-  return( v_cnst[ 0 ].rel_viol() > 0 ? false : true );
+  if( auto ret = v_cnst[ 0 ].compute() ;
+      ( ret <= FRowConstraint::kUnEval ) || ( ret > FRowConstraint::kOK ) )
+   return( false );
+ 
+  return( v_cnst[ 0 ].abs_viol() == 0 );
   }
 
  // do it using the physical representation
