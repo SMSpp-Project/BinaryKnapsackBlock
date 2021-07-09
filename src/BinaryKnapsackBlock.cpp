@@ -74,8 +74,8 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackSolution );
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-                                const std::vector<double> & Weights , 
-                                const std::vector<double> & Profits )
+                                const std::vector< double > & Weights , 
+                                const std::vector< double > & Profits )
 {
  
  // sanity checks 
@@ -87,8 +87,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
   throw( std::invalid_argument( "Vector of Profits of the wrong size" ) );
 
  // copy vectors and call load( , , && , && )
- std::vector<double> W( n );
- std::vector<double> P( n );
+ std::vector< double > W( n );
+ std::vector< double > P( n );
 
  std::copy( Weights.begin() , Weights.end() , W.begin() );
  std::copy( Profits.begin() , Profits.end() , P.begin() );
@@ -100,8 +100,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
-                                std::vector<double> && Weights , 
-                                std::vector<double> && Profits )
+                                std::vector< double > && Weights , 
+                                std::vector< double > && Profits )
 {
  
  // sanity checks 
@@ -128,8 +128,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
  generate_abstract_variables();
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // Modification
  if( anyone_there() )
@@ -173,8 +173,8 @@ void BinaryKnapsackBlock::deserialize( const netCDF::NcGroup & group ){
  generate_abstract_variables();
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // call the method of Block
  // inside this the NBModification, the "nuclear option",  is issued
@@ -212,19 +212,17 @@ void BinaryKnapsackBlock::generate_abstract_constraints( Configuration * stcc )
  if( ! get_NItems() )
   return;
 
- v_cnst.resize( 1 );
-
  LinearFunction::v_coeff_pair w( get_NItems() );
  for( Index i = 0 ; i < get_NItems() ; i++ ){
   w[ i ].first = &v_x[ i ];
   w[ i ].second = v_W[ i ];
  }
 
- v_cnst[ 0 ].set_function( new LinearFunction( std::move( w ) , 0 ) , eNoBlck );
- v_cnst[ 0 ].set_rhs( f_C );
- v_cnst[ 0 ].set_lhs( - Inf<double>() );
+ f_cnst.set_function( new LinearFunction( std::move( w ) , 0 ) , eNoBlck );
+ f_cnst.set_rhs( f_C );
+ f_cnst.set_lhs( - Inf< double >() );
  
- add_static_constraint( v_cnst[ 0 ] );
+ add_static_constraint( f_cnst );
 
  AR |= HasCns;
 }
@@ -258,15 +256,15 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc ){
 /*--------------------------------------------------------------------------*/
 
 bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
-				       Configuration * fsbc )
+               Configuration * fsbc )
 {
  if( useabstract && ( AR & HasCns ) ) {
   // do it using the abstract representation, if there is
-  if( auto ret = v_cnst[ 0 ].compute() ;
+  if( auto ret = f_cnst.compute() ;
       ( ret <= FRowConstraint::kUnEval ) || ( ret > FRowConstraint::kOK ) )
    return( false );
  
-  return( v_cnst[ 0 ].abs_viol() == 0 );
+  return( f_cnst.abs_viol() == 0 );
   }
 
  // do it using the physical representation
@@ -337,8 +335,9 @@ bool BinaryKnapsackBlock::is_empty( bool useabstract , Configuration * optc )
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::map_back_solution( Block *R3B , Configuration *r3bc, 
-                        Configuration *solc ){
+void BinaryKnapsackBlock::map_back_solution( Block *R3B , 
+                                             Configuration *r3bc , 
+                                             Configuration *solc ){
 
 BinaryKnapsackBlock * BKB = dynamic_cast< BinaryKnapsackBlock * >( R3B );
 if( ! BKB )
@@ -359,7 +358,8 @@ set_x( xSol );
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::map_forward_solution( Block * R3B , 
-                              Configuration *r3bc , Configuration *solc ){
+                                                Configuration *r3bc , 
+                                                Configuration *solc ){
 
 BinaryKnapsackBlock * BKB = dynamic_cast< BinaryKnapsackBlock * >( R3B );
 if( ! BKB )
@@ -656,7 +656,7 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
-  LinearFunction *lf = dynamic_cast<LinearFunction*>(v_cnst[0].get_function());
+  LinearFunction *lf = dynamic_cast<LinearFunction*>(f_cnst.get_function());
   lf->modify_coefficient( item , NWeight , issueAMod ); // AR
   v_W[ item ] = NWeight;                                // PR
  } 
@@ -699,7 +699,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
              v_W.begin() + rng.first );
   
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>(v_cnst[0].get_function());
+  LinearFunction *lf = dynamic_cast<LinearFunction*>(f_cnst.get_function());
   lf->modify_coefficients( std::vector<double>( NWeight , 
                   NWeight + ( rng.second - rng.first ) ) , rng , issueAMod );
  } 
@@ -742,7 +742,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
   copyidx( v_W , nms , NWeight );
   
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>(v_cnst[0].get_function());
+  LinearFunction *lf = dynamic_cast<LinearFunction*>(f_cnst.get_function());
   lf->modify_coefficients( std::vector<double>( NWeight , 
                   NWeight + nms.size() ) , 
                   Subset( nms ) , issueAMod );
@@ -910,7 +910,7 @@ void BinaryKnapsackBlock::chg_capacity( double NC ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ){
   f_C = NC; 
-  v_cnst[0].set_rhs( NC , issueAMod );
+  f_cnst.set_rhs( NC , issueAMod );
  } 
  else if( not_dry_run( issueMod ) ) // otherwise only physical representation 
   f_C = NC;
@@ -1015,9 +1015,7 @@ for( Index i = 0 ; i < f_N ; i++ ){
 void BinaryKnapsackBlock::guts_of_destructor(){
 
  // clear the constraint
- for( auto & c : v_cnst )
-  c.clear();
- v_cnst.clear();
+ f_cnst.clear();
  // clear the objective function
  f_obj.clear();
  // clear all variables
@@ -1073,7 +1071,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   // if the AR of the constraint exists
   if( AR & HasCns ){ 
    // get the constraint 
-   auto lfc = dynamic_cast< LinearFunction * >( v_cnst[0].get_function() ); 
+   auto lfc = dynamic_cast< LinearFunction * >( f_cnst.get_function() ); 
    // and check if the modification is on the constraint  
     if( lf == lfc ){ 
      // vector of new weights 
@@ -1125,7 +1123,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   // if the AR of the constraint exists
   if( AR & HasCns ){
    // get the constraint 
-   auto lfc = dynamic_cast< LinearFunction * >( v_cnst[0].get_function() ); 
+   auto lfc = dynamic_cast< LinearFunction * >( f_cnst.get_function() ); 
    // and check if the modification is on the constraint  
     if( lf == lfc ){
      // vector of new weights 

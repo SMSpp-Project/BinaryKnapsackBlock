@@ -313,7 +313,7 @@ double get_Weight( Index i ) const {
 /*--------------------------------------------------------------------------*/
  /// get the vector of Weights
 
-const std::vector<double> & get_Weights() const { return( v_W ); }
+const std::vector< double > & get_Weights() const { return( v_W ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index i return the profit of item i 
@@ -327,7 +327,7 @@ double get_Profit( Index i ) const {
 /*--------------------------------------------------------------------------*/
  /// get the vector of Profits
 
-const std::vector<double> & get_Profits() const { return( v_P ); }
+const std::vector< double > & get_Profits() const { return( v_P ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index get a pointer to the corresponding variable
@@ -369,7 +369,7 @@ ColVariable * get_Var( Index i ){
  /// returns true if the Binary Knapsack problem is unbounded.
 
  bool is_unbounded( bool useabstract = false ,
-		    Configuration * fsbc = nullptr ) override {
+                    Configuration * fsbc = nullptr ) override {
   return( false );
   }
 
@@ -385,8 +385,8 @@ ColVariable * get_Var( Index i ){
   * - r3bc == nullptr: the copy (a BinaryKnapsackBlock identical to this)
   */
 
- Block * get_R3_Block( Configuration *r3bc = nullptr ,
-           Block * base = nullptr , Block * father = nullptr ) override;
+ Block * get_R3_Block( Configuration *r3bc = nullptr , Block * base = nullptr , 
+                       Block * father = nullptr ) override;
 
  /*--------------------------------------------------------------------------*/
  /// maps back the solution from a copy BinaryKnapsackBlock to the current one
@@ -394,14 +394,14 @@ ColVariable * get_Var( Index i ){
   */
 
  void map_back_solution( Block *R3B , Configuration *r3bc = nullptr ,
-       Configuration *solc = nullptr ) override;
+                         Configuration *solc = nullptr ) override;
 
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
  /// maps the solution of the current BinaryKnapsackBlock to a copy.
  /** Maps the solution of the current BinaryKnapsackBlock to a copy. */
 
  void map_forward_solution( Block *R3B , Configuration *r3bc = nullptr ,
-       Configuration *solc = nullptr ) override;
+                            Configuration *solc = nullptr ) override;
 
 /**@} ----------------------------------------------------------------------*/
 /*----------------------- Methods for handling Solution --------------------*/
@@ -706,7 +706,7 @@ double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
 std::vector< ColVariable > v_x;         ///< the static binary variables
-std::vector< FRowConstraint > v_cnst;   ///< the static constraint 
+FRowConstraint f_cnst;                  ///< the static constraint 
 FRealObjective f_obj;                   ///< the (linear) objective function
 
 /*--------------------------------------------------------------------------*/
