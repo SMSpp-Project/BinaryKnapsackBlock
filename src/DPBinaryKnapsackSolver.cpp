@@ -63,6 +63,7 @@ void DPBinaryKnapsackSolver::set_Block( Block * block ){
 
 }
 
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
@@ -145,8 +146,17 @@ maxcurrlab = currlab.size() - 1;
 
 // DP Algorithm- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-for( ; i < f_N ; i++ ){
+int nInteger = 0;
+ for(int j=0 ; j< f_N; j++){
+  if(v_I[j]==false){
+     indexContinuous[nCont]=j;
+     nCont += 1;
+   }
+ }
 
+ if( f_N-nCont > 1){
+for( int i=0; i < f_N - nCont ; i++ ){
+ 
  // reoptimization - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
  if( i % step == 0  ) 
@@ -161,6 +171,11 @@ for( ; i < f_N ; i++ ){
 
  double p = v_P[ i ];               // profit of the current item   
  int w = v_W[ i ] ;                 // weight of the current item
+ bool in = v_I[ i ];                // integrality of the current item   
+ 
+ if( in == false )		     // if the variable is continuous 
+  continue;                         // skip it
+
 
  if( isNeg( i ) ){                  // if the item has negative 
   p = -p;                           // profit and weight
@@ -210,27 +225,89 @@ for( ; i < f_N ; i++ ){
  // swaps
  maxcurrlab = maxnextlab;
  std::swap( currlab , nextlab );
-
-} // end( DP algorithm )- - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
+ 
 // always save last labels in G[ f_N ].lab
 
 std::swap( G[ f_N ].lab , currlab );
-
-// find optimal value - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
-
-int besth;
-
-obj = - Inf< double >();                    // Initialize objective value
-
-for( int i = 0 ; i <= maxcurrlab ; i++ ){ 
- if( G[ f_N ].lab[ i ] > obj ){
-  obj = G[ f_N ].lab[ i ]; 
-  besth = i;
- }
 }
+ }
+ 
+ int besth;
 
-G[ f_N ].lab.resize( besth + 1 ); 
+ obj = - Inf< double >();                    // Initialize objective value
+ double continuousObjective = - Inf<double>();
+ 
+ for( int i = 0 ; i <= maxcurrlab ; i++ ){ 
+  if( G[ f_N ].lab[ i ] > obj ){
+   obj = G[ f_N ].lab[ i ]; 
+   besth = i;
+  }
+ }
+  
+ for( int j = 0; j < f_N; j++ ){ 
+  // for each height memorize the node correspondent to the best binary solution
+  for( int i = C ; i >= 0 ; i--){
+    if(G[i].lab[j]>maxLabel[i]){
+     maxLabel[i]=G[i].lab[j];
+     maxIndex[i]=j;
+    }
+  }
+ } 
+ 
+ std::vector<double> fractPW;
+ //construct the vector of Weights/Profits or the continuous variables
+  for (int j=0;j<nCont;j++)
+   fractPW[indexContinuous[j]] = v_W[indexContinuous[j]] / v_P[indexContinuous[j]];
+   
+ // construct a vector that memorize the order of the continuous components 
+    if(is_sorted==false){
+   sort(indexContinuous.begin(), indexContinuous.end(), [&](const int & a, const int & b){ return (fractPW[a] < fractPW[b]);});
+   is_sorted = true;
+ }
+ // for each height, starting from the higher one, compute the continuous solution
+ // solve the Continuous Knapsack Problem
+lastIndex=0;
+lastVar=0;
+for( int i = C-1; i >= 0; i-- ){     
+ int currentCapacity=f_C-i;
+ for(int j=lastIndex;j<nCont;j++){
+  // if the current capacity is higher than the weight of the correspondent
+  // variable, this will assume the higher value alowed, update the capacity
+  if(currentCapacity>=v_W[indexContinuous[j]]){
+    if(lastVar<1){
+      continuousObjective += v_W[indexContinuous[j]]*(1-lastVar);
+      currentCapacity -= v_W[indexContinuous[j]]*(1-lastVar);
+      lastIndex++; 
+    }else{
+      continuousObjective += v_W[indexContinuous[j]];
+      currentCapacity -= v_W[indexContinuous[j]];
+      lastIndex++;
+    }
+    lastVar=1;
+   }else{
+   // otherwise we fill the variable with the maximum value allowed by the 
+    if(lastVar<1){
+      continuousObjective += currentCapacity/v_W[indexContinuous[j]]*(1-lastVar) ; 
+      currentCapacity = 0;
+      lastVar = currentCapacity/v_W[indexContinuous[j]];
+    }else{
+      continuousObjective += currentCapacity/v_W[indexContinuous[j]] ; 
+      currentCapacity = 0;
+      lastVar = currentCapacity/v_W[indexContinuous[j]] ; 
+    }  
+    break;
+   }
+ }
+  if( G[ i ].lab[ maxIndex[i]] + continuousObjective > obj ){
+    obj =  G[ i ].lab[ maxIndex[i]] + continuousObjective;
+    besth = i;
+   }
+   //end of the continuous knapsack's resolution
+   }
+  
+// end( DP algorithm )- - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+ G[ f_N ].lab.resize( besth + 1 ); 
 
 obj += prp_P;             // add the profit coming from the preprocessing
 
@@ -305,6 +382,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
    v_x[ i ] = ! v_x[ i ];
 
  }
+ v_x[indexContinuous[lastIndex]]=lastVar;
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
  
@@ -436,7 +514,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
  Lst_sp_Mod v_mod_tmp;              // temporary list of modifications
 
- // try to acquire lock, spin on failure
+// try to acquire lock, spin on failure
 
  while( f_mod_lock.test_and_set( std::memory_order_acquire ) );
 
@@ -459,7 +537,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
  while( mod != v_mod_tmp.end() ){
 
-  // BinaryKnapsackBlockMod- - - - - - - - - - - - - - - - - - - - - - - - - -
+// BinaryKnapsackBlockMod- - - - - - - - - - - - - - - - - - - - - - - - - -
   
   const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod->get() );
 
@@ -567,7 +645,6 @@ for( auto mod : v_mod_tmp ){
       break;
 
      }  
-    
     }
    }
   } 

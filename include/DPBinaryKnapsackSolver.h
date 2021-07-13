@@ -230,6 +230,41 @@ void set_Block( Block * block ) override;
 *   be properly changed when needed. 
 *                                                                           */
 
+/*--------------------------------------------------------------------------*/
+/*------------ METHOD FOR SOLVING THE CONTINUOUS KNAPSACK ------------------*/
+/*--------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
+/*---------------------------  PSEUDO - CODE--------------------------------*/ 
+/*--------------------------------------------------------------------------*/ 
+/*
+
+1) For each height (restricted capacity) consider the best binary solution
+   with the correspondent index bestBinIndex
+   
+2) For each height H, starting from the bigger one (H=B-1):
+	-1- compute the solution of the Continuous Knapsack with capacity B-H,
+	    considering as input also the continuous solution obtained in the 
+	    previous step:
+		*1* sort the components of the continuopus variables
+		    considering Profits/Weights
+		*2* With the new order, start from the first element and
+		    assign to the variable the maximum value allowed by 
+		    the residual capacity
+	-3- Update/Memorize the optimal objective value obtained in the 
+	    node G[H][bestBinIndex[H]]
+	-4- update/memorize the complete solution (x_binary,x_continuous)
+	
+3) For each height H=0,...,B:
+	-1- Compare the labels in G[H][bestBinIndex[H]] in order to find 
+	    the optimal solution	
+
+/*-------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------*/
+
+
+
 int compute( bool changedvars = true ) override;
 
 /**@} ----------------------------------------------------------------------*/
@@ -352,10 +387,11 @@ protected:
  int f_C;                               ///< the Capacity of the Knapsack
  std::vector< int > v_W;                ///< vector of Weights          
  std::vector< double > v_P;             ///< vector of Profits
+ std::vector< bool > v_I;		 ///< vector of Integrality (Binary/Continuous)
  bool f_sense;                          ///< the sense of the objective 
 
  double obj;                            ///< the value of the objective
- std::vector< bool > v_x;               ///< vector of binary variables
+ std::vector< bool > v_x;               ///< vector of continuous and binary variables
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
@@ -364,8 +400,16 @@ protected:
  int start_item;                        ///< index of the starting item
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- double reopt;                          ///< reoptimization parameter                      
+ 
+ std::vector< int > indexContinuous;
+ bool is_sorted;
+ int lastIndex;
+ double lastVar;
+ int nCont;
+ double reopt;                          ///< reoptimization parameter 
+ std::vector<double> maxLabel;			// memorize the maximum label associated  to a fixed height 
+ std::vector<int> maxIndex;			// memorize the index variable  correpsondent to the max label
+                     
  
 // static fields - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

@@ -86,6 +86,7 @@ public:
  @{ */
 
 typedef std::vector<double>::iterator dblVec_it;
+typedef std::vector<bool>::iterator boolVec_it;
 
 typedef std::vector<bool> boolVec;
 typedef const boolVec c_boolVec;
@@ -146,12 +147,12 @@ virtual ~BinaryKnapsackBlock(){ guts_of_destructor(); }
   * issued. */
 
 void load( Index n , double Capacity , const std::vector<double> & Weights , 
-           const std::vector<double> & Profits );
+           const std::vector<double> & Profits, const std::vector<bool> & Integrality ={} );
 
 /*--------------------------------------------------------------------------*/
 
 void load( Index n , double Capacity , std::vector<double> && Weights , 
-           std::vector<double> && Profits );
+           std::vector<double> && Profits, std::vector<bool> && Integrality ={});
 
 /*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
@@ -617,6 +618,30 @@ void chg_weights( const dblVec_it NWeight ,
                   ModParam issueMod = eNoBlck ,
                   ModParam issueAMod = eNoBlck ); 
 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// given an index i change the boolean vector that tell which variable is continuous and which integer (integraliy vector)
+void chg_integrality( bool NIntegrality , Index item , 
+                 ModParam issueMod = eNoBlck ,
+                 ModParam issueAMod = eNoBlck ); 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the integrality vector of a contiguous interval of items
+
+void chg_integrality( const boolVec_it NIntegrality , 
+                  Range rng = Range( 0 , Inf< Index >() ) , 
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the weights of an arbitrary subsets of items
+
+void chg_integrality( const boolVec_it NIntegrality , 
+                  Subset && nms , bool ordered = false ,  
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
+
+
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the profit of item i 
 
@@ -689,6 +714,8 @@ Index f_N;                      ///< the number of Items
 double f_C;                     ///< the Capacity of the Knapsack
 std::vector<double> v_W;        ///< vector of Weights          
 std::vector<double> v_P;        ///< vector of Profits
+std::vector<bool> v_I;	         ///< vector of boolean to describe if the variable are continuous or discrete
+int countCont; 		 ///< counter for the umber of continuous variables
 
 unsigned char AR;               ///< bit-wise coded: what abstract is there
 
@@ -704,7 +731,7 @@ bool f_sense;                   ///< the sense of the objective
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
-std::vector< ColVariable > v_x;         ///< the static binary variables
+std::vector< ColVariable > v_x;         ///< the static binary/continuous variables
 std::vector< FRowConstraint > v_cnst;   ///< the static constraint 
 FRealObjective f_obj;                   ///< the (linear) objective function
 
@@ -758,6 +785,7 @@ public:
  enum BinaryKnapsackBlock_mod_type {
   eChgWeight = 0  ,   ///< change the item weight
   eChgProfit      ,   ///< change the item profit
+  eChgIntegrality ,   ///< change the variable integrality constraint
   eChgCapacity    ,   ///< change the Knapsack capacity
   eFixX           ,   ///< fix a variable x
   eUnfixX         ,   ///< unfix a variable x
