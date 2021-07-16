@@ -2,17 +2,21 @@
 ################################ makefile-c ##################################
 ##############################################################################
 #                                                                            #
-#   complete makefile of BinaryKnapsackBlock                                 #
-#                                                                            #
-#   The makefile defines internally all external libraries (comprised the    #
-#   SMS++ one) required by BinaryKnapsackBlock. Accordingly, all necessary   #
-#   OBJ, H,  # -I directives, external libraries + -L<libdirs> are added to  #
-#   the corresponding BKBk* macros.                                          #
+#   makefile of BinaryKnapsackBlock and its dependencies, excluding SMS++    #
+#									     #
+#   The makefile defines internally all external libraries required by       #
+#   BinaryKnapsackBlock, exluding the SMS++ core ones whose symbols are      #
+#   assumed to have been defined already (typically by including             #
+#   SMS++/lib/makefile). Accordingly, all necessary OBJ, H, -I directives,   #
+#   external libraries + -L<libdirs> are added to the corresponding BKBk*    #
+#   macros.                                                                  #
 #                                                                            #
 #   Input:  $(CC)       = compiler command                                   #
 #           $(SW)       = compiler options                                   #
-#           $(BKBkSDR) = the directory where BinaryKnapsackBlock source is   #
-#           $(BKBkODR) = the directory where the objects have to be put      #
+#           $(SMS++INC) = the -I$( core SMS++ directory )                    #
+#           $(SMS++OBJ) = the core SMS++ library                             #
+#           $(BKBkSDR)  = the directory where BinaryKnapsackBlock source is  #
+#           $(BKBkODR)  = the directory where the objects have to be put     #
 #                                                                            #
 #   Output: $(BKBkOBJ) = the final object(s) / library                       #
 #           $(BKBkLIB) = external libraries + -L<libdirs>                    #
@@ -37,10 +41,6 @@
 # *H   is the list of all include files
 # *INC is the -I<include directories>
 
-# define input macros for SMS++ complete makefile, then include it
-SMS++SDR = $(BKBkSDR)../SMS++/
-include $(SMS++SDR)lib/makefile-inc
-
 # include the makefile requiring all external modules in input
 include $(BKBkSDR)/makefile
 
@@ -48,10 +48,10 @@ include $(BKBkSDR)/makefile
 
 # append external -I directives to BKBkINC, BKBkOBJ and BKBkH as defined
 # by the makefile, thus the := assignment has to be used (use GNU make)
-BKBkOBJ := $(BKBkOBJ) $(SMS++OBJ)
-BKBkINC := $(BKBkINC) $(SMS++INC) 
+BKBkOBJ := $(BKBkOBJ)
+BKBkINC := $(BKBkINC)
 
 # external libreries for BKBlock
-BKBkLIB = $(SMS++LIB)
+BKBkLIB =
 
 ############################ End of makefile #################################
