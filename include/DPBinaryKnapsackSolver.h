@@ -402,10 +402,12 @@ protected:
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
  
  std::vector< int > indexContinuous;
+ std::vector< int > indexInteger;
  bool is_sorted;
  int lastIndex;
  double lastVar;
  int nCont;
+ int nInteger;
  double reopt;                          ///< reoptimization parameter 
  std::vector<double> maxLabel;			// memorize the maximum label associated  to a fixed height 
  std::vector<int> maxIndex;			// memorize the index variable  correpsondent to the max label
@@ -484,6 +486,18 @@ private:
 
  bool isFixed( Index i ){                       // if the variable is fixed
   return( isFixed0( i ) || isFixed1( i ) );     // to 1 or to 0
+ }
+
+
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// return true if item i is continuous because the variable is continuous or 
+/// 0 otherwise
+
+ bool isCont( Index i ){                       // if the variable is continuous
+  if(v_I.size()==0)
+    return false;
+  return( v_I[i] );     // to 1 or to 0
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

@@ -316,6 +316,22 @@ double get_Weight( Index i ) const {
 
 const std::vector<double> & get_Weights() const { return( v_W ); }
 
+
+/*--------------------------------------------------------------------------*/
+ /// given an index i return the integrality of item i 
+
+bool get_Integrality( Index i ) const { 
+ if( i >= get_NItems() )
+  throw( std::invalid_argument( "invalid item " ) );
+ return( v_I[ i ] ); 
+}
+
+/*--------------------------------------------------------------------------*/
+ /// get the vector of Integrality
+
+const std::vector<bool> & get_Integrality() const { return( v_I ); }
+
+
 /*--------------------------------------------------------------------------*/
  /// given an index i return the profit of item i 
 
