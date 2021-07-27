@@ -270,35 +270,26 @@ int besth;
  // solve the Continuous Knapsack Problem
 lastIndex=0;
 lastVar=0;
+double residual=0;
 for( int i = maxcurrlab-1; i >= 0; i-- ){     
  int currentCapacity=f_C-i;
  for(int j=lastIndex;j<nCont;j++){
   // if the current capacity is higher than the weight of the correspondent
   // variable, this will assume the higher value alowed, update the capacity
-  if(currentCapacity>=v_W[indexContinuous[j]]){
-    if(lastVar<1){
-      continuousObjective += v_P[indexContinuous[j]]*(1-lastVar);
-      currentCapacity -= v_W[indexContinuous[j]]*(1-lastVar);
-      lastIndex++; 
-    }else{
-      continuousObjective += v_P[indexContinuous[j]];
-      currentCapacity -= v_W[indexContinuous[j]];
-      lastIndex++;
-    }
+  if(currentCapacity>=v_W[indexContinuous[j]]*(1-residual)){
+    continuousObjective += v_P[indexContinuous[j]]*(1-residual);
+    currentCapacity -= v_W[indexContinuous[j]]*(1-residual);
+    residual = 0;
     lastVar=1;
-   }else{
-   // otherwise we fill the variable with the maximum value allowed by the 
-    if(lastVar<1){
-      continuousObjective += v_P[indexContinuous[j]]*currentCapacity/v_W[indexContinuous[j]]*(1-lastVar) ; 
-      currentCapacity = 0;
-      lastVar = currentCapacity/v_W[indexContinuous[j]];
-    }else{
-      continuousObjective += v_P[indexContinuous[j]]*currentCapacity/v_W[indexContinuous[j]] ; 
-      currentCapacity = 0;
-      lastVar = currentCapacity/v_W[indexContinuous[j]] ; 
-    }  
-    break;
-   }
+    lastIndex++;
+  }else{
+    continuousObjective += v_P[indexContinuous[j]]*currentCapacity/v_W[indexContinuous[j]]*(1-residual) ; 
+    currentCapacity -= v_W[indexContinuous[j]]*(1-residual);
+    residual += currentCapacity/v_W[indexContinuous[j]];
+    lastVar = 1 - residual; 
+  }
+  if(currentCapacity <=0)
+   break;
  }
    //end of the continuous knapsack's resolution
    }
