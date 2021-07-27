@@ -259,24 +259,24 @@ std::swap( G[ nInteger ].lab , currlab );
  //find optimal values
 int besth;
 
- obj = - Inf< double >();                    // Initialize objective value
+// obj = - Inf< double >();                    // Initialize objective value
  
- for( int i = 0 ; i < maxcurrlab ; i++ ){ 
-  if( G[ nInteger ].lab[ i ] > obj ){
-   obj = G[ nInteger ].lab[ i ]; 
-   besth = i;
-  }
- }
+// for( int i = 0 ; i < maxcurrlab ; i++ ){ 
+//  if( G[ nInteger ].lab[ i ] > obj ){
+ //  obj = G[ nInteger ].lab[ i ]; 
+//   besth = i;
+//  }
+// }
  
- G[ nInteger ].lab.resize( besth + 1 ); 
+// G[ nInteger ].lab.resize( besth + 1 ); 
  // std::cout << "\n G[ nInteger ].lab.size()  ="<< G[ nInteger ].lab.size() <<"\n besth ="<< besth;
 
 
 // std::cout << "G[nInteger].lab : " << G[ nInteger].lab <<"\n";
- maxLabel.resize( maxcurrlab );
+// maxLabel.resize( maxcurrlab );
   // for each height memorize the node correspondent to the best binary solution
-  for( int i = maxcurrlab -1 ; i >= 0 ; i--)
-     maxLabel[ i ]=G[ nInteger ].lab[i];
+//  for( int i = maxcurrlab -1 ; i >= 0 ; i--)
+//     maxLabel[ i ]=G[ nInteger ].lab[i];
  
  std::vector<double> fractPW;
  fractPW.resize(nCont);
@@ -297,7 +297,7 @@ int besth;
  lastIndex.resize(maxcurrlab);
  lastVar.resize(maxcurrlab);
 for(i=0;i<maxcurrlab;i++)
- continuousObjective[i] = - Inf<double>();
+ continuousObjective[i] = 0;
  
 lastIndex[0]=0;
 lastVar[0]=0;
@@ -603,6 +603,10 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
  } // end if( f_Block )
 std::cout <<"v_X :" << v_x << "\n";
+for(int i=0;i< indexContinuous.size();i++)
+std::cout <<"v_X["<<indexContinuous[i]<<"] :" << v_x[indexContinuous[i]] << "\n";
+
+
 } // end( DPBinaryKnapsackSolver::load() )
 
 /*--------------------------------------------------------------------------*/
