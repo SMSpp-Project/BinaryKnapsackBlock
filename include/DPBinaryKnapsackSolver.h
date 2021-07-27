@@ -401,11 +401,12 @@ protected:
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
  
+ std::vector< double > continuousObjective;
  std::vector< int > indexContinuous;
  std::vector< int > indexInteger;
  bool is_sorted;
- int lastIndex;
- double lastVar;
+ std::vector< int > lastIndex;
+ std::vector< double > lastVar;
  int nCont;
  int nInteger;
  double reopt;                          ///< reoptimization parameter 

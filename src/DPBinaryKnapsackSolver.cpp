@@ -84,6 +84,34 @@ if( BKB->is_empty() ){
 }
 
 
+  //---------------------------------------------------------------------------
+  // Inizialize the vector of continuous/integer index and the correspondig counters
+//  std::cout <<"\n Start Initialization \n";
+  nCont = 0;
+  for(int j=0 ; j< f_N; j++){
+    if(v_I[j]==false)
+       nCont ++;
+   }
+   
+  indexContinuous.resize( nCont ); 
+  indexInteger.resize( f_N - nCont ); 
+ 
+  nCont = 0;
+  nInteger = 0;
+
+  for(int j=0 ; j< f_N; j++){
+   if(v_I[j]==false){
+      indexContinuous[nCont]=j;
+      nCont++;
+   }else{
+     indexInteger[nInteger]=j;
+     nInteger++;
+   } 
+  }
+ 
+
+if( nCont == f_N )
+ start_item = nInteger;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // start_item is the first item processed by the DP algorithm. If compute() is
@@ -113,9 +141,6 @@ for( int i = 0 ; i < f_N ; i++ ){       // also the items with both negative
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-
- double continuousObjective = - Inf<double>();
 
 int maxcurrlab;                         // max current height of the graph
 int maxnextlab;                         // max next height of the graph    
@@ -268,25 +293,40 @@ int besth;
 
  // for each height, starting from the higher one, compute the continuous solution
  // solve the Continuous Knapsack Problem
-lastIndex=0;
-lastVar=0;
+ continuousObjective.resize(maxcurrlab);
+ lastIndex.resize(maxcurrlab);
+ lastVar.resize(maxcurrlab);
+for(i=0;i<maxcurrlab;i++)
+ continuousObjective[i] = - Inf<double>();
+ 
+lastIndex[0]=0;
+lastVar[0]=0;
+int currentCapacity=0;
 double residual=0;
 for( int i = maxcurrlab-1; i >= 0; i-- ){     
- int currentCapacity=f_C-i;
- for(int j=lastIndex;j<nCont;j++){
+ //int currentCapacity=f_C-i;
+ currentCapacity += 1;
+ if(i>0){
+   continuousObjective[i]=continuousObjective[i-1];
+   lastIndex[i]=lastIndex[i-1];
+   lastVar[i]=lastVar[i-1];
+   residual = 1 - lastVar[i];
+ }
+ for(int j=lastIndex[i];j<nCont;j++){
   // if the current capacity is higher than the weight of the correspondent
   // variable, this will assume the higher value alowed, update the capacity
   if(currentCapacity>=v_W[indexContinuous[j]]*(1-residual)){
-    continuousObjective += v_P[indexContinuous[j]]*(1-residual);
+    continuousObjective[i] += v_P[indexContinuous[j]]*(1-residual);
     currentCapacity -= v_W[indexContinuous[j]]*(1-residual);
     residual = 0;
-    lastVar=1;
-    lastIndex++;
+    lastVar[i]=1;
+    if(lastIndex[i]<nCont-1)
+      lastIndex[i]++;
   }else{
-    continuousObjective += v_P[indexContinuous[j]]*currentCapacity/v_W[indexContinuous[j]]*(1-residual) ; 
+    continuousObjective[i] += v_P[indexContinuous[j]]*currentCapacity/v_W[indexContinuous[j]]*(1-residual) ; 
     currentCapacity -= v_W[indexContinuous[j]]*(1-residual);
     residual += currentCapacity/v_W[indexContinuous[j]];
-    lastVar = 1 - residual; 
+    lastVar[i] = 1 - residual; 
   }
   if(currentCapacity <=0)
    break;
@@ -296,9 +336,33 @@ for( int i = maxcurrlab-1; i >= 0; i-- ){
   
 // end( DP algorithm )- - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+
+//sum to the binary objective the correspondent continuous objective
+
+
+ obj = - Inf< double >();                    // Initialize objective value
+ 
+ for( int i = 0 ; i < maxcurrlab ; i++ ){ 
+  if( G[ nInteger ].lab[ i ] + continuousObjective[i] > obj ){
+   obj = G[ nInteger ].lab[ i ]  + continuousObjective[i]; 
+   besth = i;
+  }
+ }
+ 
+ G[ nInteger ].lab.resize( besth + 1 ); 
+ // std::cout << "\n G[ nInteger ].lab.size()  ="<< G[ nInteger ].lab.size() <<"\n besth ="<< besth;
+
+
+// std::cout << "G[nInteger].lab : " << G[ nInteger].lab <<"\n";
+ maxLabel.resize( maxcurrlab );
+  // for each height memorize the node correspondent to the best binary solution
+  for( int i = maxcurrlab -1 ; i >= 0 ; i--)
+     maxLabel[ i ]=G[ nInteger ].lab[i];
+ 
 obj += prp_P;             // add the profit coming from the preprocessing
 
-obj += continuousObjective; // add the profits coming from the continuous part
+// already done 
+//obj += continuousObjective; // add the profits coming from the continuous part
 
 start_item = + Inf< int >();
 
@@ -391,7 +455,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
    continue;                                    // or it has surely not been
   }                                             // selected
 
-  if( indexContinuous[ i ] < indexContinuous[ lastIndex ] ){
+  if( indexContinuous[ i ] < indexContinuous[ lastIndex[besth] ] ){
    v_x[ indexContinuous[ i ] ] = 1; 
 //   besth -= w;  
   }
@@ -402,7 +466,10 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
    v_x[ indexContinuous[ i ] ] = ! v_x[ indexContinuous[ i ] ];
   
  }
- v_x[indexContinuous[lastIndex]]=lastVar;
+// std::cout << "INDEXcONTINUOUS : " << indexContinuous << "\n";
+// std::cout<< "lastIndex : "<< lastIndex <<"\n NCont : " << nCont <<"\n indexContinuous[lastIndex-1]"<<indexContinuous[lastIndex-1]<<"\n lastVar : " <<lastVar<< "\n";
+ if(lastVar[besth] != 1 && lastVar[besth] != 0)
+   v_x[indexContinuous[lastIndex[besth]]]=lastVar[besth];
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
  
@@ -517,42 +584,18 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
   if( !owned )
    BKB->read_unlock();
   
-  //---------------------------------------------------------------------------
-  // Inizialize the vector of continuous/integer index and the correspondig counters
-//  std::cout <<"\n Start Initialization \n";
   nCont = 0;
   for(int j=0 ; j< f_N; j++){
     if(v_I[j]==false)
        nCont ++;
    }
-   
-  indexContinuous.resize( nCont ); 
-  indexInteger.resize( f_N - nCont ); 
- 
-  nCont = 0;
-  nInteger = 0;
-
-  for(int j=0 ; j< f_N; j++){
-   if(v_I[j]==false){
-      indexContinuous[nCont]=j;
-      nCont++;
-   }else{
-     indexInteger[nInteger]=j;
-     nInteger++;
-   } 
-  }
- 
-
-if( nCont == f_N )
- start_item = nInteger;
-
 
   // end load Binary Knapsack instance- - - - - - - - - - - - - - - - - - - -
  
   G.clear();                            // clear previous graph (if any)  
 
 //  G.resize( f_N + 1 );                  // resize Graph
-  G.resize(nInteger + 1);
+  G.resize(f_N - nCont + 1);                  // resize Graph
   
   start_item = 0;                       // (re-)start from the beginning
 
