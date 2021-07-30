@@ -111,7 +111,7 @@ if( BKB->is_empty() ){
  
 
 if( nCont == f_N )
- start_item = nInteger;
+ start_item = f_N;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // start_item is the first item processed by the DP algorithm. If compute() is
@@ -129,7 +129,7 @@ int i = start_item;                 // otherwise start from start_item
 // the capacity by subtracting the weight of the items that are fixed to 1, 
 // also saving their profits which need to be added to the objective
 
-int C = f_C;                            // "residual" capacity
+double C = f_C;                            // "residual" capacity
 double prp_P = 0;                       // "residual" profit
              
 
@@ -139,6 +139,8 @@ for( int i = 0 ; i < f_N ; i++ ){       // also the items with both negative
   prp_P += v_P[ i ];                                  
  }                          
 }
+
+int iC = std::floor( C );               // integer Capacity
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -152,14 +154,14 @@ G[ 0 ].lab.resize( 1 );                 // initialize dummy node
 G[ 0 ].lab[ 0 ] = 0;                    // in the origin
 
 // each time i % step == 0, currlab is saved in G[ i ].lab
-int step = nInteger * std::exp2( - std::log2( nInteger ) * reopt ); 
+int step = f_N * std::exp2( - std::log2( f_N ) * reopt ); 
 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Initialize maxcurrlab and currlab with data stored in G[ i ].lab 
 currlab = G[ i ].lab;
 
-if( C + 1 < currlab.size() )            // Capacity may have been changed
+if( iC + 1 < currlab.size() )            // Capacity may have been changed
  currlab.resize( C + 1 );
 
 maxcurrlab = currlab.size() - 1;
@@ -176,7 +178,7 @@ maxcurrlab = currlab.size() - 1;
 
 // DP Algorithm- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-for(; i < nInteger ; i++ ){
+for(; i < f_N ; i++ ){
  
  // reoptimization - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
@@ -187,31 +189,32 @@ for(; i < nInteger ; i++ ){
  
  // pre-processing - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- if( isFixed( indexInteger[ i ] ) )                 // if i is fixed (or can be pre-processed) 
+ if( isFixed( i ) || ! v_I[ i ] )   // if i is fixed or continuous 
   continue;                         // continue       
 
- double p = v_P[ indexInteger[i] ];               // profit of the current item   
- int w = v_W[ indexInteger[i] ] ;                 // weight of the current item
- bool in = v_I[ indexInteger[i] ];                // integrality of the current item   
+ double p = v_P[ i ];               // profit of the current item   
+ int w = v_W[ i ] ;                 // weight of the current item
+ bool in = v_I[ i ];                // integrality of the current item   
  
  if( in == false )		     // if the variable is continuous 
   continue;                         // skip it
 
 
- if( isNeg(  indexInteger[i] ) ){                  // if the item has negative 
+ if( isNeg( i ) ){                  // if the item has negative 
   p = -p;                           // profit and weight
   w = -w;                           // change both signs
  }
 
- if( w > C )                        // if the weight exceeds the capacity
+ if( w > iC )                        // if the weight exceeds the capacity
   continue;                         // continue
 
                 
  // max height of the graph 
- maxnextlab = std::min( maxcurrlab + w , C );
+ maxnextlab = std::min( maxcurrlab + w , iC );
  
  // Initialize labels 
  nextlab.resize( maxnextlab + 1 );
+
  std::fill( nextlab.begin() , nextlab.end() , - Inf< double >() );
 
  // Allocate predecessors
@@ -237,7 +240,7 @@ for(; i < nInteger ; i++ ){
    continue;                                    // capacity is reached
 
   if( currlab[ j ] + p > nextlab[ j + w ] ){    // diagonal arc 
-   G[ i +1 ].pred[ j + w ] = true;            
+   G[ i + 1 ].pred[ j + w ] = true;            
    nextlab[ j + w ] = currlab[ j ] + p;
   }
 
@@ -253,116 +256,84 @@ for(; i < nInteger ; i++ ){
 
 // always save last labels in G[ f_N ].lab
 
-std::swap( G[ nInteger ].lab , currlab );
-// std::cout<<"end for\n";
+std::swap( G[ f_N ].lab , currlab );
+
+//end( DP algorithm )
+
+
+// sort continuous variable using as weight the proportion of profits/weights
+ if( !is_sorted ){
+   sort( indexContinuous.begin(), indexContinuous.end(), [&]( const int & a, const int & b){ 
+         return ( v_P[ a ] / v_W[ a ] > v_P[ b ] / v_W[ b ] ); } );
+   is_sorted = true;
+  }
  
  //find optimal values
-int besth;
-
-// obj = - Inf< double >();                    // Initialize objective value
  
-// for( int i = 0 ; i < maxcurrlab ; i++ ){ 
-//  if( G[ nInteger ].lab[ i ] > obj ){
- //  obj = G[ nInteger ].lab[ i ]; 
-//   besth = i;
-//  }
-// }
+// compute the objective calculating also the contribution of the continuous variables
+
+obj = -Inf< double >();
+
+int besth = 0;
+double bestlab = -Inf< double >();
+lastIndex = 0;
+int tempLastIndex =0;
+lastVar = 0;
+double boundX = 1;
+double contProfit = 0;
+double contWeight = 0;    // compute the continuous part
+double rC = 0;
+for( int i = maxcurrlab - 1 ; i >= 0 ; i-- ){
+ //std::cout << "bestlab : " << bestlab << "\n";
+ //std::cout << "G[f_N].lab[" << i << "] : " << G[f_N].lab[i] << "\n";
+
+// if( G[ f_N ].lab[ i ] <= bestlab )
+//  continue;
+
+// double rC = C - i;        // residual capacity
+ rC += 1;//maxcurrlab - i;        // residual capacity
+
+ for( int j = tempLastIndex ; j < indexContinuous.size() ; j++ ){
  
-// G[ nInteger ].lab.resize( besth + 1 ); 
- // std::cout << "\n G[ nInteger ].lab.size()  ="<< G[ nInteger ].lab.size() <<"\n besth ="<< besth;
-
-
-// std::cout << "G[nInteger].lab : " << G[ nInteger].lab <<"\n";
-// maxLabel.resize( maxcurrlab );
-  // for each height memorize the node correspondent to the best binary solution
-//  for( int i = maxcurrlab -1 ; i >= 0 ; i--)
-//     maxLabel[ i ]=G[ nInteger ].lab[i];
+  if( isFixed( indexContinuous[ j ] ) )
+   continue;
  
- std::vector<double> fractPW;
- fractPW.resize(nCont);
- //construct the vector of Profits/Weights or the continuous variables
-  for (int j=0;j<nCont;j++)
-   fractPW[j] = v_P[ indexContinuous[j] ]/ v_W[ indexContinuous[j] ] ;
-   
- // construct a vector that memorize the order of the continuous components 
- //   if(is_sorted==false){
- //  sort(indexContinuous.begin(), indexContinuous.end(), [&](const int & a, const int & b){ return (fractPW[a] < fractPW[b]);});
- //  is_sorted = true;
-// }
-
-
- // for each height, starting from the higher one, compute the continuous solution
- // solve the Continuous Knapsack Problem
- continuousObjective.resize(maxcurrlab);
- lastIndex.resize(maxcurrlab);
- lastVar.resize(maxcurrlab);
-for(i=0;i<maxcurrlab;i++)
- continuousObjective[i] = 0;
+  // if the item does not fit entirely in the knapsack
+  if( v_W[ indexContinuous[ j ] ] * boundX + contWeight > rC ){
  
-lastIndex[0]=0;
-lastVar[0]=0;
-int currentCapacity=0;
-double residual=0;
-for( int i = maxcurrlab-1; i >= 0; i-- ){     
- //int currentCapacity=f_C-i;
- currentCapacity += 1;
- if(i>0){
-   continuousObjective[i]=continuousObjective[i-1];
-   lastIndex[i]=lastIndex[i-1];
-   lastVar[i]=lastVar[i-1];
-   residual = 1 - lastVar[i];
- }
- for(int j=lastIndex[i];j<nCont;j++){
-  // if the current capacity is higher than the weight of the correspondent
-  // variable, this will assume the higher value alowed, update the capacity
-  if(currentCapacity>=v_W[indexContinuous[j]]*(1-residual)){
-    continuousObjective[i] += v_P[indexContinuous[j]]*(1-residual);
-    currentCapacity -= v_W[indexContinuous[j]]*(1-residual);
-    residual = 0;
-    lastVar[i]=1;
-    if(lastIndex[i]<nCont-1)
-      lastIndex[i]++;
-  }else{
-    continuousObjective[i] += v_P[indexContinuous[j]]*currentCapacity/v_W[indexContinuous[j]]*(1-residual) ; 
-    currentCapacity -= v_W[indexContinuous[j]]*(1-residual);
-    residual += currentCapacity/v_W[indexContinuous[j]];
-    lastVar[i] = 1 - residual; 
-  }
-  if(currentCapacity <=0)
-   break;
- }
-   //end of the continuous knapsack's resolution
-   }
+   // take only a fraction and break
+  std::cout<<"insufficient capacity \n";
+  std::cout<<"  \n ( rC - contWeight ) / ( v_W[ indexContinuous[ j ] ]):" << ( rC - contWeight ) / ( v_W[ indexContinuous[ j ] ])<< "\n";
+  std::cout<<"boundX--avant: "<< boundX<<"\n";
   
-// end( DP algorithm )- - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-
-//sum to the binary objective the correspondent continuous objective
-
-
- obj = - Inf< double >();                    // Initialize objective value
- 
- for( int i = 0 ; i < maxcurrlab ; i++ ){ 
-  if( G[ nInteger ].lab[ i ] + continuousObjective[i] > obj ){
-   obj = G[ nInteger ].lab[ i ]  + continuousObjective[i]; 
-   besth = i;
+   boundX -= ( rC - contWeight ) / ( v_W[ indexContinuous[ j ] ]);
+  
+  std::cout<<"boundX--appres: "<< boundX<<"\n";
+   
+   contProfit += ( rC - contWeight ) / ( v_W[ indexContinuous[ j ] ]) * v_P[ indexContinuous[ j ] ];
+   contWeight = rC; // / ( v_W[ indexContinuous[ j ] ] );
+   break; 
   }
+  else{
+   contProfit += v_P[ indexContinuous[ j ] ] * boundX;
+   contWeight += v_W[ indexContinuous[ j ] ] * boundX;
+   boundX = 1;
+   tempLastIndex++;
+  }
+
+  }
+ // check if it is the best solution and update obj
+ if( G[ f_N ].lab[ i ] + contProfit > obj ){
+  bestlab = G[ f_N ].lab[ i ];
+  obj = G[ f_N ].lab[ i ] + contProfit;
+  besth = i;
+  lastVar=1-boundX;  
+  lastIndex = tempLastIndex;
  }
- 
- G[ nInteger ].lab.resize( besth + 1 ); 
- // std::cout << "\n G[ nInteger ].lab.size()  ="<< G[ nInteger ].lab.size() <<"\n besth ="<< besth;
 
+}
 
-// std::cout << "G[nInteger].lab : " << G[ nInteger].lab <<"\n";
- maxLabel.resize( maxcurrlab );
-  // for each height memorize the node correspondent to the best binary solution
-  for( int i = maxcurrlab -1 ; i >= 0 ; i--)
-     maxLabel[ i ]=G[ nInteger ].lab[i];
- 
 obj += prp_P;             // add the profit coming from the preprocessing
-
-// already done 
-//obj += continuousObjective; // add the profits coming from the continuous part
 
 start_item = + Inf< int >();
 
@@ -401,7 +372,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
  // rest of the solution from G[ i ].pred. For the "negative items" (with 
  // negative weight and profit) change x with 1 - x
 
- int besth = G[ nInteger ].lab.size() - 1;
+ int besth = G[ f_N ].lab.size() - 1;
 
  v_x.resize( f_N );
 
@@ -424,7 +395,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
    continue;                                    // or it has surely not been
   }                                             // selected
  // std::cout << "\n G[ i + 1 ].pred.size() = "<< G[ i + 1 ].pred.size() <<"\n G[ nInteger ].lab="<< G[ nInteger ].pred <<"\n";
-  if( G[ i + 1 ].pred[ besth ] ){
+  if( G[ indexInteger[i] + 1 ].pred[ besth ] ){
    v_x[ indexInteger[ i ] ] = 1; 
    besth -= w;  
   }
@@ -455,7 +426,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
    continue;                                    // or it has surely not been
   }                                             // selected
 
-  if( indexContinuous[ i ] < indexContinuous[ lastIndex[besth] ] ){
+  if( indexContinuous[ i ] < indexContinuous[ lastIndex ] ){
    v_x[ indexContinuous[ i ] ] = 1; 
 //   besth -= w;  
   }
@@ -468,11 +439,11 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
  }
 // std::cout << "INDEXcONTINUOUS : " << indexContinuous << "\n";
 // std::cout<< "lastIndex : "<< lastIndex <<"\n NCont : " << nCont <<"\n indexContinuous[lastIndex-1]"<<indexContinuous[lastIndex-1]<<"\n lastVar : " <<lastVar<< "\n";
- if(lastVar[besth] != 1 && lastVar[besth] != 0)
-   v_x[indexContinuous[lastIndex[besth]]]=lastVar[besth];
+ if(lastVar != 1 && lastVar != 0)
+   v_x[indexContinuous[lastIndex]]=lastVar;
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
- 
+ std::cout<<"v_x:"<<v_x<<"\n lastIndex: "<< lastIndex<< "\nlastVar : "<< lastVar<< "\n";
  BKB->set_x( v_x );         // write the solution in the BinaryKnapsackBlock
 
 }
@@ -589,22 +560,24 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
     if(v_I[j]==false)
        nCont ++;
    }
+   
+   is_sorted=false;
 
   // end load Binary Knapsack instance- - - - - - - - - - - - - - - - - - - -
  
   G.clear();                            // clear previous graph (if any)  
 
 //  G.resize( f_N + 1 );                  // resize Graph
-  G.resize(f_N - nCont + 1);                  // resize Graph
+  G.resize(f_N + 1);                  // resize Graph
   
   start_item = 0;                       // (re-)start from the beginning
 
   v_x.clear();                          // clear previous solution (if any)
 
  } // end if( f_Block )
-std::cout <<"v_X :" << v_x << "\n";
-for(int i=0;i< indexContinuous.size();i++)
-std::cout <<"v_X["<<indexContinuous[i]<<"] :" << v_x[indexContinuous[i]] << "\n";
+ 
+//for(int i=0;i< indexContinuous.size();i++)
+//std::cout <<"v_X["<<indexContinuous[i]<<"] :" << v_x[indexContinuous[i]] << "\n";
 
 
 } // end( DPBinaryKnapsackSolver::load() )
@@ -828,7 +801,7 @@ v_mod_tmp.clear();              // clear the temporary list of modification
 // point it is necessary to retrieve the first item smaller than start_item  
 // whose corresponding labels have been previously stored in G[ i ].lab. 
 
- int step = nInteger * std::exp2( - std::log2( nInteger ) * reopt );
+ int step = f_N * std::exp2( - std::log2( f_N ) * reopt );
 
  if( start_item != + Inf< int >() )
   start_item = ( start_item / step ) * step;

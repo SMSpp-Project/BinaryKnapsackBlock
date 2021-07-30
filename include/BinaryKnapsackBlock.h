@@ -91,6 +91,9 @@ typedef std::vector<bool>::iterator boolVec_it;
 typedef std::vector<bool> boolVec;
 typedef const boolVec c_boolVec;
 
+typedef std::vector<double> doubleVec;
+typedef const doubleVec c_doubleVec;
+
 /// tolerance for binary variables - - - - - - - - - - - - - - - - - - - - - -
 
 static constexpr double BinaryTol = 1e-9;
@@ -323,11 +326,14 @@ const std::vector<double> & get_Weights() const { return( v_W ); }
 bool get_Integrality( Index i ) const { 
  if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid item " ) );
+ if( v_I.empty() )
+   return( true );
  return( v_I[ i ] ); 
+  
 }
 
 /*--------------------------------------------------------------------------*/
- /// get the vector of Integrality
+ /// get the vector of Integrality if v_I is empty, then all the variables are integer
 
 const std::vector<bool> & get_Integrality() const { return( v_I ); }
 
@@ -453,12 +459,12 @@ bool get_x( Index i );
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution
 
-void get_x( boolVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
+void get_x( doubleVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the solution for an arbitrary subset of items
 
-void get_x( boolVec & xSol , c_Subset & nms );
+void get_x( doubleVec & xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the number of variables
@@ -468,17 +474,17 @@ Index get_VarSize(){ return( v_x.size() ); }
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, set the solution of the corresponding item
 
-void set_x( Index i , bool value );
+void set_x( Index i , double value );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set a contiguous interval of the solution
 
-void set_x( c_boolVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
+void set_x( c_doubleVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the solution for an arbitrary subset of items
 
-void set_x( c_boolVec & xSol , c_Subset & nms );
+void set_x( c_doubleVec & xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i return true if the corresponding variable is fixed

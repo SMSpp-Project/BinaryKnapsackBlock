@@ -391,7 +391,7 @@ protected:
  bool f_sense;                          ///< the sense of the objective 
 
  double obj;                            ///< the value of the objective
- std::vector< bool > v_x;               ///< vector of continuous and binary variables
+ std::vector< double > v_x;               ///< vector of continuous and binary variables
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
@@ -401,12 +401,11 @@ protected:
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
  
- std::vector< double > continuousObjective;
  std::vector< int > indexContinuous;
  std::vector< int > indexInteger;
+ int lastIndex;
+ double lastVar;
  bool is_sorted;
- std::vector< int > lastIndex;
- std::vector< double > lastVar;
  int nCont;
  int nInteger;
  double reopt;                          ///< reoptimization parameter 
