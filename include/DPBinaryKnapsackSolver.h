@@ -384,7 +384,7 @@ protected:
 /* data of the Binary Knapsack instance - - - - - - - - - - - - - - - - - - */
 
  int f_N;                               ///< the number of Items 
- int f_C;                               ///< the Capacity of the Knapsack
+ double f_C;                               ///< the Capacity of the Knapsack
  std::vector< int > v_W;                ///< vector of Weights          
  std::vector< double > v_P;             ///< vector of Profits
  std::vector< bool > v_I;		 ///< vector of Integrality (Binary/Continuous)
@@ -403,6 +403,7 @@ protected:
  
  std::vector< int > indexContinuous;
  std::vector< int > indexInteger;
+ std::vector< int > prepContinuous;
  int lastIndex;
  double lastVar;
  bool is_sorted;
@@ -516,6 +517,7 @@ private:
   return( false );
 
  }
+ 
  
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
