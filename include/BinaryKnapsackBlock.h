@@ -454,7 +454,7 @@ Solution * get_Solution( Configuration * solc = nullptr,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index gets the solution of the corresponding item
 
-bool get_x( Index i );
+double get_x( Index i );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution

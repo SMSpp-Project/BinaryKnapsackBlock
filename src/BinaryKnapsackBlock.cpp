@@ -440,10 +440,10 @@ Solution * BinaryKnapsackBlock::get_Solution( Configuration *solc ,
 
 /*--------------------------------------------------------------------------*/
 
-bool BinaryKnapsackBlock::get_x( Index i ){
+double BinaryKnapsackBlock::get_x( Index i ){
  if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid item" ) );
- return ( std::abs( v_x[ i ].get_value() ) < BinaryTol ? false : true ); 
+ return ( v_x[ i ].get_value());// < BinaryTol ? false : true ); 
 }
 
 /*--------------------------------------------------------------------------*/
@@ -454,7 +454,7 @@ void BinaryKnapsackBlock::get_x( doubleVec & xSol , Range rng ){
 
  auto xSoli = xSol.begin();
  for( Index i = rng.first ; i < rng.second ; i++ )
-  ( * xSoli++ ) = std::abs( v_x[ i ].get_value() ) < BinaryTol ? false : true;
+  ( * xSoli++ ) = v_x[ i ].get_value();// < BinaryTol ? false : true;
 
 }
 
@@ -466,7 +466,7 @@ void BinaryKnapsackBlock::get_x( doubleVec & xSol , c_Subset & nms ){
  for( auto i : nms ){
   if( i >= get_VarSize() )
    throw( std::invalid_argument( "invalid item" ) );
-  ( * xSoli++ ) = std::abs( v_x[ i ].get_value() ) < BinaryTol ? false : true;
+  ( * xSoli++ ) = v_x[ i ].get_value();// < BinaryTol ? false : true;
  }
 }
 
