@@ -86,7 +86,7 @@ if( BKB->is_empty() ){
 
   //---------------------------------------------------------------------------
   // Inizialize the vector of continuous/integer index and the correspondig counters
-//  std::cout <<"\n Start Initialization \n";
+  
   nCont = 0;
   for(int j=0 ; j< f_N; j++){
     if(v_I[j]==false)
@@ -99,16 +99,19 @@ if( BKB->is_empty() ){
   nCont = 0;
   nInteger = 0;
 
+
+std::cout<<"Continuous Indexes:\n";
   for(int j=0 ; j< f_N; j++){
    if(v_I[j]==false){
       indexContinuous[nCont]=j;
       nCont++;
+      std::cout<<j<<", ";
    }else{
      indexInteger[nInteger]=j;
      nInteger++;
    } 
   }
- 
+ std::cout<<"\n";
 
 if( nCont == f_N )
  start_item = f_N;
@@ -134,7 +137,7 @@ double prp_P = 0;                       // "residual" profit
              
 
 for( int i = 0 ; i < f_N ; i++ ){                     // also the items with both negative
- if( v_I[ i ] && ( isFixed1( i ) || isNeg( i ) ) ){   // weight and profit are treated as if
+ if(( isFixed1( i ) || isNeg( i ) ) ){   // weight and profit are treated as if
   C -= v_W[ i ];                                      // they were fixed to 1         
   prp_P += v_P[ i ];                                  
  }                          
@@ -267,15 +270,6 @@ std::swap( G[ f_N ].lab , currlab );
 //  }
 
 
-
-// if( !is_sorted ){
-//   sort( indexContinuous.begin(), indexContinuous.end(), [&]( const int & a, const int & b){     
-//            return ( v_P[ a ] / v_W[ a ] > v_P[ b ] / v_W[ b ] );} );
-//   is_sorted = true;
-//  }
- 
- //find optimal values
- 
 // compute the objective calculating also the contribution of the continuous variables
 
 obj = -Inf< double >();
@@ -290,54 +284,42 @@ double contProfit = 0;
 double contWeight = 0;    // compute the continuous part
 double rC = C - maxcurrlab;
 
-//prepContinuous.resize(indexContinuous.size());
-
-//preprocessing for continuous variables
-//variables with index 2 are not preprocessed
-/*for( int j = 0 ; j < indexContinuous.size() ; j++ ){
-
- prepContinuous[ j ]=2; 
- 
- if( isFixed( indexContinuous[ j ] ) )
-  continue;  
-  
- if(v_W[ indexContinuous[j]]<0 && v_P[ indexContinuous[j]]>0){
-   contProfit += v_P[ indexContinuous[ j ] ];
-   contWeight += v_W[ indexContinuous[ j ] ];
-   prepContinuous[j]=1;
- }
- if(v_W[ indexContinuous[j]]>0 && v_P[ indexContinuous[j]]<0){
-   prepContinuous[j]=0;
- }
-} 
-*/
 
 if(maxcurrlab==0)
  obj=G[ f_N ].lab[ 0 ];
 
-for( int i = maxcurrlab ; i > 0 ; i-- ){
+for( int i = maxcurrlab ; i >= 0 ; i-- ){
 
 
  for( int j = tempLastIndex ; j < indexContinuous.size() ; j++ ){
  
-  //if( isFixed( indexContinuous[ j ] ) )
-   //continue;
-   
-  //if( prepContinuous[ j ] != 2)
-  // continue; 
+   if( isFixed( indexContinuous[ j ] ) ){
+   tempLastIndex++;
+ //  std::cout<<"Is Fixed "<<indexContinuous[j] << "\n";
+   continue;
+   }
   
+ double p = v_P[ indexContinuous[ j ] ];               // profit of the current item   
+ int w = v_W[ indexContinuous[ j ] ] ;                 // weight of the current item
+ 
+ if( isNeg(  indexContinuous[ j ]  ) ){                  // if the item has negative 
+ //std::cout<<"Is negative"<< indexContinuous[ j ] <<"\n";
+  p = -p;                           // profit and weight
+  w = -w;                           // change both signs
+ }
  
   // if the item does not fit entirely in the knapsack
-  if( v_W[ indexContinuous[ j ] ] * boundX + contWeight > rC ){
+  if( w * boundX + contWeight > rC ){
 
    // take only a fraction and break
-   boundX -= ( rC - contWeight ) / ( v_W[ indexContinuous[ j ] ] );  
-   contProfit += ( rC - contWeight ) / ( v_W[ indexContinuous[ j ] ] ) * v_P[ indexContinuous[ j ] ];
+   boundX -= ( rC - contWeight ) / ( w );  
+   contProfit += ( rC - contWeight ) / ( w) * p ;
    contWeight = rC; // / ( v_W[ indexContinuous[ j ] ] );
+ //  std::cout<< "boundX="<<boundX<<"\n contProfit="<<contProfit<<"\n contWeight="<<contWeight<<"\n rC=" << rC << "\n w="<<w<<", p="<<p<<"\n";
    break; 
   }else{
-   contProfit += v_P[ indexContinuous[ j ] ] * boundX;
-   contWeight += v_W[ indexContinuous[ j ] ] * boundX;
+   contProfit += p * boundX;
+   contWeight += w * boundX;
    boundX = 1;
    tempLastIndex++;
   }
@@ -354,6 +336,7 @@ for( int i = maxcurrlab ; i > 0 ; i-- ){
  rC += 1;        // residual capacity
 
 }
+
 
 obj += prp_P;             // add the profit coming from the preprocessing
 
@@ -421,7 +404,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
    v_x[ i ] = isNeg( i ) ? 1 : 0;               // weight exceeds the capacity 
    continue;                                    // or it has surely not been
   }                                             // selected
- // std::cout << "\n G[ i + 1 ].pred.size() = "<< G[ i + 1 ].pred.size() <<"\n G[ nInteger ].lab="<< G[ nInteger ].pred <<"\n";
+  
   if( G[ i + 1 ].pred[ besth ] ){
    v_x[ i ] = 1; 
    besth -= w;  
@@ -434,12 +417,28 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
 
  }  
   
- 
-// std::cout << "INDEXcONTINUOUS : " << indexContinuous << "\n";
-// std::cout<< "lastIndex : "<< lastIndex <<"\n NCont : " << nCont <<"\n indexContinuous[lastIndex-1]"<<indexContinuous[lastIndex-1]<<"\n lastVar : " <<lastVar<< "\n";
- 
 
  for( int i = 0 ; i < indexContinuous.size() ; i++ ){
+
+  if( isFixed0( indexContinuous[ i ] ) ){                          // items fixed to 0
+   v_x[ indexContinuous[ i ] ] = 0;
+   continue;    
+  }
+
+  if( isFixed1( indexContinuous[ i ] ) ){                          // items fixed to 1
+   v_x[ indexContinuous[ i ] ] = 1;
+   continue;    
+  } 
+  
+  
+  int w = isNeg( i ) ? - v_W[ i ] : v_W[ i ];   // weight of the current item
+  
+//  if( w > besth ){                              // if w > besth either the 
+//   v_x[ i ] = isNeg( i ) ? 1 : 0;               // weight exceeds the capacity 
+//   continue;                                    // or it has surely not been
+//  }   
+
+
   if( i < lastIndex )
     v_x[ indexContinuous[ i ] ] = 1;
   else if( i == lastIndex )
@@ -448,21 +447,13 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
     v_x[ indexContinuous[ i ] ] = 0;
     
   
-/*  if( prepContinuous[i] == 1){
-   v_x[indexContinuous[i]]=1;
-  }
-  if( prepContinuous[i] == 0){
-   v_x[indexContinuous[i]]=0;
-  }
-*/    
-//  if(lastVar != 1 && lastVar != 0)
-//   v_x[indexContinuous[lastIndex]]=lastVar;
-  
-    
- }
+  if( isNeg( indexContinuous[ i ] ) )                  // items with negative weight and profit
+   v_x[ indexContinuous[ i ] ] = 1 - v_x[ indexContinuous[ i ] ];
+
+   }
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// std::cout<<"v_x:"<<v_x<<"\n lastIndex: "<< lastIndex<< "\nlastVar : "<< lastVar<< "\n";
+ 
  BKB->set_x( v_x );         // write the solution in the BinaryKnapsackBlock
 
 }
@@ -595,8 +586,6 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
  } // end if( f_Block )
  
-//for(int i=0;i< indexContinuous.size();i++)
-//std::cout <<"v_X["<<indexContinuous[i]<<"] :" << v_x[indexContinuous[i]] << "\n";
 
 
 } // end( DPBinaryKnapsackSolver::load() )
@@ -740,6 +729,21 @@ for( auto mod : v_mod_tmp ){
 
       break;
 
+     }
+     case( BinaryKnapsackBlockMod::eChgIntegrality):{
+     
+     for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
+      
+       bool ni = BKB->get_Integrality( i );
+       
+       v_I[ i ] = ni;
+     
+     }
+     
+     start_item = 0;
+     
+     break;
+     
      }  
     }
    }
@@ -802,7 +806,24 @@ for( auto mod : v_mod_tmp ){
 
       break;
 
-     }  
+     }
+     
+     
+     case( BinaryKnapsackBlockMod::eChgIntegrality):{
+     
+     for( auto i : tmod->nms() ){
+      
+       bool ni = BKB->get_Integrality( i );
+       
+       v_I[ i ] = ni;
+     
+     }
+     
+     start_item = 0;
+     
+     break;
+     
+     }   
     
     }
    }
