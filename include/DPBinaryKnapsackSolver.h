@@ -43,7 +43,7 @@ namespace SMSpp_di_unipi_it
  * can be double.
  *
  * There are no restrictions on the weights and profits sign (both positive 
- * and negative values ​​are allowed), and the objective sense of the 
+ * and negative values are allowed), and the objective sense of the 
  * problem can be either Min or Max.                                        */                       
 
 
@@ -282,18 +282,47 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  * 
  * The only parameter currently present is:
  * 
- * - dblReopt [0]: Reoptimization parameter. Accepted values in [ 0 , 1 ] 
- *                 dblReopt defines how often the labels computed at each
- *                 iteration of the DP algorithm are saved.
- *                 
- *                 - 0 if no labels are saved
- *  
- *                 - 1 if all labels are saved
+ * - dblReopt [0]: Reoptimization parameter. Accepted values in [ 0 , 1 ].
+ *                 DPBinaryKnapsackSolver implements a reoptimization 
+ *                 technique based on the idea of storing intermediate labels
+ *                 computed during the first execution of the DP algorithm, 
+ *                 such that, in the next call of compute(), it is possible 
+ *                 to re-start from one of these intermediate points. Storing
+ *                 labels can be computationally expensive, hence dblReopt   
+ *                 defines how many labels have to be stored in G.
  * 
- *                 Intermediate values define a "step" s.t. each time the 
- *                 index i of an item is a multiple of step , the labels
- *                 computed at the corresponding iteration are saved in 
- *                 G[ i ].lab.                                             */
+ *                 The possibilities are:
+ *                 ----------------------------------------------------------
+ *                 # labels to store | Indexes of stored labels
+ *                 ----------------------------------------------------------
+ *                   1                [ f_N ]
+ *                   2                [ (1/2)f_N , f_N ]
+ *                   4                [ (1/4)f_N , (2/4)f_N , (3/4)f_N , f_N ]
+ *                   8                [ (1/8)f_N , ... , f_N ]
+ *                   ...              ...
+ *                   2^k              [ (1/k)f_N , ... , f_N ]                
+ *                   ...              ...
+ *                   f_N              [ 1 , 2 , ... , f_N ]
+ *
+ *                 hence, the number of possibilies is m = log2( f_N ).
+ *                 The correspondence between dblReopt values and one of these
+ *                 possibilities is done by dividing the [ 0 , 1 ] interval 
+ *                 into m smaller intervals of equal size, and checking to 
+ *                 which of these intervals dblReopt belongs. That is, if 
+ *                 dblReopt \in k-th interval, then 2^k labels will be stored
+ *                 in G. In particular, it follows that:
+ *                 
+ *                 dblReopt = 0 -> store only G[ f_N ].lab
+ *                 dblReopt = 1 -> store G[ i ].lab for all i
+ *
+ *                 Intermediate dblReopt values are handled by:
+ *                 - retrieving the interval k to which they belong
+ *                 - defining a step:
+ *                      step = f_N / 2^k
+ *                   such that at each multiple i of step the corresponding 
+ *                   labels are stored in G[ i ].lab
+ *                 The step is computed in the compute_step() method.                
+ *                                                                         */
 
 void set_par( idx_type par , double value ) override;
 
@@ -457,6 +486,20 @@ private:
 
   return( false );
 
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// compute the step for reoptimization [see set_par() dblReopt for details ]
+ 
+ int compute_step(){
+
+  // find the interval to which reopt belongs
+  int k = std::floor( reopt * std::log2( f_N ) );
+
+  // define the step 
+  int step = std::floor( f_N / std::exp2( k ) );
+  
+  return step;
  }
  
 /*--------------------------------------------------------------------------*/

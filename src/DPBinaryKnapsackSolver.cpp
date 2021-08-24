@@ -121,12 +121,7 @@ G[ 0 ].lab.resize( 1 );                 // initialize dummy node
 G[ 0 ].lab[ 0 ] = 0;                    // in the origin
 
 // each time i % step == 0, currlab is saved in G[ i ].lab
-int step;
- 
-if( reopt == 1 )
- step = 1;
-else
- step = f_N * std::exp2( - std::log2( f_N ) * reopt ); 
+int step = compute_step();
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 // Initialize maxcurrlab and currlab with data stored in G[ i ].lab
@@ -652,12 +647,7 @@ v_mod_tmp.clear();              // clear the temporary list of modification
 // point it is necessary to retrieve the first item smaller than start_item  
 // whose corresponding labels have been previously stored in G[ i ].lab. 
 
- int step;
- 
- if( reopt == 1 )
-  step = 1;
- else
-  step = f_N * std::exp2( - std::log2( f_N ) * reopt ); 
+ int step = compute_step();
 
  if( start_item != + Inf< int >() )
   start_item = ( start_item / step ) * step;
