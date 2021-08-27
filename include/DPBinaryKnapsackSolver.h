@@ -140,29 +140,57 @@ void set_Block( Block * block ) override;
 * let SP( i , j ) the sub-problem where the objective is to select a subset 
 * of the first i items, that maximizes the total profit and whose total 
 * weight is equal to j. For each of these sub-problems, let consider a node 
-* u_{ i , j } with two outgoing oriented arcs: 
+* u_{i,j} with two outgoing oriented arcs: 
 *
-*  - A "horizontal" arc: ( u_{ i , j } , u_{ i + 1 , j } ) with "cost" 0                
+*  - A "horizontal" arc: ( u_{i,j} , u_{i+1,j} ) with "cost" 0                
 *                          
-*  - A "diagonal" arc: ( u_{ i , j } , u_{ i + 1 , j + w } ) with "cost" p
+*  - A "diagonal" arc: ( u_{i,j} , u_{i+1,j+w} ) with "cost" p
 *                       
-* where w and p are the weight and the profit of the ( i + 1 )-th item. 
-* The Binary Knapsack problem is equivalent to finding a path in this graph
-* that maximizes the total profit, from a "dummy" node u_{ 0 , 0 } to a node 
-* u_{ f_N , j } with j <= Capacity of the Knapsack. In a solution path, 
-* selecting a "diagonal" arc means that the ( i + 1 )-th item has been 
-* selected, whereas selecting a "horizontal" arc is equivalent to discard
-* the item.  
+* where w and p are the weight and the profit of the ( i + 1 )-th item.
+*                      
+*                      X 
+*                  X  /
+*                 /  / X
+*        --------/--/-/----------------------O - -  Capacity          
+*               O--O-/-O                     O - -  w0 + w1 
+* .            /  / /                        .
+*           p1/  / O---O                     . - -  w0 + w2
+*            /  O-/O---O      ...            . - -  w1
+*           /  / /     O                     .
+*          O--/-O--O--/O                     . - -  w0 
+*      p0 /p1/    /  /                       .
+*        /  /    /  /                        
+*       *--O----O--O---O                     O - -  0
+*          ^    ^  ^   ^                     ^
+* items    0    1  2   3      ...            N 
 * 
-* Therefore, G is implemented as a vector with ( f_N + 1 ) entries, one
-* for each item + the "dummy" node. Each entry contains a "slice" that is a  
-* data structure with two vectors:  G[ i ].lab (or "labels") and G[ i ].pred 
-* (or "predecessors").
+* Basically, starting from a dummy node *, for each new item two possibilites
+* are considered: either the next item is selected (diagonal arc with cost p), 
+* or it is discarded (horizontal arc with cost 0). 
+*  
+* The Binary Knapsack problem is equivalent to finding a path in this graph
+* from node * to a node u_{ N , j } with j <= Capacity of the Knapsack,
+* that maximizes the total profit. To find a Longest path in G, a label is 
+* assigned to each node; a label is the optimal value of the sub-problem
+* represented by that node and can be computed using dynamic programming.
+* To simplify the explanation, let us call slice[ i ] the set of nodes u_{i,j}
+* with fixed i (a "vertical slice" in the graph in figure). 
+*  
+* - Assume all the labels of slice[ i ] have already been computed
+* - Each node in slice[ i + 1 ] can be reached either from an horizontal arc
+*   or from a diagonal arc
+* - The labels of slice[ i + 1 ] can be computed by comparing the two 
+*   possibilities (choosing the one with the best total profit).  
+* 
+* Therefore, G is implemented as a vector with ( N + 1 ) entries, one
+* for each item + the dummy node. Each entry contains a slice, which is  
+* implemented data structure with two vectors:  G[ i ].lab (or "labels") 
+* and G[ i ].pred (or "predecessors").
 *
 * Labels (of type double) and predecessors (of type bool) are vectors s.t.
 *   
-*   G[ i ].lab[ j ]  corresponds to node u_{ i , j } and contains the optimal 
-*                    value of SP( i , j )
+*   G[ i ].lab[ j ]  corresponds to node u_{i,j} and contains its label,
+*                    that is the optimal value of SP( i , j ).
 *
 *   G[ i ].pred[ j ] corresponds to the last arc that has been selected in 
 *                    order to obtain the value in G[ i ].lab[ j ]. 
@@ -171,13 +199,13 @@ void set_Block( Block * block ) override;
 *                    false otherwise.     
 *
 * At each iteration i, each entry of G[ i + 1 ].lab is computed starting 
-* from G[ i ].lab, by comparing the profits of all the possible path reaching
+* from G[ i ].lab, by comparing the profits of the two possible path reaching
 * the corresponding node (choosing the best one), and G[ i ].pred is updated 
 * accordingly.
 * 
-* Eventually G[ f_N ].lab contains the optimal values of the problems 
-* containing all the items. The optimal value of the Binary Knapsack problem 
-* is the the best value among those in G[ f_N ].lab[ j ] with j less or 
+* Eventually the last slice G[ N ].lab contains the optimal values of the  
+* problems containing all the items. The optimal value of the Binary Knapsack 
+* problem  is the the best value among those in G[ N ].lab[ j ] with j less or 
 * equal then the Capacity of the Knapsack, and the optimal solution can be 
 * reconstructed from the vectors of predecessors.
 *
@@ -295,16 +323,16 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  *                 ----------------------------------------------------------
  *                 # labels to store | Indexes of stored labels
  *                 ----------------------------------------------------------
- *                   1                [ f_N ]
- *                   2                [ (1/2)f_N , f_N ]
- *                   4                [ (1/4)f_N , (2/4)f_N , (3/4)f_N , f_N ]
- *                   8                [ (1/8)f_N , ... , f_N ]
+ *                   1                [ N ]
+ *                   2                [ (1/2)N , N ]
+ *                   4                [ (1/4)N , (2/4)N , (3/4)N , N ]
+ *                   8                [ (1/8)N , ... , N ]
  *                   ...              ...
- *                   2^k              [ (1/k)f_N , ... , f_N ]                
+ *                   2^k              [ (1/k)N , ... , N ]                
  *                   ...              ...
- *                   f_N              [ 1 , 2 , ... , f_N ]
+ *                   f                [ 1 , 2 , ... , N ]
  *
- *                 hence, the number of possibilies is m = log2( f_N ).
+ *                 hence, the number of possibilies is m = log2( N ).
  *                 The correspondence between dblReopt values and one of these
  *                 possibilities is done by dividing the [ 0 , 1 ] interval 
  *                 into m smaller intervals of equal size, and checking to 
@@ -312,13 +340,13 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  *                 dblReopt \in k-th interval, then 2^k labels will be stored
  *                 in G. In particular, it follows that:
  *                 
- *                 dblReopt = 0 -> store only G[ f_N ].lab
+ *                 dblReopt = 0 -> store only G[ N ].lab
  *                 dblReopt = 1 -> store G[ i ].lab for all i
  *
  *                 Intermediate dblReopt values are handled by:
  *                 - retrieving the interval k to which they belong
  *                 - defining a step:
- *                      step = f_N / 2^k
+ *                      step = N / 2^k
  *                   such that at each multiple i of step the corresponding 
  *                   labels are stored in G[ i ].lab
  *                 The step is computed in the compute_step() method.                
@@ -521,12 +549,3 @@ private:
 /*--------------------------------------------------------------------------*/
 /*-------------------- End File DPBinaryKnapsackSolver.h -------------------*/
 /*--------------------------------------------------------------------------*/
-
-
-
-
-
-
-
-
-
