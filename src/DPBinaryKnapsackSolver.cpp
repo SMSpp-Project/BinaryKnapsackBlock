@@ -87,31 +87,30 @@ if( BKB->is_empty() ){
   //---------------------------------------------------------------------------
   // Inizialize the vector of continuous/integer index and the correspondig counters
   
-  nCont = 0;
-  for(int j=0 ; j< f_N; j++){
-    if(v_I[j]==false)
+  nCont = 0;                           //initialize the counter of continuous variables
+  for(int j=0 ; j< f_N; j++){ 
+    if(v_I[j]==false)                  //if the variable is continuous, increase the counter 
        nCont ++;
    }
    
-  indexContinuous.resize( nCont ); 
-  indexInteger.resize( f_N - nCont ); 
+  indexContinuous.resize( nCont );     // resize the vector of continuous index 
+                                       // to the number of continuous variables
+  indexInteger.resize( f_N - nCont );  // resize the vector of integer index to the number of
+                                       // integer variables = total elements - number of continuous variables
  
   nCont = 0;
   nInteger = 0;
 
 
-std::cout<<"Continuous Indexes:\n";
-  for(int j=0 ; j< f_N; j++){
-   if(v_I[j]==false){
-      indexContinuous[nCont]=j;
-      nCont++;
-      std::cout<<j<<", ";
+  for(int j=0 ; j< f_N; j++){         // memorize the indexes of continuous variables
+   if(v_I[j]==false){                 // and the same for the integer variables
+      indexContinuous[nCont]=j;       // re-count the continuous and integer variables
+      nCont++;                        
    }else{
      indexInteger[nInteger]=j;
      nInteger++;
    } 
   }
- std::cout<<"\n";
 
 if( nCont == f_N )
  start_item = f_N;
@@ -250,13 +249,11 @@ for(; i < f_N ; i++ ){
  // swaps
  maxcurrlab = maxnextlab;
  
-//std::cout << "maxcurrlab: " << maxcurrlab <<"\n";
  std::swap( currlab , nextlab );
 }
 
 
 // always save last labels in G[ f_N ].lab
-
 std::swap( G[ f_N ].lab , currlab );
 
 //end( DP algorithm )
@@ -276,26 +273,31 @@ obj = -Inf< double >();
 
 int besth = 0;
 //double bestlab = -Inf< double >();
-lastIndex = 0;
-int tempLastIndex =0;
-lastVar = 0;
-double boundX = 1;
-double contProfit = 0;
-double contWeight = 0;    // compute the continuous part
-double rC = C - maxcurrlab;
+lastIndex = 0;               // index of the last element considered in the continuous knapsack
+int tempLastIndex =0;        // the same but this one is used only in the resolution, the previous one to compute the solution  
+lastVar = 0;                 // value of the last variable considered in the knapsack 
+double boundX = 1;           // current bound for the variable, 0<=boundX<=1  
+double contProfit = 0;       // cumulative profits related to the continuous solution 
+double contWeight = 0;       // cumulative wieghts related to the continuous solution
+double rC = C - maxcurrlab;  // residual capacity
 
+
+
+// compute the continuous part
 
 if(maxcurrlab==0)
  obj=G[ f_N ].lab[ 0 ];
 
+
+//we start from the higher heigth, that have lower residual capacity
 for( int i = maxcurrlab ; i >= 0 ; i-- ){
 
-
+//starting from the index analyzed during the previous iteration (height) 
  for( int j = tempLastIndex ; j < indexContinuous.size() ; j++ ){
  
+ // if the item is fixed to zero or one we skip the current iteration
    if( isFixed( indexContinuous[ j ] ) ){
    tempLastIndex++;
- //  std::cout<<"Is Fixed "<<indexContinuous[j] << "\n";
    continue;
    }
   
@@ -303,9 +305,8 @@ for( int i = maxcurrlab ; i >= 0 ; i-- ){
  int w = v_W[ indexContinuous[ j ] ] ;                 // weight of the current item
  
  if( isNeg(  indexContinuous[ j ]  ) ){                  // if the item has negative 
- //std::cout<<"Is negative"<< indexContinuous[ j ] <<"\n";
-  p = -p;                           // profit and weight
-  w = -w;                           // change both signs
+  p = -p;                                                // profit and weight
+  w = -w;                                                // change both signs
  }
  
   // if the item does not fit entirely in the knapsack
@@ -315,9 +316,9 @@ for( int i = maxcurrlab ; i >= 0 ; i-- ){
    boundX -= ( rC - contWeight ) / ( w );  
    contProfit += ( rC - contWeight ) / ( w) * p ;
    contWeight = rC; // / ( v_W[ indexContinuous[ j ] ] );
- //  std::cout<< "boundX="<<boundX<<"\n contProfit="<<contProfit<<"\n contWeight="<<contWeight<<"\n rC=" << rC << "\n w="<<w<<", p="<<p<<"\n";
    break; 
   }else{
+  // otherwise take the whole item and consider the following item
    contProfit += p * boundX;
    contWeight += w * boundX;
    boundX = 1;
@@ -439,19 +440,18 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
 //  }   
 
 
-  if( i < lastIndex )
-    v_x[ indexContinuous[ i ] ] = 1;
-  else if( i == lastIndex )
-    v_x[ indexContinuous[ lastIndex ] ] = lastVar;
-  else
+  if( i < lastIndex )                               // if the item preceed the last item considered
+    v_x[ indexContinuous[ i ] ] = 1;                // we fix the variable to one
+  else if( i == lastIndex )                         // if the item is exactly the last item considered
+    v_x[ indexContinuous[ lastIndex ] ] = lastVar;  // the variable has value lastVar \in (0,1]
+  else                                              // otherwise we fix the variable to zero
     v_x[ indexContinuous[ i ] ] = 0;
     
   
   if( isNeg( indexContinuous[ i ] ) )                  // items with negative weight and profit
    v_x[ indexContinuous[ i ] ] = 1 - v_x[ indexContinuous[ i ] ];
-
    }
-
+   
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
  
  BKB->set_x( v_x );         // write the solution in the BinaryKnapsackBlock
@@ -733,13 +733,13 @@ for( auto mod : v_mod_tmp ){
      case( BinaryKnapsackBlockMod::eChgIntegrality):{
      
      for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
-      
-       bool ni = BKB->get_Integrality( i );
+     
+       bool ni = BKB->get_Integrality( i );                  // new integrality
        
-       v_I[ i ] = ni;
+       v_I[ i ] = ni;                                        // update 
      
      }
-     
+    
      start_item = 0;
      
      break;
@@ -813,13 +813,13 @@ for( auto mod : v_mod_tmp ){
      
      for( auto i : tmod->nms() ){
       
-       bool ni = BKB->get_Integrality( i );
+       bool ni = BKB->get_Integrality( i );   //new integrality
        
-       v_I[ i ] = ni;
+       v_I[ i ] = ni;                         //update integrality
      
      }
      
-     start_item = 0;
+     start_item = 0;                         //no-reoptimization
      
      break;
      

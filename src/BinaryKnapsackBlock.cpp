@@ -124,7 +124,6 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
  if( Profits.size() != n )
   throw( std::invalid_argument( "Vector of Profits of the wrong size" ) );
 
- std::cout<<Integrality.size();
  if( Integrality.size() != n && Integrality.size()!=0 )
    throw( std::invalid_argument( "Vector of Integrality of the wrong size" ) );
 
@@ -947,7 +946,6 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
 
 void BinaryKnapsackBlock::chg_integrality( bool NIntegrality , Index item , 
                           ModParam issueMod , ModParam issueAMod ){
-
  if( item >= get_NItems() )
   throw( std::invalid_argument( "invalid item" ) );
   
@@ -1001,7 +999,6 @@ void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality ,
                                        Range rng , 
                                        ModParam issueMod ,
                                        ModParam issueAMod ){
-
  rng.second = std::min( rng.second , get_NItems() );
  
  if(v_I.empty()){
@@ -1025,7 +1022,7 @@ void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality ,
   
   // abstract representation
   //ColVaruable *vx = dynamic_cast<ColVariable*>( v_x );
-     for(int i=0;i<=rng.second-rng.first;i++){
+     for(int i=0;i<rng.second-rng.first;i++){
         if(NIntegrality[i]==true){
           if(v_x[rng.first+i].get_type()==ColVariable::kPosUnitary){
             countCont--;
@@ -1062,7 +1059,6 @@ void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality,
                                        Subset && nms , bool ordered , 
                                        ModParam issueMod ,
                                        ModParam issueAMod ){
-
  if( nms.empty() )  // nothing to change
   return;            
  
@@ -1082,7 +1078,7 @@ void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality,
   copyidx( v_I , nms , NIntegrality );
   
  // abstract representation
-  for(int i=0;i<=nms.size();i++){
+  for(int i=0;i<nms.size();i++){
     if(NIntegrality[i]==true){
       if(v_x[nms[i]].get_type()==ColVariable::kPosUnitary){
       countCont--;
