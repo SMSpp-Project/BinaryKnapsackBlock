@@ -737,7 +737,8 @@ Index f_N;                      ///< the number of Items
 double f_C;                     ///< the Capacity of the Knapsack
 std::vector<double> v_W;        ///< vector of Weights          
 std::vector<double> v_P;        ///< vector of Profits
-std::vector<bool> v_I;	         ///< vector of boolean to describe if the variable are continuous or discrete
+std::vector<bool> v_I;	        
+///< vector of boolean to describe if the variable are continuous or discrete
 int countCont; 		 ///< counter for the umber of continuous variables
 
 unsigned char AR;               ///< bit-wise coded: what abstract is there
@@ -754,9 +755,9 @@ bool f_sense;                   ///< the sense of the objective
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
-std::vector< ColVariable > v_x;  ///< the static binary/continuous variables
-std::vector< FRowConstraint > v_cnst;   ///< the static constraint 
-FRealObjective f_obj;                   ///< the (linear) objective function
+std::vector< ColVariable > v_x; ///< the static binary/continuous variables
+FRowConstraint f_cnst;          ///< the static constraint 
+FRealObjective f_obj;           ///< the (linear) objective function
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PRIVATE PART OF THE CLASS --------------------------*/
