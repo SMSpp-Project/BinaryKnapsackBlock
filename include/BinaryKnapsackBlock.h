@@ -86,9 +86,13 @@ public:
  @{ */
 
 typedef std::vector<double>::iterator dblVec_it;
+typedef std::vector<bool>::iterator boolVec_it;
 
 typedef std::vector<bool> boolVec;
 typedef const boolVec c_boolVec;
+
+typedef std::vector<double> doubleVec;
+typedef const doubleVec c_doubleVec;
 
 /// tolerance for binary variables - - - - - - - - - - - - - - - - - - - - - -
 
@@ -146,12 +150,12 @@ virtual ~BinaryKnapsackBlock(){ guts_of_destructor(); }
   * issued. */
 
 void load( Index n , double Capacity , const std::vector<double> & Weights , 
-           const std::vector<double> & Profits );
+           const std::vector<double> & Profits, const std::vector<bool> & Integrality ={} );
 
 /*--------------------------------------------------------------------------*/
 
 void load( Index n , double Capacity , std::vector<double> && Weights , 
-           std::vector<double> && Profits );
+           std::vector<double> && Profits, std::vector<bool> && Integrality ={});
 
 /*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
@@ -315,6 +319,25 @@ double get_Weight( Index i ) const {
 
 const std::vector< double > & get_Weights() const { return( v_W ); }
 
+
+/*--------------------------------------------------------------------------*/
+ /// given an index i return the integrality of item i 
+
+bool get_Integrality( Index i ) const { 
+ if( i >= get_NItems() )
+  throw( std::invalid_argument( "invalid item " ) );
+ if( v_I.empty() )
+   return( true );
+ return( v_I[ i ] ); 
+  
+}
+
+/*--------------------------------------------------------------------------*/
+ /// get the vector of Integrality if v_I is empty, then all the variables are integer
+
+const std::vector<bool> & get_Integrality() const { return( v_I ); }
+
+
 /*--------------------------------------------------------------------------*/
  /// given an index i return the profit of item i 
 
@@ -432,17 +455,17 @@ Solution * get_Solution( Configuration * solc = nullptr,
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index gets the solution of the corresponding item
 
-bool get_x( Index i );
+double get_x( Index i );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution
 
-void get_x( boolVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
+void get_x( doubleVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the solution for an arbitrary subset of items
 
-void get_x( boolVec & xSol , c_Subset & nms );
+void get_x( doubleVec & xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the number of variables
@@ -452,17 +475,17 @@ Index get_VarSize(){ return( v_x.size() ); }
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, set the solution of the corresponding item
 
-void set_x( Index i , bool value );
+void set_x( Index i , double value );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set a contiguous interval of the solution
 
-void set_x( c_boolVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
+void set_x( c_doubleVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the solution for an arbitrary subset of items
 
-void set_x( c_boolVec & xSol , c_Subset & nms );
+void set_x( c_doubleVec & xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i return true if the corresponding variable is fixed
@@ -618,6 +641,30 @@ void chg_weights( const dblVec_it NWeight ,
                   ModParam issueMod = eNoBlck ,
                   ModParam issueAMod = eNoBlck ); 
 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// given an index i change the boolean vector that tell which variable is continuous and which integer (integraliy vector)
+void chg_integrality( bool NIntegrality , Index item , 
+                 ModParam issueMod = eNoBlck ,
+                 ModParam issueAMod = eNoBlck ); 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the integrality vector of a contiguous interval of items
+
+void chg_integrality( const boolVec_it NIntegrality , 
+                  Range rng = Range( 0 , Inf< Index >() ) , 
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the weights of an arbitrary subsets of items
+
+void chg_integrality( const boolVec_it NIntegrality , 
+                  Subset && nms , bool ordered = false ,  
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
+
+
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the profit of item i 
 
@@ -690,6 +737,8 @@ Index f_N;                      ///< the number of Items
 double f_C;                     ///< the Capacity of the Knapsack
 std::vector<double> v_W;        ///< vector of Weights          
 std::vector<double> v_P;        ///< vector of Profits
+std::vector<bool> v_I;	         ///< vector of boolean to describe if the variable are continuous or discrete
+int countCont; 		 ///< counter for the umber of continuous variables
 
 unsigned char AR;               ///< bit-wise coded: what abstract is there
 
@@ -705,8 +754,8 @@ bool f_sense;                   ///< the sense of the objective
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
-std::vector< ColVariable > v_x;         ///< the static binary variables
-FRowConstraint f_cnst;                  ///< the static constraint 
+std::vector< ColVariable > v_x;  ///< the static binary/continuous variables
+std::vector< FRowConstraint > v_cnst;   ///< the static constraint 
 FRealObjective f_obj;                   ///< the (linear) objective function
 
 /*--------------------------------------------------------------------------*/
@@ -759,6 +808,7 @@ public:
  enum BinaryKnapsackBlock_mod_type {
   eChgWeight = 0  ,   ///< change the item weight
   eChgProfit      ,   ///< change the item profit
+  eChgIntegrality ,   ///< change the variable integrality constraint
   eChgCapacity    ,   ///< change the Knapsack capacity
   eFixX           ,   ///< fix a variable x
   eUnfixX         ,   ///< unfix a variable x

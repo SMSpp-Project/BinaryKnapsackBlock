@@ -75,9 +75,9 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackSolution );
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
                                 const std::vector< double > & Weights , 
-                                const std::vector< double > & Profits )
+                                const std::vector< double > & Profits,
+                                const std::vector< bool > & Integrality )
 {
- 
  // sanity checks 
 
  if( Weights.size() != n )
@@ -85,32 +85,34 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 
  if( Profits.size() != n )
   throw( std::invalid_argument( "Vector of Profits of the wrong size" ) );
+ 
+ if( ( ! Integrality.empty() ) && ( Integrality.size() != n ) )
+  throw( std::invalid_argument( "Vector of Integrality of the wrong size" ) );
+ 
+ // call load( , , && , && , && ) on newly constructed copies
+ load( n , Capacity , std::vector< double >( Weights ) ,
+       std::vector< double >( Profits ) ,
+       std::vector< bool >( Integrality ) );
 
- // copy vectors and call load( , , && , && )
- std::vector< double > W( n );
- std::vector< double > P( n );
-
- std::copy( Weights.begin() , Weights.end() , W.begin() );
- std::copy( Profits.begin() , Profits.end() , P.begin() );
-
- load( n , Capacity , std::move( W ) , std::move( P ) );
-
-} // end( BinaryKnapsackBlock::load( memory ) )
+ } // end( BinaryKnapsackBlock::load( memory ) )
 
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
                                 std::vector< double > && Weights , 
-                                std::vector< double > && Profits )
+                                std::vector< double > && Profits ,
+                                std::vector< bool > && Integrality )
 {
- 
- // sanity checks 
+  // sanity checks 
 
  if( Weights.size() != n )
   throw( std::invalid_argument( "Vector of Weights of the wrong size" ) );
 
  if( Profits.size() != n )
   throw( std::invalid_argument( "Vector of Profits of the wrong size" ) );
+
+ if( ( ! Integrality.empty() ) && ( Integrality.size() != n ) )
+   throw( std::invalid_argument( "Vector of Integrality of the wrong size" ) );
 
  // erase previous instance, if any
 
@@ -124,7 +126,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 
  v_W = std::move( Weights );  
  v_P = std::move( Profits ); 
-
+ v_I = std::move( Integrality );  
+ 
  generate_abstract_variables();
 
  // reset conditional bounds
@@ -169,7 +172,18 @@ void BinaryKnapsackBlock::deserialize( const netCDF::NcGroup & group ){
  
  v_P.resize( f_N );
  p.getVar( v_P.data() );
-
+ 
+ netCDF::NcVar i = group.getVar( "Integrality" );
+ if( i.isNull() )
+  v_I.clear();
+ else {
+  v_I.resize( f_N );
+  std::vector< unsigned char > tmpI( v_I.size() );
+ i.getVar( tmpI.data() );
+ for( Index i = 0 ; i < v_I.size() ; ++i )
+  v_I[ i ] = ( tmpI[ i ] != 0 );
+  }
+ 
  generate_abstract_variables();
 
  // reset conditional bounds
@@ -194,9 +208,21 @@ void BinaryKnapsackBlock::generate_abstract_variables( Configuration * stvv )
 
  v_x.resize( get_NItems() );
    
-  for( auto & var : v_x )
-   var.set_type( ColVariable::kBinary , eNoBlck );
-   
+  countCont=0;
+  if( v_I.empty()){
+  for(int i=0; i< get_NItems(); i++ )
+     v_x[i].set_type( ColVariable::kBinary , eNoBlck );
+  }
+  else{
+    for(int i=0; i< get_NItems(); i++ ){
+     if(v_I[i]==true)
+       v_x[i].set_type( ColVariable::kBinary , eNoBlck );
+     else{
+       v_x[i].set_type( ColVariable::kPosUnitary , eNoBlck );
+       countCont++;  
+      }
+    }
+  }
  add_static_variable( v_x );
 
  AR |= HasVar;
@@ -255,15 +281,26 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc ){
 /*--------------------- Methods for checking the Block ---------------------*/
 /*--------------------------------------------------------------------------*/
 
-bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
-               Configuration * fsbc )
+bool BinaryKnapsackBlock::is_feasible( bool useabstract , 
+				       Configuration * fsbc )
 {
+ // first check bound constraints, for which only one way is available
+ for( auto & xi : v_x )
+  if( ! xi.is_feasible() )
+   return( false );
+
+ // now check the knapsack constraint(s)
+
  if( useabstract && ( AR & HasCns ) ) {
-  // do it using the abstract representation, if there is
+  // do it using the abstract representation, if there is any
+
+  // ensure the knapsack constraint(s) is compute()-d, as this is
+  // necessary for abs_viol() to work
   if( auto ret = f_cnst.compute() ;
       ( ret <= FRowConstraint::kUnEval ) || ( ret > FRowConstraint::kOK ) )
-   return( false );
- 
+   return( false );  // failure to compute() means no proof it is feasible
+
+  // TODO: some epsilon might be required
   return( f_cnst.abs_viol() == 0 );
   }
 
@@ -349,7 +386,7 @@ if( BKB->get_VarSize() != get_VarSize() )
  throw( std::invalid_argument( "incompatible variables size" ) );
 
 // copy solution
-std::vector< bool > xSol( get_VarSize() );
+std::vector< double > xSol( get_VarSize() );
 BKB->get_x( xSol );
 set_x( xSol );
  
@@ -371,7 +408,7 @@ if( BKB->get_VarSize() != get_VarSize() )
  throw( std::invalid_argument( "incompatible variables size" ) );
 
 // copy solution
-std::vector< bool > xSol( get_VarSize() );
+std::vector< double > xSol( get_VarSize() );
 get_x( xSol );
 BKB->set_x( xSol );
  
@@ -395,39 +432,39 @@ Solution * BinaryKnapsackBlock::get_Solution( Configuration *solc ,
 
 /*--------------------------------------------------------------------------*/
 
-bool BinaryKnapsackBlock::get_x( Index i ){
+double BinaryKnapsackBlock::get_x( Index i ){
  if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid item" ) );
- return ( std::abs( v_x[ i ].get_value() ) < BinaryTol ? false : true ); 
+ return ( v_x[ i ].get_value());// < BinaryTol ? false : true ); 
 }
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::get_x( boolVec & xSol , Range rng ){
+void BinaryKnapsackBlock::get_x( doubleVec & xSol , Range rng ){
  
  rng.second = std::min( rng.second , get_VarSize() );
 
  auto xSoli = xSol.begin();
  for( Index i = rng.first ; i < rng.second ; i++ )
-  ( * xSoli++ ) = std::abs( v_x[ i ].get_value() ) < BinaryTol ? false : true;
+  ( * xSoli++ ) = v_x[ i ].get_value();// < BinaryTol ? false : true;
 
 }
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::get_x( boolVec & xSol , c_Subset & nms ){
+void BinaryKnapsackBlock::get_x( doubleVec & xSol , c_Subset & nms ){
  
  auto xSoli = xSol.begin();
  for( auto i : nms ){
   if( i >= get_VarSize() )
    throw( std::invalid_argument( "invalid item" ) );
-  ( * xSoli++ ) = std::abs( v_x[ i ].get_value() ) < BinaryTol ? false : true;
+  ( * xSoli++ ) = v_x[ i ].get_value();// < BinaryTol ? false : true;
  }
 }
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( Index i , bool value ){
+void BinaryKnapsackBlock::set_x( Index i , double value ){
  if( i >= get_VarSize() )
   throw( std::invalid_argument( "invalid item" ) );
  v_x[ i ].set_value( value ); 
@@ -435,7 +472,7 @@ void BinaryKnapsackBlock::set_x( Index i , bool value ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( c_boolVec & xSol , Range rng ){
+void BinaryKnapsackBlock::set_x( c_doubleVec & xSol , Range rng ){
  
  rng.second = std::min( rng.second , get_NItems() );
 
@@ -447,7 +484,7 @@ void BinaryKnapsackBlock::set_x( c_boolVec & xSol , Range rng ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( c_boolVec & xSol , c_Subset & nms ){
+void BinaryKnapsackBlock::set_x( c_doubleVec & xSol , c_Subset & nms ){
  
  auto xSoli = xSol.begin();
  for( auto i : nms ){
@@ -490,7 +527,14 @@ void BinaryKnapsackBlock::serialize( netCDF::NcGroup & group ) const {
  ( group.addVar( "Weights" , netCDF::NcDouble() , ni ) ).putVar( v_W.data() );
  
  ( group.addVar( "Profits" , netCDF::NcDouble() , ni ) ).putVar( v_P.data() );
-
+ 
+ if( ! v_I.empty() ){
+   std::vector< int > tempI;
+   for(int i=0; i<v_I.size(); i++){
+     tempI[i]=(int) v_I[i]; //.data();
+   }
+   ( group.addVar( "Integrality", netCDF::NcInt(), ni ) ).putVar( tempI.data() );
+ }
 }// end( BinaryKnapsackBlock::serialize )
 
 /*--------------------------------------------------------------------------*/
@@ -893,7 +937,174 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit,
  }
 } 
 
+void BinaryKnapsackBlock::chg_integrality( bool NIntegrality , Index item , 
+                          ModParam issueMod , ModParam issueAMod ){
+ if( item >= get_NItems() )
+  throw( std::invalid_argument( "invalid item" ) );
+  
+ if(NIntegrality == false && v_I.empty()){
+   v_I.resize( get_NItems() , true );
+   countCont=0;
+ }
+ 
+ if( v_I[ item ] == NIntegrality ) // nothing to do
+  return;
+
+
+ // change both physical and abstract representation (if it exists)
+ if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
+  
+  // physical representation
+  v_I[ item ] = NIntegrality; 
+
+  // abstract representation
+  if(NIntegrality==true){
+    if(v_x[item].get_type()==ColVariable::kPosUnitary){
+      countCont--;
+      v_x[item].set_type( ColVariable::kBinary , eNoBlck );
+    }
+  }else{
+    if(v_x[item].get_type()==ColVariable::kBinary){
+      countCont++;
+      v_x[item].set_type( ColVariable::kPosUnitary , eNoBlck );
+      }
+    }
+  } 
+ else if( not_dry_run( issueMod ) ) // otherwise only physical representation 
+  v_I[ item ] = NIntegrality;
+ 
+
+ // issue physical Modification 
+ if( issue_pmod( issueMod ) ) 
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
+      BinaryKnapsackBlockMod::eChgIntegrality , std::make_pair( item , item + 1 ) ), 
+      Observer::par2chnl( issueMod ) );
+
+   if( ! countCont )
+         v_I.clear();
+
+ } // end( BinaryKnapsackBlock::chg_integrality )
+
 /*--------------------------------------------------------------------------*/
+
+
+void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality ,
+                                       Range rng , 
+                                       ModParam issueMod ,
+                                       ModParam issueAMod ){
+ rng.second = std::min( rng.second , get_NItems() );
+ 
+ if(v_I.empty()){
+   v_I.resize( get_NItems() , true );
+   countCont=0;
+ }
+ if( rng.second <= rng.first )  // nothing to change
+  return;   
+
+ if( std::equal(  NIntegrality , NIntegrality + ( rng.second - rng.first ) ,
+             v_I.begin() + rng.first ) )
+  return;  // nothing changes, avoid issuing the Modification
+
+ 
+ // change both physical and abstract representation (if it exists)
+ if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
+  
+  // physical representation
+  std::copy( NIntegrality , NIntegrality + ( rng.second - rng.first ) ,
+             v_I.begin() + rng.first );
+  
+  // abstract representation
+  //ColVaruable *vx = dynamic_cast<ColVariable*>( v_x );
+     for(int i=0;i<rng.second-rng.first;i++){
+        if(NIntegrality[i]==true){
+          if(v_x[rng.first+i].get_type()==ColVariable::kPosUnitary){
+            countCont--;
+            v_x[rng.first+i].set_type( ColVariable::kBinary , eNoBlck );
+          }
+        }else{
+          if(v_x[rng.first+i].get_type()==ColVariable::kBinary){
+            countCont++;
+            v_x[rng.first+i].set_type( ColVariable::kPosUnitary , eNoBlck );
+          }
+       }
+     }
+ } 
+ else if( not_dry_run( issueMod ) ){ // otherwise only physical representation 
+  std::copy( NIntegrality , NIntegrality + ( rng.second - rng.first ) ,
+             v_I.begin() + rng.first );
+ }
+
+ // issue physical Modification 
+ if( issue_pmod( issueMod ) ) 
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
+                                    BinaryKnapsackBlockMod::eChgIntegrality , rng ), 
+                                    Observer::par2chnl( issueMod ) );
+                                    
+                                     if( ! countCont )
+         v_I.clear();
+
+} 
+
+/*--------------------------------------------------------------------------*/
+
+
+void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality,
+                                       Subset && nms , bool ordered , 
+                                       ModParam issueMod ,
+                                       ModParam issueAMod ){
+ if( nms.empty() )  // nothing to change
+  return;            
+ 
+ if( v_I.empty()){
+   v_I.resize( get_NItems() , true );
+   countCont=0;
+ }
+ 
+ if( is_equal( v_I , nms , NIntegrality , get_NItems() ) )
+   return;  // actually nothing changes, avoid issuing the Modification
+
+
+ // change both physical and abstract representation (if it exists)
+ if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
+  
+  // physical representation
+  copyidx( v_I , nms , NIntegrality );
+  
+ // abstract representation
+  for(int i=0;i<nms.size();i++){
+    if(NIntegrality[i]==true){
+      if(v_x[nms[i]].get_type()==ColVariable::kPosUnitary){
+      countCont--;
+      v_x[nms[i]].set_type( ColVariable::kBinary , eNoBlck );
+      }
+    }else{
+    if(v_x[nms[i]].get_type()==ColVariable::kBinary){
+      countCont++;
+      v_x[nms[i]].set_type( ColVariable::kPosUnitary , eNoBlck );
+      }
+    } 
+  }
+ } 
+ else if( not_dry_run( issueMod ) ){
+  // otherwise change only physical representation 
+  copyidx( v_I , nms , NIntegrality );
+ }
+
+ // issue physical Modification 
+ if( issue_pmod( issueMod ) ){ 
+  if( ! ordered )
+   std::sort( nms.begin() , nms.end() );
+
+
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(this,
+                      BinaryKnapsackBlockMod::eChgIntegrality , std::move( nms ) ), 
+                      Observer::par2chnl( issueMod ) );
+ }
+ 
+  if( ! countCont )
+         v_I.clear();
+} 
+/*-----------------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::chg_capacity( double NC , 
                           ModParam issueMod , ModParam issueAMod ){
@@ -988,6 +1199,7 @@ if( !( input >> f_C ) )
 
 v_W.resize( f_N );
 v_P.resize( f_N );
+v_I.resize( f_N );
 
 for( Index i = 0 ; i < f_N ; i++ ){
  if( !( input >> v_W[i] ) )
@@ -999,6 +1211,10 @@ for( Index i = 0 ; i < f_N ; i++ ){
   throw( std::invalid_argument( "error reading Profits" ) );
 }
 
+for( Index i = 0 ; i < f_N ; i++ ){
+ if( !( (bool) input >> v_I[i] ) )
+  throw( std::invalid_argument( "error reading Integrality Constraints" ) );
+}
  generate_abstract_variables();
 
  // Modification- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1035,6 +1251,7 @@ void BinaryKnapsackBlock::guts_of_destructor(){
 
 /*--------------------------------------------------------------------------*/
 
+//change only this for modification?? add Integrality modification
 void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
 
 // C05FunctionModLinRngd - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1212,6 +1429,7 @@ for( Index i = 0 ; i < f_N ; i++ ){
  
  double w = v_W[ i ];                           // weight of the current item
  double p = f_sense ? v_P[ i ] : -v_P[ i ];     // profit of the current item
+ 
 
  // items contained in the optimal solution
  if( w <= 0 && p >= 0 ){
