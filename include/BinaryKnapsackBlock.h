@@ -94,11 +94,6 @@ typedef const boolVec c_boolVec;
 typedef std::vector<double> doubleVec;
 typedef const doubleVec c_doubleVec;
 
-/// tolerance for binary variables - - - - - - - - - - - - - - - - - - - - - -
-
-static constexpr double BinaryTol = 1e-9;
-
-
 /**@} ----------------------------------------------------------------------*/
 /*------------------------------- FRIENDS ----------------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -119,9 +114,8 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
   * also be used as the void constructor. */
 
 explicit BinaryKnapsackBlock( Block * father = nullptr )
-  : Block( father ) , f_N( 0 ) , f_C( 0 ) , AR( 0 ) , 
-    f_sense( true ) , f_cond_lower( - Inf<double>() ) , 
-    f_cond_upper( + Inf<double>() ) { }
+  : Block( father ) , f_C( 0 ) , AR( 0 ) , f_sense( true ) , 
+    f_cond_lower( - Inf<double>() ) , f_cond_upper( + Inf<double>() ) { }
 
 /*--------------------------------------------------------------------------*/
  /// destructor of BinaryKnapsackBlock: deletes the abstract representation
@@ -150,12 +144,14 @@ virtual ~BinaryKnapsackBlock(){ guts_of_destructor(); }
   * issued. */
 
 void load( Index n , double Capacity , const std::vector<double> & Weights , 
-           const std::vector<double> & Profits, const std::vector<bool> & Integrality ={} );
+           const std::vector<double> & Profits, 
+           const std::vector<bool> & Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
 
 void load( Index n , double Capacity , std::vector<double> && Weights , 
-           std::vector<double> && Profits, std::vector<bool> && Integrality ={});
+           std::vector<double> && Profits, 
+           std::vector<bool> && Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
@@ -298,12 +294,17 @@ double get_valid_lower_bound( bool conditional = false )
 /*--------------------------------------------------------------------------*/
  /// get the number of items
 
-Index get_NItems() const { return( f_N ); }
+Index get_NItems() const { return( v_P.size() ); }
 
 /*--------------------------------------------------------------------------*/
  /// get the capacity of the Knapsack
 
 double get_Capacity() const { return( f_C ); }
+
+/*--------------------------------------------------------------------------*/
+ /// get the number of continuous variables
+
+Index get_N_Cont_Items() const { return( countCont ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index i return the weight of item i 
@@ -333,9 +334,9 @@ bool get_Integrality( Index i ) const {
 }
 
 /*--------------------------------------------------------------------------*/
- /// get the vector of Integrality if v_I is empty, then all the variables are integer
+ /// get the vector of Integrality 
 
-const std::vector<bool> & get_Integrality() const { return( v_I ); }
+const std::vector< bool > & get_Integrality() const { return( v_I ); }
 
 
 /*--------------------------------------------------------------------------*/
@@ -343,7 +344,7 @@ const std::vector<bool> & get_Integrality() const { return( v_I ); }
 
 double get_Profit( Index i ) const { 
  if( i >= get_NItems() )
-  throw( std::invalid_argument( "invalid item " ) );
+  throw( std::invalid_argument( "invalid item" ) );
  return( v_P[ i ] ); 
 }
 
@@ -357,7 +358,7 @@ const std::vector< double > & get_Profits() const { return( v_P ); }
 
 ColVariable * get_Var( Index i ){ 
  if( i >= get_VarSize() )
-  throw( std::invalid_argument( "invalid item" ) );
+  throw( std::invalid_argument( "invalid variable" ) );
  return( & v_x[ i ] ); 
 }
 
@@ -643,26 +644,28 @@ void chg_weights( const dblVec_it NWeight ,
 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// given an index i change the boolean vector that tell which variable is continuous and which integer (integraliy vector)
+ /// given an index i change the boolean vector that tell which variable is 
+ /// continuous and which integer (integraliy vector)
+
 void chg_integrality( bool NIntegrality , Index item , 
-                 ModParam issueMod = eNoBlck ,
-                 ModParam issueAMod = eNoBlck ); 
+                      ModParam issueMod = eNoBlck ,
+                      ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the integrality vector of a contiguous interval of items
 
 void chg_integrality( const boolVec_it NIntegrality , 
-                  Range rng = Range( 0 , Inf< Index >() ) , 
-                  ModParam issueMod = eNoBlck ,
-                  ModParam issueAMod = eNoBlck ); 
+                      Range rng = Range( 0 , Inf< Index >() ) , 
+                      ModParam issueMod = eNoBlck ,
+                      ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
 void chg_integrality( const boolVec_it NIntegrality , 
-                  Subset && nms , bool ordered = false ,  
-                  ModParam issueMod = eNoBlck ,
-                  ModParam issueAMod = eNoBlck ); 
+                      Subset && nms , bool ordered = false ,  
+                      ModParam issueMod = eNoBlck ,
+                      ModParam issueAMod = eNoBlck ); 
 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -733,13 +736,12 @@ void load( std::istream & input ) override;
 /*--------------------------- PROTECTED FIELDS  ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-Index f_N;                      ///< the number of Items 
 double f_C;                     ///< the Capacity of the Knapsack
 std::vector<double> v_W;        ///< vector of Weights          
 std::vector<double> v_P;        ///< vector of Profits
-std::vector<bool> v_I;	        
+std::vector<bool> v_I;          
 ///< vector of boolean to describe if the variable are continuous or discrete
-int countCont; 		 ///< counter for the umber of continuous variables
+Index countCont;           ///< counter for the umber of continuous variables
 
 unsigned char AR;               ///< bit-wise coded: what abstract is there
 
@@ -1049,6 +1051,7 @@ SMSpp_insert_in_factory_h;
 } // end( namespace SMSpp_di_unipi_it )
 
 #endif /* BinaryKnapsackBlock.h included */
+
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- End File BinaryKnapsackBlock.h ---------------------*/

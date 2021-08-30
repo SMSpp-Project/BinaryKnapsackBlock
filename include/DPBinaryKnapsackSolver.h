@@ -103,7 +103,9 @@ public:
  /// constructor
 
 DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , 
-                           f_sense( true ), obj( - Inf< double >() ) , 
+                           f_sense( true ), countCont( 0 ) , 
+                           is_sorted( false ) , besth( 0 ) , lastIndex( 0 ) ,
+                           lastVar( 0 ) , obj( - Inf< double >() ) , 
                            start_item( 0 ) , reopt( 0 ){}
 
 /*--------------------------------------------------------------------------*/
@@ -271,21 +273,21 @@ void set_Block( Block * block ) override;
    with the correspondent index bestBinIndex
    
 2) For each height H, starting from the bigger one (H=B-1):
-	-1- compute the solution of the Continuous Knapsack with capacity B-H,
-	    considering as input also the continuous solution obtained in the 
-	    previous step:
-		*1* sort the components of the continuopus variables
-		    considering Profits/Weights
-		*2* With the new order, start from the first element and
-		    assign to the variable the maximum value allowed by 
-		    the residual capacity
-	-3- Update/Memorize the optimal objective value obtained in the 
-	    node G[H][bestBinIndex[H]]
-	-4- update/memorize the complete solution (x_binary,x_continuous)
-	
+   -1- compute the solution of the Continuous Knapsack with capacity B-H,
+       considering as input also the continuous solution obtained in the 
+       previous step:
+      *1* sort the components of the continuopus variables
+          considering Profits/Weights
+      *2* With the new order, start from the first element and
+          assign to the variable the maximum value allowed by 
+          the residual capacity
+   -3- Update/Memorize the optimal objective value obtained in the 
+       node G[H][bestBinIndex[H]]
+   -4- update/memorize the complete solution (x_binary,x_continuous)
+   
 3) For each height H=0,...,B:
-	-1- Compare the labels in G[H][bestBinIndex[H]] in order to find 
-	    the optimal solution	
+   -1- Compare the labels in G[H][bestBinIndex[H]] in order to find 
+       the optimal solution                                                */ 
 
 /*-------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------*/
@@ -440,15 +442,27 @@ protected:
 
 /* data of the Binary Knapsack instance - - - - - - - - - - - - - - - - - - */
 
- int f_N;                               ///< the number of Items 
- double f_C;                               ///< the Capacity of the Knapsack
- std::vector< int > v_W;                ///< vector of Weights          
- std::vector< double > v_P;             ///< vector of Profits
- std::vector< bool > v_I;		 ///< vector of Integrality (Binary/Continuous)
- bool f_sense;                          ///< the sense of the objective 
+ int f_N;                       ///< the number of Items 
+ double f_C;                    ///< the Capacity of the Knapsack
+ std::vector< int > v_W;        ///< vector of Weights          
+ std::vector< double > v_P;     ///< vector of Profits
+ std::vector< bool > v_I;       ///< vector of Integrality (Binary/Continuous)
+ bool f_sense;                  ///< the sense of the objective
+
+ /* handling of the continuous part - - - - - - - - - - - - - - - - - - - - */
+
+ Index countCont;        ///< counter for the number of continuous variables
+ Subset indexContinuous; ///< indexes of the continuous variables
+ bool is_sorted;         ///< if indexContinuous is sorted by Profits/Weights 
+
+ /* handling of the solution- - - - - - - - - - - - - - - - - - - - - - - - */
+
+ Index besth;            ///< best height of the integer part
+ Index lastIndex;        ///< last continuous variables index
+ double lastVar;         ///< fraction of solution of lastIndex
 
  double obj;                            ///< the value of the objective
- std::vector< double > v_x;               ///< vector of continuous and binary variables
+ std::vector< double > v_x;             ///< vector of variables
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
@@ -458,18 +472,7 @@ protected:
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
  
- std::vector< int > indexContinuous;
- std::vector< int > indexInteger;
- std::vector< int > prepContinuous;
- int lastIndex;
- double lastVar;
- bool is_sorted;
- int nCont;
- int nInteger;
  double reopt;                          ///< reoptimization parameter 
- std::vector<double> maxLabel;			// memorize the maximum label associated  to a fixed height 
- std::vector<int> maxIndex;			// memorize the index variable  correpsondent to the max label
-                     
  
 // static fields - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -544,18 +547,6 @@ private:
 
  bool isFixed( Index i ){                       // if the variable is fixed
   return( isFixed0( i ) || isFixed1( i ) );     // to 1 or to 0
- }
-
-
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// return true if item i is continuous because the variable is continuous or 
-/// 0 otherwise
-
- bool isCont( Index i ){                       // if the variable is continuous
-  if(v_I.size()==0)
-    return false;
-  return( v_I[i] );     // to 1 or to 0
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
