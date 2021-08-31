@@ -182,7 +182,6 @@ for( Index i = start_item ; i < f_N ; i++ ){
  if( w > iC )                       // if the weight exceeds the capacity
   continue;                         // continue
 
-                
  // max height of the graph 
  maxnextlab = std::min( maxcurrlab + w , iC );
  

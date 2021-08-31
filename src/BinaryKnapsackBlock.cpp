@@ -1383,15 +1383,20 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   // get current state and old state of the variable
   auto state = xi->get_state();
   auto old_state = tmod->old_state();
-
+  
   // the LBS of the state corresponds to fix/unfix - - - - - - - - - - - - - -
   if( ( state ^ old_state ) & 1 ){    // check if the LBS is changed
    
-   // change according to the current state
-   if( state & 1 )
-    fix_x( xi->get_value() , i , make_par( eNoBlck , chnl ) , eDryRun );
+   // only issue the Physical Modification
+   if( state & 1 ){
+    Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
+                BinaryKnapsackBlockMod::eFixX , std::make_pair( i , i + 1 ) ) , 
+                Observer::par2chnl( eNoBlck ) );
+   }
    else
-    unfix_x( i , make_par( eNoBlck , chnl ) , eDryRun );
+    Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
+                BinaryKnapsackBlockMod::eUnfixX , std::make_pair( i , i + 1 ) ) , 
+                Observer::par2chnl( eNoBlck ) );
 
    return; 
   }
@@ -1536,8 +1541,8 @@ void BinaryKnapsackSolution::serialize( netCDF::NcGroup & group ) const {
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackSolution::print( std::ostream & output ){
- for(Index i = 0 ; i < v_x.size() ; i++ ){
-  output << "x" << i << ": " << v_x[ i ] << " ";
+ for( Index i = 0 ; i < v_x.size() ; i++ ){
+  output << "x" << i << ": " << v_x[ i ] << std::endl;
  }
 }
 

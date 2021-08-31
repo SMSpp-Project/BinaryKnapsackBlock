@@ -507,11 +507,13 @@ private:
   
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
-  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 0 )      // if the variable 
-   return( true );                                      // is fixed to 0
+  // if the variable is fixed to 0
+  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 0 )      
+   return( true );                                      
 
-  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 1 )      // if the variable 
-   return( false );                                     // is fixed to 1
+  // if the variable is fixed to 1
+  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 1 )      
+   return( false );                                     
    
   if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )          // if the item has positive
    return( true );                              // weight and negative profit
@@ -528,11 +530,13 @@ private:
   
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
-  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 0 )      // if the variable 
-   return( false );                                     // is fixed to 0
+  // if the variable is fixed to 0
+  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 0 )      
+   return( false );                                     
 
-  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 1 )      // if the variable 
-   return( true );                                      // is fixed to 1
+  // if the variable is fixed to 1
+  if( BKB->is_fixed( i ) && BKB->get_x( i ) == 1 )      
+   return( true );                                      
    
   if( v_W[ i ] <= 0 && v_P[ i ] >= 0 )          // if the item has negative
    return( true );                              // weight and positive profit
