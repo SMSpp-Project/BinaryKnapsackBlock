@@ -1379,10 +1379,26 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
    throw( std::logic_error( "Modification to wrong type of Variable" ) );
   
   int i = p2i_x( xi );
-  if( xi->is_fixed() )
-   unfix_x( i , make_par( eNoBlck , chnl ) , eDryRun );
-  else 
-   fix_x( xi->get_value() , i , make_par( eNoBlck , chnl ) , eDryRun );
+
+  // get current state and old state of the variable
+  auto state = xi->get_state();
+  auto old_state = tmod->old_state();
+
+  // the LBS of the state corresponds to fix/unfix - - - - - - - - - - - - - -
+  if( ( state ^ old_state ) & 1 ){    // check if the LBS is changed
+   
+   // change according to the current state
+   if( state & 1 )
+    fix_x( xi->get_value() , i , make_par( eNoBlck , chnl ) , eDryRun );
+   else
+    unfix_x( i , make_par( eNoBlck , chnl ) , eDryRun );
+
+   return; 
+  }
+
+  // otherwise check if the Integrality has been changed - - - - - - - - - - - 
+  
+  
   
   return;
 }
