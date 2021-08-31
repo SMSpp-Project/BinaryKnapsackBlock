@@ -1384,8 +1384,8 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   auto state = xi->get_state();
   auto old_state = tmod->old_state();
   
-  // the LBS of the state corresponds to fix/unfix - - - - - - - - - - - - - -
-  if( ( state ^ old_state ) & 1 ){    // check if the LBS is changed
+  // the LSB of the state corresponds to fix/unfix - - - - - - - - - - - - - -
+  if( ( state ^ old_state ) & 1 ){    // check if the LSB is changed
    
    // only issue the Physical Modification
    if( state & 1 ){
