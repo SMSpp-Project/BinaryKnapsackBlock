@@ -327,8 +327,6 @@ const std::vector< double > & get_Weights() const { return( v_W ); }
 bool get_Integrality( Index i ) const { 
  if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid item " ) );
- if( v_I.empty() )
-   return( true );
  return( v_I[ i ] ); 
   
 }

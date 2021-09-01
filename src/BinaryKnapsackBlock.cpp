@@ -1402,7 +1402,18 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   }
 
   // otherwise check if the Integrality has been changed - - - - - - - - - - - 
-  
+
+  if( state/2 != old_state/2 ){    // check if the integrality is changed
+   
+   if( state/2 == ColVariable::kPosUnitary )
+    chg_integrality( false , i , make_par( eNoBlck , chnl ) , eDryRun );
+   else if( state/2 == ColVariable::kBinary )
+    chg_integrality( true , i , make_par( eNoBlck , chnl ) , eDryRun );
+   else
+    throw( std::invalid_argument( "invalid Modification to Variable" ) );
+
+   return; 
+  }
   
   
   return;
