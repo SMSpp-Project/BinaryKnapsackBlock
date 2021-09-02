@@ -508,11 +508,11 @@ private:
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
   // if the variable is fixed to 0
-  if( BKB->is_fixed( i ) && BKB->get_x( i ) < 1e-6 )
+  if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) ) < 1e-6 )
    return( true );                                      
 
   // if the variable is fixed to 1
-  if( BKB->is_fixed( i ) && ( BKB->get_x( i ) - 1 ) < 1e-6 )      
+  if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) - 1 ) < 1e-6 )      
    return( false );                                     
    
   if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )          // if the item has positive
