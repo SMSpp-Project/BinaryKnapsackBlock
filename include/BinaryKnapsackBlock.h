@@ -94,11 +94,6 @@ typedef const boolVec c_boolVec;
 typedef std::vector<double> doubleVec;
 typedef const doubleVec c_doubleVec;
 
-/// tolerance for binary variables - - - - - - - - - - - - - - - - - - - - - -
-
-static constexpr double BinaryTol = 1e-9;
-
-
 /**@} ----------------------------------------------------------------------*/
 /*------------------------------- FRIENDS ----------------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -119,9 +114,8 @@ friend BinaryKnapsackSolution; ///< make BinaryKnapsackSolution friend
   * also be used as the void constructor. */
 
 explicit BinaryKnapsackBlock( Block * father = nullptr )
-  : Block( father ) , f_N( 0 ) , f_C( 0 ) , AR( 0 ) , 
-    f_sense( true ) , f_cond_lower( - Inf<double>() ) , 
-    f_cond_upper( + Inf<double>() ) { }
+  : Block( father ) , f_C( 0 ) , AR( 0 ) , f_sense( true ) , 
+    f_cond_lower( - Inf<double>() ) , f_cond_upper( + Inf<double>() ) { }
 
 /*--------------------------------------------------------------------------*/
  /// destructor of BinaryKnapsackBlock: deletes the abstract representation
@@ -150,12 +144,14 @@ virtual ~BinaryKnapsackBlock(){ guts_of_destructor(); }
   * issued. */
 
 void load( Index n , double Capacity , const std::vector<double> & Weights , 
-           const std::vector<double> & Profits, const std::vector<bool> & Integrality ={} );
+           const std::vector<double> & Profits, 
+           const std::vector<bool> & Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
 
 void load( Index n , double Capacity , std::vector<double> && Weights , 
-           std::vector<double> && Profits, std::vector<bool> && Integrality ={});
+           std::vector<double> && Profits, 
+           std::vector<bool> && Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
@@ -298,12 +294,17 @@ double get_valid_lower_bound( bool conditional = false )
 /*--------------------------------------------------------------------------*/
  /// get the number of items
 
-Index get_NItems() const { return( f_N ); }
+Index get_NItems() const { return( v_P.size() ); }
 
 /*--------------------------------------------------------------------------*/
  /// get the capacity of the Knapsack
 
 double get_Capacity() const { return( f_C ); }
+
+/*--------------------------------------------------------------------------*/
+ /// get the number of continuous variables
+
+Index get_N_Cont_Items() const { return( countCont ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index i return the weight of item i 
@@ -317,7 +318,7 @@ double get_Weight( Index i ) const {
 /*--------------------------------------------------------------------------*/
  /// get the vector of Weights
 
-const std::vector<double> & get_Weights() const { return( v_W ); }
+const std::vector< double > & get_Weights() const { return( v_W ); }
 
 
 /*--------------------------------------------------------------------------*/
@@ -326,16 +327,14 @@ const std::vector<double> & get_Weights() const { return( v_W ); }
 bool get_Integrality( Index i ) const { 
  if( i >= get_NItems() )
   throw( std::invalid_argument( "invalid item " ) );
- if( v_I.empty() )
-   return( true );
  return( v_I[ i ] ); 
   
 }
 
 /*--------------------------------------------------------------------------*/
- /// get the vector of Integrality if v_I is empty, then all the variables are integer
+ /// get the vector of Integrality 
 
-const std::vector<bool> & get_Integrality() const { return( v_I ); }
+const std::vector< bool > & get_Integrality() const { return( v_I ); }
 
 
 /*--------------------------------------------------------------------------*/
@@ -343,21 +342,21 @@ const std::vector<bool> & get_Integrality() const { return( v_I ); }
 
 double get_Profit( Index i ) const { 
  if( i >= get_NItems() )
-  throw( std::invalid_argument( "invalid item " ) );
+  throw( std::invalid_argument( "invalid item" ) );
  return( v_P[ i ] ); 
 }
 
 /*--------------------------------------------------------------------------*/
  /// get the vector of Profits
 
-const std::vector<double> & get_Profits() const { return( v_P ); }
+const std::vector< double > & get_Profits() const { return( v_P ); }
 
 /*--------------------------------------------------------------------------*/
  /// given an index get a pointer to the corresponding variable
 
 ColVariable * get_Var( Index i ){ 
  if( i >= get_VarSize() )
-  throw( std::invalid_argument( "invalid item" ) );
+  throw( std::invalid_argument( "invalid variable" ) );
  return( & v_x[ i ] ); 
 }
 
@@ -371,14 +370,12 @@ ColVariable * get_Var( Index i ){
  /** Returns true if the solution encoded in the current value of the x 
   * Variables of the BinaryKnapsackBlock is feasible. This clearly requires 
   * the Variable of the BinaryKnapsackBlock to have been defined, i.e., that 
-  * generate_abstract_variables() has been called prior to this method. Also,
-  * if useabstract == true, then the Constraint of the BinaryKnapsackBlock 
-  * need to has been generated by calling generate_abstract_constraints()
-  * prior to this method. */
+  * generate_abstract_variables() has been called prior to this method. */
 
  bool is_feasible( bool useabstract = false , 
                    Configuration * fsbc = nullptr ) override;
 
+/*--------------------------------------------------------------------------*/
  /// returns true if the Binary Knapsack problem is empty.
  /** Returns true if the Binary Knapsack problem is empty. 
   * If the Capacity C of the Knapsack is positive, then x = 0 is a feasible 
@@ -387,13 +384,16 @@ ColVariable * get_Var( Index i ){
   * are not enough items with negative weights whose total weights is <= C.
   * The method is_empty() checks this condition. */
 
- bool is_empty( bool useabstract = false,
+ bool is_empty( bool useabstract = false ,
                 Configuration * optc = nullptr ) override;
 
+/*--------------------------------------------------------------------------*/
  /// returns true if the Binary Knapsack problem is unbounded.
 
- bool is_unbounded( bool useabstract = false,
-               Configuration * fsbc = nullptr ) override { return ( false ); }
+ bool is_unbounded( bool useabstract = false ,
+                    Configuration * fsbc = nullptr ) override {
+  return( false );
+  }
 
 /**@} ----------------------------------------------------------------------*/
 /*------------------------- Methods for R3 Blocks --------------------------*/
@@ -407,8 +407,8 @@ ColVariable * get_Var( Index i ){
   * - r3bc == nullptr: the copy (a BinaryKnapsackBlock identical to this)
   */
 
- Block * get_R3_Block( Configuration *r3bc = nullptr ,
-           Block * base = nullptr , Block * father = nullptr ) override;
+ Block * get_R3_Block( Configuration *r3bc = nullptr , Block * base = nullptr , 
+                       Block * father = nullptr ) override;
 
  /*--------------------------------------------------------------------------*/
  /// maps back the solution from a copy BinaryKnapsackBlock to the current one
@@ -416,14 +416,14 @@ ColVariable * get_Var( Index i ){
   */
 
  void map_back_solution( Block *R3B , Configuration *r3bc = nullptr ,
-       Configuration *solc = nullptr ) override;
+                         Configuration *solc = nullptr ) override;
 
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
  /// maps the solution of the current BinaryKnapsackBlock to a copy.
  /** Maps the solution of the current BinaryKnapsackBlock to a copy. */
 
  void map_forward_solution( Block *R3B , Configuration *r3bc = nullptr ,
-       Configuration *solc = nullptr ) override;
+                            Configuration *solc = nullptr ) override;
 
 /**@} ----------------------------------------------------------------------*/
 /*----------------------- Methods for handling Solution --------------------*/
@@ -642,26 +642,28 @@ void chg_weights( const dblVec_it NWeight ,
 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// given an index i change the boolean vector that tell which variable is continuous and which integer (integraliy vector)
+ /// given an index i change the boolean vector that tell which variable is 
+ /// continuous and which integer (integraliy vector)
+
 void chg_integrality( bool NIntegrality , Index item , 
-                 ModParam issueMod = eNoBlck ,
-                 ModParam issueAMod = eNoBlck ); 
+                      ModParam issueMod = eNoBlck ,
+                      ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the integrality vector of a contiguous interval of items
 
 void chg_integrality( const boolVec_it NIntegrality , 
-                  Range rng = Range( 0 , Inf< Index >() ) , 
-                  ModParam issueMod = eNoBlck ,
-                  ModParam issueAMod = eNoBlck ); 
+                      Range rng = Range( 0 , Inf< Index >() ) , 
+                      ModParam issueMod = eNoBlck ,
+                      ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
 void chg_integrality( const boolVec_it NIntegrality , 
-                  Subset && nms , bool ordered = false ,  
-                  ModParam issueMod = eNoBlck ,
-                  ModParam issueAMod = eNoBlck ); 
+                      Subset && nms , bool ordered = false ,  
+                      ModParam issueMod = eNoBlck ,
+                      ModParam issueAMod = eNoBlck ); 
 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -732,12 +734,12 @@ void load( std::istream & input ) override;
 /*--------------------------- PROTECTED FIELDS  ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-Index f_N;                      ///< the number of Items 
 double f_C;                     ///< the Capacity of the Knapsack
 std::vector<double> v_W;        ///< vector of Weights          
 std::vector<double> v_P;        ///< vector of Profits
-std::vector<bool> v_I;	         ///< vector of boolean to describe if the variable are continuous or discrete
-int countCont; 		 ///< counter for the umber of continuous variables
+std::vector<bool> v_I;          
+///< vector of boolean to describe if the variable are continuous or discrete
+Index countCont;           ///< counter for the umber of continuous variables
 
 unsigned char AR;               ///< bit-wise coded: what abstract is there
 
@@ -753,9 +755,9 @@ bool f_sense;                   ///< the sense of the objective
 double f_cond_lower;            ///< conditional lower bound, can be infinite
 double f_cond_upper;            ///< conditional upper bound, can be infinite
 
-std::vector< ColVariable > v_x;         ///< the static binary/continuous variables
-std::vector< FRowConstraint > v_cnst;   ///< the static constraint 
-FRealObjective f_obj;                   ///< the (linear) objective function
+std::vector< ColVariable > v_x; ///< the static binary/continuous variables
+FRowConstraint f_cnst;          ///< the static constraint 
+FRealObjective f_obj;           ///< the (linear) objective function
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PRIVATE PART OF THE CLASS --------------------------*/
@@ -1048,6 +1050,8 @@ SMSpp_insert_in_factory_h;
 
 #endif /* BinaryKnapsackBlock.h included */
 
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- End File BinaryKnapsackBlock.h ---------------------*/
 /*--------------------------------------------------------------------------*/
+
