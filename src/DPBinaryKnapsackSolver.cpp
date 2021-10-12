@@ -240,12 +240,14 @@ std::swap( G[ f_N ].lab , currlab );
 
 
 // compute the objective calculating also the contribution of the continuous variables
-if(countCont==f_N){
-   obj = 0;
+
+obj = -Inf< double >();
+if( countCont == f_N ){
+   maxcurrlab=0;
+   G[ f_N ].lab = {0};
 //   maxcurrlab=1;
    }
-else 
-   obj = -Inf< double >();
+
 
 besth = 0;
 lastIndex = 0;               // index of the last element considered in the continuous knapsack
@@ -692,6 +694,11 @@ for( auto mod : v_mod_tmp ){
       break;
 
      }
+     
+    // change Integrality- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    // update modified integrality vector
+  
+  
      case( BinaryKnapsackBlockMod::eChgIntegrality ):{
      
      for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
@@ -770,6 +777,8 @@ for( auto mod : v_mod_tmp ){
 
      }
      
+     // change Integrality- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    // update modified integrality vector
      
      case( BinaryKnapsackBlockMod::eChgIntegrality ):{
      
