@@ -1008,7 +1008,7 @@ void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality ,
   
   // abstract representation
   //ColVaruable *vx = dynamic_cast<ColVariable*>( v_x );
-     for(int i=0;i<rng.second-rng.first;i++){
+     for(Index i=0;i<rng.second-rng.first;i++){
         if(NIntegrality[i]==true){
           if(v_x[rng.first+i].get_type()==ColVariable::kPosUnitary){
             countCont--;
@@ -1060,7 +1060,7 @@ void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality,
   copyidx( v_I , nms , NIntegrality );
   
  // abstract representation
-  for(int i=0;i<nms.size();i++){
+  for(Index i=0;i<nms.size();i++){
     if(NIntegrality[i]==true){
       if(v_x[nms[i]].get_type()==ColVariable::kPosUnitary){
       countCont--;
@@ -1505,8 +1505,8 @@ void BinaryKnapsackSolution::deserialize( const netCDF::NcGroup & group ){
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackSolution::read( const Block * const block ){
-
+void BinaryKnapsackSolution::read( const Block * const block )
+{
  auto BKB = dynamic_cast< const BinaryKnapsackBlock * >( block );
  if( ! BKB )
   throw( std::invalid_argument( "block is not a BinaryKnapsackBlock" ));
@@ -1517,45 +1517,43 @@ void BinaryKnapsackSolution::read( const Block * const block ){
 
  for( auto & xi : BKB->v_x ) 
   *( vxi++ ) = static_cast< double >( xi.get_value() ); 
-
-} // end( BinaryKnapsackSolution::read )
+ }
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackSolution::write( Block * const block ){
- 
+void BinaryKnapsackSolution::write( Block * const block )
+{
  auto BKB = dynamic_cast< BinaryKnapsackBlock * >( block );
  if( ! BKB )
-  throw( std::invalid_argument( "block is not a BinaryKnapsackBlock" ));
+  throw( std::invalid_argument( "block is not a BinaryKnapsackBlock" ) );
 
- // write binary variables - - - - - - - - - - - - - - - - - - - - - - - - - -
  if( ! v_x.empty() ) {
   if( v_x.size() < BKB->get_NItems() )
    throw( std::invalid_argument( "incompatible variables size" ) );
 
   auto vxi = v_x.begin();
-
   for( auto & xi : BKB->v_x )
-   xi.set_value( static_cast< bool >( *( vxi++ ) ) );
+   xi.set_value( *( vxi++ ) );
+  }
  }
-} // end( BinaryKnapsackSolution::write )
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackSolution::serialize( netCDF::NcGroup & group ) const {
+void BinaryKnapsackSolution::serialize( netCDF::NcGroup & group ) const
+{
  if( ! v_x.empty() ) {
   netCDF::NcDim ni = group.addDim( "n" , v_x.size() ); 
-( group.addVar( "x" , netCDF::NcDouble() , ni ) ).putVar( v_x.data() );
+  ( group.addVar( "x" , netCDF::NcDouble() , ni ) ).putVar( v_x.data() );
+  }
  }
-} // end( BinaryKnapsackSolution::serialize )
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackSolution::print( std::ostream & output ){
- for( Index i = 0 ; i < v_x.size() ; i++ ){
+void BinaryKnapsackSolution::print( std::ostream & output )
+{
+ for( Index i = 0 ; i < v_x.size() ; ++i )
   output << "x" << i << ": " << v_x[ i ] << std::endl;
  }
-}
 
 /*--------------------------------------------------------------------------*/
 
@@ -1568,39 +1566,42 @@ BinaryKnapsackSolution * BinaryKnapsackSolution::scale( double factor ) const
    sol->v_x[ i ] = v_x[ i ] * factor;
 
  return( sol );
-} // end( BinaryKnapsackSolution::scale )
+ }
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackSolution::sum( const Solution * solution, 
-                                  double multiplier ){
+void BinaryKnapsackSolution::sum( const Solution * solution , 
+                                  double multiplier )
+{
  auto BKB = dynamic_cast< const BinaryKnapsackSolution * >( solution );
  if( ! BKB )
-  throw( std::invalid_argument("solution is not a BinaryKnapsackSolution") );
- 
+  throw( std::invalid_argument( "solution is not a BinaryKnapsackSolution" )
+	 );
+
  if( ! v_x.empty() ) {
   if( v_x.size() != BKB->v_x.size() )
    throw( std::invalid_argument( "incompatible variables size" ) );
   
   for( Index i = 0 ; i < v_x.size() ; i++ )
-   v_x[ i ] = BKB->v_x[ i ] * multiplier;
+   v_x[ i ] += BKB->v_x[ i ] * multiplier;
   }
-} // end( BinaryKnapsackSolution::sum )
+ }
 
 /*--------------------------------------------------------------------------*/
 
-BinaryKnapsackSolution * BinaryKnapsackSolution::clone( bool empty ) const{
+BinaryKnapsackSolution * BinaryKnapsackSolution::clone( bool empty ) const
+{
  auto * sol = new BinaryKnapsackSolution();
  
- if( empty ){
+ if( empty ) {
   if( ! v_x.empty() )
    sol->v_x.resize( v_x.size() );
- }
+  }
  else 
   sol->v_x = v_x;
  
  return( sol );
-} // end( BinaryKnapsackSolution::clone )
+ }
 
 /*--------------------------------------------------------------------------*/
 /*------------------- End File BinaryKnapsackBlock.cpp ---------------------*/
