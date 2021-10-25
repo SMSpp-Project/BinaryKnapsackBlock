@@ -584,12 +584,12 @@ void BinaryKnapsackBlock::fix_x( c_boolVec & value , Range rng ,
 
  for( Index i = rng.first ; i < rng.second ; i++ , vi++ )
   fix_x( * vi , i , eDryRun , issueAMod );
-
+/*
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
                            BinaryKnapsackBlockMod::eFixX , rng ) , 
-                           Observer::par2chnl( issueMod ) );
+                           Observer::par2chnl( issueMod ) );*/
 
 } // end( BinaryKnapsackBlock::fix_x )
 
@@ -607,12 +607,12 @@ void BinaryKnapsackBlock::fix_x( c_boolVec & value , Subset && nms ,
   fix_x( * vi++ , i , eDryRun , issueAMod );
 
  std::sort( nms.begin() , nms.end() );
-
+/*
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(this,
                            BinaryKnapsackBlockMod::eFixX , std::move( nms ) ) , 
-                           Observer::par2chnl( issueMod ) );
+                           Observer::par2chnl( issueMod ) );*/
 
 } // end( BinaryKnapsackBlock::fix_x )
 
@@ -1380,15 +1380,15 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   
   int i = p2i_x( xi );
 
-  // get current state and old state of the variable
-  auto state = xi->get_state();
+  // get new state and old state of the variable
+  auto new_state = tmod->new_state();
   auto old_state = tmod->old_state();
   
   // the LSB of the state corresponds to fix/unfix - - - - - - - - - - - - - -
-  if( ( state ^ old_state ) & 1 ){    // check if the LSB is changed
+  if( ( new_state ^ old_state ) & 1 ){    // check if the LSB is changed
    
    // only issue the Physical Modification
-   if( state & 1 ){
+   if( new_state & 1 ){
     Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
                 BinaryKnapsackBlockMod::eFixX , std::make_pair( i , i + 1 ) ) , 
                 Observer::par2chnl( eNoBlck ) );
@@ -1397,17 +1397,16 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
     Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(this,
                 BinaryKnapsackBlockMod::eUnfixX , std::make_pair( i , i + 1 ) ) , 
                 Observer::par2chnl( eNoBlck ) );
-
+   // maybe a single VariableMod could also change the integrality? in case avoid return
    return; 
   }
 
   // otherwise check if the Integrality has been changed - - - - - - - - - - - 
 
-  if( state/2 != old_state/2 ){    // check if the integrality is changed
-   
-   if( state/2 == ColVariable::kPosUnitary )
+  if( new_state/2 != old_state/2 ){    // check if the integrality is changed
+   if( new_state/2 == ColVariable::kPosUnitary )
     chg_integrality( false , i , make_par( eNoBlck , chnl ) , eDryRun );
-   else if( state/2 == ColVariable::kBinary )
+   else if( new_state/2 == ColVariable::kBinary )
     chg_integrality( true , i , make_par( eNoBlck , chnl ) , eDryRun );
    else
     throw( std::invalid_argument( "invalid Modification to Variable" ) );
@@ -1416,7 +1415,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification(p_Mod mod , ChnlName chnl){
   }
   
   
-  return;
+  throw( std::invalid_argument( "illegal Modification to Variable" ) );
 }
 
 }
