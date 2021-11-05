@@ -449,13 +449,14 @@ protected:
  std::vector< bool > v_I;       ///< vector of Integrality (Binary/Continuous)
  bool f_sense;                  ///< the sense of the objective
 
- /* handling of the continuous part - - - - - - - - - - - - - - - - - - - - */
+
+/* handling of the continuous part- - - - - - - - - - - - - - - - - - - - - */
 
  Index countCont;        ///< counter for the number of continuous variables
  Subset indexContinuous; ///< indexes of the continuous variables
  bool is_sorted;         ///< if indexContinuous is sorted by Profits/Weights 
 
- /* handling of the solution- - - - - - - - - - - - - - - - - - - - - - - - */
+/* handling of the solution - - - - - - - - - - - - - - - - - - - - - - - - */
 
  Index besth;            ///< best height of the integer part
  Index lastIndex;        ///< last continuous variables index
@@ -508,7 +509,7 @@ private:
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
   // if the variable is fixed to 0
-  if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) ) < 1e-6 )
+  if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) ) < 1e-6 )      
    return( true );                                      
 
   // if the variable is fixed to 1
@@ -604,3 +605,4 @@ private:
 /*--------------------------------------------------------------------------*/
 /*-------------------- End File DPBinaryKnapsackSolver.h -------------------*/
 /*--------------------------------------------------------------------------*/
+

@@ -143,16 +143,15 @@ virtual ~BinaryKnapsackBlock(){ guts_of_destructor(); }
   * BinaryKnapsackBlock then a NBModification (the "nuclear option") is 
   * issued. */
 
-
-void load( Index n , double Capacity , const std::vector< double > & Weights , 
-           const std::vector< double > & Profits ,
-	   const std::vector< bool > & Integrality = {} );
+void load( Index n , double Capacity , const std::vector<double> & Weights , 
+           const std::vector<double> & Profits, 
+           const std::vector<bool> & Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
 
-void load( Index n , double Capacity , std::vector< double > && Weights , 
-           std::vector< double > && Profits ,
-	   std::vector< bool > && Integrality = {} );
+void load( Index n , double Capacity , std::vector<double> && Weights , 
+           std::vector<double> && Profits, 
+           std::vector<bool> && Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
@@ -1055,3 +1054,4 @@ SMSpp_insert_in_factory_h;
 /*--------------------------------------------------------------------------*/
 /*--------------------- End File BinaryKnapsackBlock.h ---------------------*/
 /*--------------------------------------------------------------------------*/
+

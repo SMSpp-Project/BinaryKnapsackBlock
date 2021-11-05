@@ -242,6 +242,12 @@ std::swap( G[ f_N ].lab , currlab );
 // compute the objective calculating also the contribution of the continuous variables
 
 obj = -Inf< double >();
+if( countCont == f_N ){
+   maxcurrlab=0;
+   G[ f_N ].lab = {0};
+//   maxcurrlab=1;
+   }
+
 
 besth = 0;
 lastIndex = 0;               // index of the last element considered in the continuous knapsack
@@ -281,8 +287,8 @@ for( int i = maxcurrlab ; i >= 0 ; i-- ){
   if( w * boundX + contWeight > rC ){
 
    // take only a fraction and break
-   boundX -= ( rC - contWeight ) / ( w );  
-   contProfit += ( rC - contWeight ) / ( w) * p ;
+   boundX -= ( rC - contWeight ) / ( w );
+   contProfit += ( rC - contWeight ) / ( w ) * p ;
    contWeight = rC; // / ( v_W[ indexContinuous[ j ] ] );
    break; 
   }else{
@@ -369,7 +375,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
    v_x[ i ] = isNeg( i ) ? 1 : 0;               // weight exceeds the capacity 
    continue;                                    // or it has surely not been
   }                                             // selected
-  
+
   if( G[ i + 1 ].pred[ besth ] ){
    v_x[ i ] = 1; 
    besth -= w;  
@@ -668,7 +674,7 @@ for( auto mod : v_mod_tmp ){
     // reoptimization not exploitable 
 
      case( BinaryKnapsackBlockMod::eChgWeight ):{    
-       
+
       for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
   
        double nw = std::round( BKB->get_Weight( i ) );     // new weight
@@ -676,7 +682,7 @@ for( auto mod : v_mod_tmp ){
        if( std::abs( nw - BKB->get_Weight( i ) ) > WeightIntegrality )
         throw( std::invalid_argument( "Weights must be integers!" ) );
    
-       if( nw < 0 && nw < v_W[ i ] )        // it is not possible 
+       if( nw < v_W[ i ] )                  // it is not possible 
         start_item = 0;                     // to re-optimize
 
        v_W[ i ] = nw;                       // update weight
@@ -688,6 +694,10 @@ for( auto mod : v_mod_tmp ){
       break;
 
      }
+     
+    // change Integrality- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    // update modified integrality vector
+  
      case( BinaryKnapsackBlockMod::eChgIntegrality ):{
      
      for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
@@ -766,6 +776,8 @@ for( auto mod : v_mod_tmp ){
 
      }
      
+     // change Integrality- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    // update modified integrality vector
      
      case( BinaryKnapsackBlockMod::eChgIntegrality ):{
      
