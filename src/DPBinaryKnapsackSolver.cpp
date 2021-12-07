@@ -63,6 +63,7 @@ void DPBinaryKnapsackSolver::set_Block( Block * block ){
 
 }
 
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
@@ -91,23 +92,34 @@ if( start_item == + Inf< int >() )  // if start_item == Inf it is assumed that
  return( kOK );                     // everything has already been done in 
                                     // process_outstanding_Modification()
 
-int i = start_item;                 // otherwise start from start_item
+// if all the variables are continuous skip the resolution of the integer part
+
+if( countCont == f_N )
+ start_item = f_N;
+
+indexContinuous.clear();
+for( Index i = 0 ; i < f_N ; i++ ){
+ if( ! v_I[ i ] )
+  indexContinuous.push_back( i ); 
+ }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // As some of the items may be pre-processed, it is necessary to update
 // the capacity by subtracting the weight of the items that are fixed to 1, 
 // also saving their profits which need to be added to the objective
 
-int C = f_C;                            // "residual" capacity
+double C = f_C;                         // "residual" capacity
 double prp_P = 0;                       // "residual" profit
              
 
 for( int i = 0 ; i < f_N ; i++ ){       // also the items with both negative
- if( isFixed1( i ) || isNeg( i ) ){     // weight and profit are treated as if
+ if(( isFixed1( i ) || isNeg( i ) ) ){  // weight and profit are treated as if
   C -= v_W[ i ];                        // they were fixed to 1         
   prp_P += v_P[ i ];                                  
  }                          
 }
+
+int iC = std::floor( C );               // integer Capacity
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -121,15 +133,15 @@ G[ 0 ].lab.resize( 1 );                 // initialize dummy node
 G[ 0 ].lab[ 0 ] = 0;                    // in the origin
 
 // each time i % step == 0, currlab is saved in G[ i ].lab
-int step = f_N * std::exp2( - std::log2( f_N ) * reopt ); 
+int step = compute_step();
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-// Initialize maxcurrlab and currlab with data stored in G[ i ].lab
+// Initialize maxcurrlab and currlab with data stored in G[ start_item ].lab 
 
-currlab = G[ i ].lab;
+currlab = G[ start_item ].lab;
 
-if( C + 1 < currlab.size() )            // Capacity may have been changed
- currlab.resize( C + 1 );
+if( iC + 1 < currlab.size() )            // Capacity may have been changed
+ currlab.resize( iC + 1 );
 
 maxcurrlab = currlab.size() - 1;
 
@@ -145,8 +157,8 @@ maxcurrlab = currlab.size() - 1;
 
 // DP Algorithm- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-for( ; i < f_N ; i++ ){
-
+for( Index i = start_item ; i < f_N ; i++ ){
+ 
  // reoptimization - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
  if( i % step == 0  ) 
@@ -156,7 +168,7 @@ for( ; i < f_N ; i++ ){
  
  // pre-processing - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- if( isFixed( i ) )                 // if i is fixed (or can be pre-processed) 
+ if( isFixed( i ) || ! v_I[ i ] )   // if i is fixed or continuous 
   continue;                         // continue       
 
  double p = v_P[ i ];               // profit of the current item   
@@ -167,15 +179,15 @@ for( ; i < f_N ; i++ ){
   w = -w;                           // change both signs
  }
 
- if( w > C )                        // if the weight exceeds the capacity
+ if( w > iC )                       // if the weight exceeds the capacity
   continue;                         // continue
 
-                    
- // max height of the graph
- maxnextlab = std::min( maxcurrlab + w , C );
-
+ // max height of the graph 
+ maxnextlab = std::min( maxcurrlab + w , iC );
+ 
  // Initialize labels 
  nextlab.resize( maxnextlab + 1 );
+
  std::fill( nextlab.begin() , nextlab.end() , - Inf< double >() );
 
  // Allocate predecessors
@@ -209,28 +221,95 @@ for( ; i < f_N ; i++ ){
 
  // swaps
  maxcurrlab = maxnextlab;
+ 
  std::swap( currlab , nextlab );
-
-} // end( DP algorithm )- - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-// always save last labels in G[ f_N ].lab
-
-std::swap( G[ f_N ].lab , currlab );
-
-// find optimal value - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
-
-int besth;
-
-obj = - Inf< double >();                    // Initialize objective value
-
-for( int i = 0 ; i <= maxcurrlab ; i++ ){ 
- if( G[ f_N ].lab[ i ] > obj ){
-  obj = G[ f_N ].lab[ i ]; 
-  besth = i;
- }
 }
 
-G[ f_N ].lab.resize( besth + 1 ); 
+// always save last labels in G[ f_N ].lab
+std::swap( G[ f_N ].lab , currlab );
+
+//end integer part - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+// sort continuous variable using as weight the proportion of profits/weights
+// if( !is_sorted ){
+   sort( indexContinuous.begin(), indexContinuous.end(), [&]( const int & a, const int & b ){     
+            return ( v_P[ a ] / v_W[ a ] > v_P[ b ] / v_W[ b ] );} );
+//   is_sorted = true;
+//  }
+
+
+// compute the objective calculating also the contribution of the continuous variables
+
+obj = -Inf< double >();
+if( countCont == f_N ){
+   maxcurrlab=0;
+   G[ f_N ].lab = {0};
+//   maxcurrlab=1;
+   }
+
+
+besth = 0;
+lastIndex = 0;               // index of the last element considered in the continuous knapsack
+int tempLastIndex = 0;       // the same but this one is used only in the resolution, the previous one to compute the solution  
+lastVar = 0;                 // value of the last variable considered in the knapsack 
+double boundX = 1;           // current bound for the variable, 0<=boundX<=1  
+double contProfit = 0;       // cumulative profits related to the continuous solution 
+double contWeight = 0;       // cumulative wieghts related to the continuous solution
+double rC = C - maxcurrlab;  // residual capacity
+
+// compute the continuous part - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+//if(maxcurrlab==0)
+// obj=G[ f_N ].lab[ 0 ];
+
+// we start from the higher heigth, that have lower residual capacity
+for( int i = maxcurrlab ; i >= 0 ; i-- ){
+
+//starting from the index analyzed during the previous iteration (height) 
+ for( int j = tempLastIndex ; j < indexContinuous.size() ; j++ ){
+ 
+ // if the item is fixed to zero or one we skip the current iteration
+   if( isFixed( indexContinuous[ j ] ) ){
+   tempLastIndex++;
+   continue;
+   }
+  
+ double p = v_P[ indexContinuous[ j ] ];               // profit of the current item   
+ int w = v_W[ indexContinuous[ j ] ] ;                 // weight of the current item
+ 
+ if( isNeg(  indexContinuous[ j ]  ) ){                  // if the item has negative 
+  p = -p;                                                // profit and weight
+  w = -w;                                                // change both signs
+ }
+ 
+  // if the item does not fit entirely in the knapsack
+  if( w * boundX + contWeight > rC ){
+
+   // take only a fraction and break
+   boundX -= ( rC - contWeight ) / ( w );
+   contProfit += ( rC - contWeight ) / ( w ) * p ;
+   contWeight = rC; // / ( v_W[ indexContinuous[ j ] ] );
+   break; 
+  }else{
+  // otherwise take the whole item and consider the following item
+   contProfit += p * boundX;
+   contWeight += w * boundX;
+   boundX = 1;
+   tempLastIndex++;
+  }
+
+  }
+ // check if it is the best solution and update obj
+ if( G[ f_N ].lab[ i ] + contProfit > obj ){
+  obj = G[ f_N ].lab[ i ] + contProfit;
+  besth = i;
+  lastVar = 1 - boundX;  
+  lastIndex = tempLastIndex;
+ }
+ rC += 1;        // residual capacity
+
+}
 
 obj += prp_P;             // add the profit coming from the preprocessing
 
@@ -271,11 +350,14 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
  // rest of the solution from G[ i ].pred. For the "negative items" (with 
  // negative weight and profit) change x with 1 - x
 
- int besth = G[ f_N ].lab.size() - 1;
-
  v_x.resize( f_N );
 
+ // Integer part - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
  for( int i = f_N - 1 ; i >= 0 ; i-- ){
+
+  if( ! v_I[ i ] )
+    continue;
 
   if( isFixed0( i ) ){                          // items fixed to 0
    v_x[ i ] = 0;
@@ -304,8 +386,36 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ){
   if( isNeg( i ) )                  // items with negative weight and profit
    v_x[ i ] = ! v_x[ i ];
 
- }
+ }  
+ 
+ // Continuous part - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+ for( int i = 0 ; i < indexContinuous.size() ; i++ ){
+
+  if( isFixed0( indexContinuous[ i ] ) ){        // items fixed to 0
+   v_x[ indexContinuous[ i ] ] = 0;
+   continue;    
+  }
+
+  if( isFixed1( indexContinuous[ i ] ) ){        // items fixed to 1
+   v_x[ indexContinuous[ i ] ] = 1;
+   continue;    
+  } 
+  
+
+  if( i < lastIndex )                               // if the item preceed the last item considered
+    v_x[ indexContinuous[ i ] ] = 1;                // we fix the variable to one
+  else if( i == lastIndex )                         // if the item is exactly the last item considered
+    v_x[ indexContinuous[ lastIndex ] ] = lastVar;  // the variable has value lastVar \in (0,1]
+  else                                              // otherwise we fix the variable to zero
+    v_x[ indexContinuous[ i ] ] = 0;
+    
+  // items with negative weight and profit
+  if( isNeg( indexContinuous[ i ] ) )               
+   v_x[ indexContinuous[ i ] ] = 1 - v_x[ indexContinuous[ i ] ];
+
+  } // end( continuous part )
+   
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
  
  BKB->set_x( v_x );         // write the solution in the BinaryKnapsackBlock
@@ -389,10 +499,10 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
    f_N = BKB->get_NItems();                 // get the number of items
 
-   f_C = std::floor( BKB->get_Capacity() ); // get the Capacity
+   f_C = BKB->get_Capacity(); // get the Capacity
 
-   v_P.resize( f_N );                  
-
+   v_P.resize( f_N );     
+  
    const auto & P = BKB->get_Profits();     // get profits  
                                              
    for( int i = 0 ; i < P.size() ; i++ )    // if the sense is minimization 
@@ -404,14 +514,29 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
 
    for( int i = 0 ; i < W.size() ; i++ ){   // load weights and check 
     v_W[ i ] = std::round( W[ i ] );        // that they are integers
-
-    if( std::abs( v_W[ i ] - W[ i ] ) > WeightIntegrality )
+   if( std::abs( v_W[ i ] - W[ i ] ) > WeightIntegrality )
      throw( std::invalid_argument( "Weights must be integers" ) );
 
    }
+   v_I.resize( f_N );    
+   
+   const auto & I = BKB->get_Integrality();
+
+   for( int i = 0 ; i < I.size() ; i++ )  // load weights and check 
+    v_I[ i ] = ( bool ) I[ i ] ;          // that they are booleans
+ 
+   countCont = BKB->get_N_Cont_Items();
 
   if( !owned )
    BKB->read_unlock();
+
+  indexContinuous.clear();
+  for( Index i = 0 ; i < f_N ; i++ ){
+   if( ! v_I[ i ] )
+    indexContinuous.push_back( i ); 
+  }
+
+  is_sorted = false;
 
   // end load Binary Knapsack instance- - - - - - - - - - - - - - - - - - - -
  
@@ -424,6 +549,8 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod &mod ){
   v_x.clear();                          // clear previous solution (if any)
 
  } // end if( f_Block )
+ 
+
 
 } // end( DPBinaryKnapsackSolver::load() )
 
@@ -436,7 +563,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
  Lst_sp_Mod v_mod_tmp;              // temporary list of modifications
 
- // try to acquire lock, spin on failure
+// try to acquire lock, spin on failure
 
  while( f_mod_lock.test_and_set( std::memory_order_acquire ) );
 
@@ -459,7 +586,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
 
  while( mod != v_mod_tmp.end() ){
 
-  // BinaryKnapsackBlockMod- - - - - - - - - - - - - - - - - - - - - - - - - -
+// BinaryKnapsackBlockMod- - - - - - - - - - - - - - - - - - - - - - - - - -
   
   const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod->get() );
 
@@ -473,11 +600,11 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification(){
     
      case( BinaryKnapsackBlockMod::eChgCapacity ): {
      
-      int nC = std::floor( BKB->get_Capacity() );   // get new Capacity
+      double nC = BKB->get_Capacity();   // get new Capacity
 
       start_item = nC > f_C ? 0 : std::min( f_N , start_item );
 
-      f_C = nC;                                     // update the Capacity
+      f_C = nC;                          // update the Capacity
       
       mod = v_mod_tmp.erase( mod );
       break;
@@ -547,15 +674,15 @@ for( auto mod : v_mod_tmp ){
     // reoptimization not exploitable 
 
      case( BinaryKnapsackBlockMod::eChgWeight ):{    
-       
+
       for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
   
-       int nw = std::round( BKB->get_Weight( i ) );     // new weight
+       double nw = std::round( BKB->get_Weight( i ) );     // new weight
   
        if( std::abs( nw - BKB->get_Weight( i ) ) > WeightIntegrality )
         throw( std::invalid_argument( "Weights must be integers!" ) );
    
-       if( nw < 0 && nw < v_W[ i ] )        // it is not possible 
+       if( nw < v_W[ i ] )                  // it is not possible 
         start_item = 0;                     // to re-optimize
 
        v_W[ i ] = nw;                       // update weight
@@ -566,8 +693,26 @@ for( auto mod : v_mod_tmp ){
 
       break;
 
-     }  
+     }
+     
+    // change Integrality- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    // update modified integrality vector
+  
+     case( BinaryKnapsackBlockMod::eChgIntegrality ):{
+     
+     for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ){
+     
+       bool ni = BKB->get_Integrality( i );                  // new integrality
+       
+       v_I[ i ] = ni;                                        // update 
+     
+     }
     
+     start_item = 0;
+     
+     break;
+     
+     }  
     }
    }
   } 
@@ -613,7 +758,7 @@ for( auto mod : v_mod_tmp ){
        
       for( auto i : tmod->nms() ){
   
-       int nw = std::round( BKB->get_Weight( i ) );     // new weight
+       double nw = std::round( BKB->get_Weight( i ) );     // new weight
   
        if( std::abs( nw - BKB->get_Weight( i ) ) > WeightIntegrality )
         throw( std::invalid_argument( "Weights must be integers!" ) );
@@ -629,7 +774,26 @@ for( auto mod : v_mod_tmp ){
 
       break;
 
-     }  
+     }
+     
+     // change Integrality- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    // update modified integrality vector
+     
+     case( BinaryKnapsackBlockMod::eChgIntegrality ):{
+     
+     for( auto i : tmod->nms() ){
+      
+       bool ni = BKB->get_Integrality( i );   //new integrality
+       
+       v_I[ i ] = ni;                         //update integrality
+     
+     }
+     
+     start_item = 0;                         //no-reoptimization
+     
+     break;
+     
+     }   
     
     }
    }
@@ -639,6 +803,11 @@ for( auto mod : v_mod_tmp ){
 
 v_mod_tmp.clear();              // clear the temporary list of modification
 
+
+// TODO: count while managing the modification
+// count again the number of continuous variables
+countCont = std::count( v_I.begin() , v_I.end() , false );
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // compute start_item- - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -647,7 +816,7 @@ v_mod_tmp.clear();              // clear the temporary list of modification
 // point it is necessary to retrieve the first item smaller than start_item  
 // whose corresponding labels have been previously stored in G[ i ].lab. 
 
- int step = f_N * std::exp2( - std::log2( f_N ) * reopt );
+ int step = compute_step();
 
  if( start_item != + Inf< int >() )
   start_item = ( start_item / step ) * step;
@@ -659,20 +828,3 @@ v_mod_tmp.clear();              // clear the temporary list of modification
 /*--------------------------------------------------------------------------*/
 /*----------------- End File DPBinaryKnapsackSolver.cpp --------------------*/
 /*--------------------------------------------------------------------------*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
