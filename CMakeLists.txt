@@ -15,14 +15,13 @@
 #          keep it in mind when editing it.                                   #
 #                                                                             #
 #                              Niccolo' Iardella                              #
-#                          Operations Research Group                          #
 #                         Dipartimento di Informatica                         #
 #                             Universita' di Pisa                             #
 # --------------------------------------------------------------------------- #
 cmake_minimum_required(VERSION 3.12)
 cmake_policy(VERSION 3.12)
 project(BinaryKnapsackBlock
-        VERSION 0.1.0
+        VERSION 0.2.0
         DESCRIPTION "SMS++ BinaryKnapsackBlock module"
         HOMEPAGE_URL https://gitlab.com/smspp/binaryknapsackblock
         LANGUAGES C CXX)
