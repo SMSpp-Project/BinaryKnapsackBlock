@@ -120,21 +120,21 @@ If you need support, you want to submit bugs or propose a new feature, you can
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of
 conduct, and the process for submitting merge requests to us.
 
-## Authors
-
 ### Current Lead Authors
 
 - **Federica Di Pasquale**  
   Dipartimento di Informatica  
   Università di Pisa
 
-- **Antonio Frangioni**  
-  *Operations Research Group*  
-  Dipartimento di Informatica  
-  Università di Pisa
+- **Francesco Demelas**  
+  Laboratoire d'Informatique de Paris Nord  
+  Universite' Sorbonne Paris Nord
 
 ### Contributors
 
+- **Antonio Frangioni**  
+  Dipartimento di Informatica  
+  Università di Pisa
 
 ## License
 

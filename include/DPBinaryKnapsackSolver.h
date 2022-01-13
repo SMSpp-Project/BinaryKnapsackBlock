@@ -1,7 +1,29 @@
 /*--------------------------------------------------------------------------*/
 /*---------------------- File DPBinaryKnapsackSolver.h ---------------------*/
 /*--------------------------------------------------------------------------*/
-
+/** @file
+ * Header file for the *concrete* class DPBinaryKnapsackSolver, which
+ * implements the Solver concept [see Solver.h] for solving Knapsack problems
+ * with linear objective and both integer and continuous variables, as
+ * represented by a BinaryKnapsackKBlock, using a standard Dynamic
+ * Programming approach to deal with the integer variables combined with the
+ * exact greedy algorithm to deal with the continuous ones.
+ *
+ * \author Federica Di Pasquale \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
+ *
+ * \author Francesco Demelas \n
+ *         Laboratoire d'Informatique de Paris Nord \n
+ *         Universite' Sorbonne Paris Nord \n
+ *
+ * \author Antonio Frangioni \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
+ *
+ * Copyright &copy by Federica Di Pasquale, Antonio Frangioni,
+ *                    Francesco Demelas
+ */
 /*--------------------------------------------------------------------------*/
 /*----------------------------- DEFINITIONS --------------------------------*/
 /*--------------------------------------------------------------------------*/
