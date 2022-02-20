@@ -21,8 +21,8 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * Copyright &copy by Federica Di Pasquale, Antonio Frangioni,
- *                    Francesco Demelas
+ * Copyright &copy by Federica Di Pasquale, Francesco Demelas,
+ *                    Antonio Frangioni
  */
 /*--------------------------------------------------------------------------*/
 /*----------------------------- DEFINITIONS --------------------------------*/
@@ -124,11 +124,10 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
-DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , 
-                           f_sense( true ), countCont( 0 ) , 
-                           is_sorted( false ) , besth( 0 ) , lastIndex( 0 ) ,
+DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
+                           countCont( 0 ) , besth( 0 ) , lastIndex( 0 ) ,
                            lastVar( 0 ) , obj( - Inf< double >() ) , 
-                           start_item( 0 ) , reopt( 0 ){}
+                           start_item( 0 ) , reopt( 0 ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -136,7 +135,7 @@ DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) ,
 ~DPBinaryKnapsackSolver() override = default;
 
 
-/**@} ----------------------------------------------------------------------*/
+/** @} ---------------------------------------------------------------------*/
 /*-------------------------- OTHER INITIALIZATIONS -------------------------*/
 /*--------------------------------------------------------------------------*/
 /** @name Other initializations @{ */
@@ -146,7 +145,7 @@ DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) ,
 
 void set_Block( Block * block ) override;
 
-/**@} ----------------------------------------------------------------------*/
+/** @} ---------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
 /** @name Solving the Binary Knapsack encoded by the current 
@@ -319,7 +318,7 @@ void set_Block( Block * block ) override;
 
 int compute( bool changedvars = true ) override;
 
-/**@} ----------------------------------------------------------------------*/
+/** @} ---------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
 /** @name Accessing the found solutions (if any)
@@ -353,7 +352,7 @@ void get_var_solution( Configuration * solc = nullptr ) override;
 
 OFValue get_var_value() override { return f_sense ? obj : - obj; }
 
-/**@} ----------------------------------------------------------------------*/
+/** @} ---------------------------------------------------------------------*/
 /*-------------- METHODS FOR READING THE DATA OF THE Solver ----------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -431,16 +430,15 @@ double get_dbl_par( const idx_type par ) const override{
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
-idx_type dbl_par_str2idx( const std::string & name ) const override {
- 
- const auto it = dbl_pars_map.find( name );
- if( it != dbl_pars_map.end() )
-  return( it->second );
+idx_type dbl_par_str2idx( const std::string & name ) const override
+{
+ if( name == "dblReopt" )
+  return( dblReopt );
  
  return( Solver::dbl_par_str2idx( name ) );
-}
+ }
 
-/**@} ----------------------------------------------------------------------*/
+/** @} ---------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
 /** @name Changing the data of the model
@@ -452,7 +450,7 @@ idx_type dbl_par_str2idx( const std::string & name ) const override {
  
 virtual void add_Modification( sp_Mod &mod ) override;
 
-/**@} ----------------------------------------------------------------------*/
+/** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -476,7 +474,6 @@ protected:
 
  Index countCont;        ///< counter for the number of continuous variables
  Subset indexContinuous; ///< indexes of the continuous variables
- bool is_sorted;         ///< if indexContinuous is sorted by Profits/Weights 
 
 /* handling of the solution - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -497,11 +494,6 @@ protected:
  
  double reopt;                          ///< reoptimization parameter 
  
-// static fields - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
- const static std::map< std::string , idx_type > dbl_pars_map;
- ///< the (static const) map for double parameters names
-
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
