@@ -123,7 +123,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars )
  double C = f_C;                         // "residual" capacity
  double prp_P = 0;                       // "residual" profit
 
- for( int i = 0 ; i < f_N ; i++ )         // the items with both negative
+ for( Index i = 0 ; i < f_N ; ++i )       // the items with both negative
   if(( isFixed1( i ) || isNeg( i ) ) ) {  // weight and profit are treated as
    C -= v_W[ i ];                         // if they were fixed to 1         
    prp_P += v_P[ i ];                                  
@@ -150,7 +150,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars )
 
  currlab = G[ start_item ].lab;
 
- if( iC + 1 < currlab.size() )            // capacity may have been changed
+ if( Index( iC + 1 ) < currlab.size() )  // capacity may have been changed
   currlab.resize( iC + 1 );
 
  maxcurrlab = currlab.size() - 1;
@@ -263,9 +263,9 @@ int DPBinaryKnapsackSolver::compute( bool changedvars )
  // compute the continuous part - - - - - - - - - - - - - - - - - - - - - - -
 
  // we start from the higher heigth, that have lower residual capacity
- for( int i = maxcurrlab ; i >= 0 ; i-- ) {
+ for( int i = maxcurrlab ; i >= 0 ; --i ) {
   //starting from the index analyzed during the previous iteration (height) 
-  for( int j = tempLastIndex ; j < indexContinuous.size() ; j++ ) {
+  for( Index j = tempLastIndex ; j < indexContinuous.size() ; ++j ) {
    // if the item is fixed to zero or one we skip the current iteration
    if( isFixed( indexContinuous[ j ] ) ) {
     tempLastIndex++;
@@ -365,7 +365,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc )
 
   int w = isNeg( i ) ? - v_W[ i ] : v_W[ i ];   // weight of the current item
   
-  if( w > besth ) {                             // if w > besth either the 
+  if( w > int( besth ) ) {                      // if w > besth either the 
    v_x[ i ] = isNeg( i ) ? 1 : 0;               // weight exceeds the capacity 
    continue;                                    // or it has surely not been
    }                                            // selected
@@ -383,7 +383,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc )
  
  // Continuous part - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- for( int i = 0 ; i < indexContinuous.size() ; ++i ) {
+ for( Index i = 0 ; i < indexContinuous.size() ; ++i ) {
   if( isFixed0( indexContinuous[ i ] ) ) {       // items fixed to 0
    v_x[ indexContinuous[ i ] ] = 0;
    continue;    
@@ -493,15 +493,15 @@ void DPBinaryKnapsackSolver::load( void )
 
  const auto & P = BKB->get_Profits();     // get profits  
                                              
- for( int i = 0 ; i < P.size() ; ++i )    // if the sense is minimization 
+ for( Index i = 0 ; i < P.size() ; ++i )  // if the sense is minimization 
   v_P[ i ] = f_sense ? P[ i ] : - P[ i ]; // change the sign of the profits 
 
  v_W.resize( f_N );                       // prepare vector of weights
 
  const auto & W = BKB->get_Weights();
 
- for( int i = 0 ; i < W.size() ; ++i ) {   // load weights and check 
-  v_W[ i ] = std::round( W[ i ] );         // that they are integers
+ for( Index i = 0 ; i < W.size() ; ++i ) {  // load weights and check 
+  v_W[ i ] = std::round( W[ i ] );          // that they are integers
   if( std::abs( v_W[ i ] - W[ i ] ) > WeightIntegrality )
    throw( std::invalid_argument( "Weights must be integers" ) );
   }
@@ -509,8 +509,8 @@ void DPBinaryKnapsackSolver::load( void )
  v_I.resize( f_N );    
 
  const auto & I = BKB->get_Integrality();
- for( int i = 0 ; i < I.size() ; ++i )  // load weights and check 
-  v_I[ i ] = ( bool ) I[ i ] ;          // that they are booleans
+ for( Index i = 0 ; i < I.size() ; ++i )  // load weights and check 
+  v_I[ i ] = ( bool ) I[ i ] ;            // that they are booleans
 
  countCont = BKB->get_N_Cont_Items();
 
@@ -590,7 +590,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
 
      f_sense = BKB->get_objective_sense();  // update f_sense
 
-     for( int i = 0 ; i < f_N ; i++ )       // change the sign of all profits
+     for( Index i = 0 ; i < f_N ; ++i )     // change the sign of all profits
       v_P[ i ] = - v_P[ i ];
 
      start_item = 0;                        // restart from the beginning 
@@ -618,13 +618,13 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
      for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ )
       v_P[ i ] = f_sense ? BKB->get_Profit( i ) : - BKB->get_Profit( i );
 
-     start_item = std::min( start_item , int( tmod->rng().first ) );
+     start_item = std::min( start_item , tmod->rng().first );
      break;
 
     // fix x - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // update start item with the first fixed item
     case( BinaryKnapsackBlockMod::eFixX ):
-     start_item = std::min( start_item , int( tmod->rng().first ) );
+     start_item = std::min( start_item , tmod->rng().first );
      break;
     
     // unfix x - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -651,7 +651,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
       v_W[ i ] = nw;                       // update weight
       }
 
-     start_item = std::min( start_item , int( tmod->rng().first ) );
+     start_item = std::min( start_item , tmod->rng().first );
      break;
      
     // change Integrality - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -677,13 +677,13 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
      for( auto i : tmod->nms() )
       v_P[ i ] = f_sense ? BKB->get_Profit( i ) : - BKB->get_Profit( i );
 
-     start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) );
+     start_item = std::min( start_item , tmod->nms()[ 0 ] );
      break;
     
     // fix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // update start item with the first fixed item 
     case( BinaryKnapsackBlockMod::eFixX ):                
-     start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) );
+     start_item = std::min( start_item , tmod->nms()[ 0 ] );
      break;
 
     // unfix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -710,7 +710,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
       v_W[ i ] = nw;                         // update weight
       }
 
-     start_item = std::min( start_item , int( tmod->nms()[ 0 ] ) );
+     start_item = std::min( start_item , tmod->nms()[ 0 ] );
      break;
      
     // change Integrality- - - - - - - - - - - - - - - - - - - - - - - - - - 

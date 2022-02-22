@@ -1218,11 +1218,11 @@ void BinaryKnapsackBlock::guts_of_destructor( void )
 /*--------------------------------------------------------------------------*/
 //change only this for modification?? add Integrality modification
 
-void BinaryKnapsackBlock::guts_of_add_Modification( p_Mod mod ,
+void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
 						    ChnlName chnl )
 {
  // C05FunctionModLinRngd - - - - - - - - - - - - - - - - - - - - - - - - - -
- if( const auto tmod = dynamic_cast< C05FunctionModLinRngd * >( mod ) ) { 
+ if( auto tmod = dynamic_cast< const C05FunctionModLinRngd * >( mod ) ) { 
   // the change may concern the objective function or the constraint
   // check which one it is
   auto lf = dynamic_cast< LinearFunction * >( tmod->function() );
@@ -1271,7 +1271,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( p_Mod mod ,
   }
 
  // C05FunctionModLinSbst - - - - - - - - - - - - - - - - - - - - - - - - - -
- if( const auto tmod = dynamic_cast< C05FunctionModLinSbst * >( mod ) ) {
+ if( auto tmod = dynamic_cast< const C05FunctionModLinSbst * >( mod ) ) {
   // the change may concern the objective function or the constraint
   // check which one it is
   auto lf = dynamic_cast< LinearFunction * >( tmod->function() );
@@ -1318,9 +1318,9 @@ void BinaryKnapsackBlock::guts_of_add_Modification( p_Mod mod ,
   }
 
  // RowConstraintMod - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- if( const auto tmod = dynamic_cast< RowConstraintMod * >( mod ) ) {
+ if( auto tmod = dynamic_cast< const RowConstraintMod * >( mod ) ) {
   if( !( AR & HasCns ) )
-   throw( std::invalid_argument( "modification to non-constructed constraint "
+   throw( std::invalid_argument( "Modification to non-constructed constraint "
 				 ) );
  
    auto cp = dynamic_cast< FRowConstraint * >( tmod->constraint() );
@@ -1336,53 +1336,40 @@ void BinaryKnapsackBlock::guts_of_add_Modification( p_Mod mod ,
   }
 
  // VariableMod - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- if( const auto tmod = dynamic_cast< VariableMod * >( mod ) ) {
+ if( auto tmod = dynamic_cast< const VariableMod * >( mod ) ) {
   auto xi = dynamic_cast< ColVariable * const >( tmod->variable() );
   if( ! xi )
    throw( std::logic_error( "Modification to wrong type of Variable" ) );
 
   int i = p2i_x( xi );
 
-  // get new state and old state of the variable
-  auto new_state = tmod->new_state();
-  auto old_state = tmod->old_state();
+  auto new_state = tmod->new_state();  // get new state of the variable
+  if( ( ! ColVariable::is_unitary( new_state ) ) ||
+      ( ! ColVariable::is_positive( new_state ) ) )
+   throw( std::invalid_argument( "invalid ColVariable Modification" ) );
 
-  // the LSB of the state corresponds to fix/unfix - - - - - - - - - - - - - -
-  if( ( new_state ^ old_state ) & 1 ) {   // check if the LSB is changed
-      // only issue the Physical Modification
-   if( new_state & 1 ) {
-    Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
-	 this , BinaryKnapsackBlockMod::eFixX , std::make_pair( i , i + 1 ) ) , 
-			     Observer::par2chnl( eNoBlck ) );
-    }
-   else
-    Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
-      this ,  BinaryKnapsackBlockMod::eUnfixX , std::make_pair( i , i + 1 ) ) , 
-			     Observer::par2chnl( eNoBlck ) );
-   // maybe a single VariableMod could also change the integrality?
-   // in case avoid return
-   return; 
-   }
+  auto old_state = tmod->old_state();  // get old state of the variable
 
-  // otherwise check if the Integrality has been changed - - - - - - - - - - - 
+  // if the "state of fixing" has changed- - - - - - - - - - - - - - - - - - -
+  if( Variable::is_fixed( new_state ) != Variable::is_fixed( old_state ) )
+   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
+	        this , Variable::is_fixed( new_state )
+		       ? BinaryKnapsackBlockMod::eFixX
+		       : BinaryKnapsackBlockMod::eUnfixX ,
+		Range( i , i + 1 ) ) , 
+			    Observer::par2chnl( eNoBlck ) );
 
-  if( new_state / 2 != old_state / 2 ){  // check if the integrality is changed
-   if( new_state / 2 == ColVariable::kPosUnitary )
-    chg_integrality( false , i , make_par( eNoBlck , chnl ) , eDryRun );
-   else
-    if( new_state / 2 == ColVariable::kBinary )
-     chg_integrality( true , i , make_par( eNoBlck , chnl ) , eDryRun );
-    else
-     throw( std::invalid_argument( "invalid Modification to Variable" ) );
+  // if the Integrality has changed- - - - - - - - - - - - - - - - - - - - - - 
+  if( ColVariable::is_integer( new_state ) !=
+      ColVariable::is_integer( old_state ) )
+   chg_integrality( ColVariable::is_integer( new_state ) , i ,
+		    make_par( eNoBlck , chnl ) , eDryRun );
 
-   return; 
-   }
-
-  throw( std::invalid_argument( "illegal Modification to Variable" ) );
+  return;
   }
 
  // ObjectiveMod - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- if( const auto tmod = dynamic_cast< ObjectiveMod * >( mod ) ){ 
+ if( auto tmod = dynamic_cast< const ObjectiveMod * >( mod ) ) {
   if( ! ( AR & HasObj ) )  // check if the objective exists
    throw( std::invalid_argument( "Modification to non-constructed objective" )
 	  );

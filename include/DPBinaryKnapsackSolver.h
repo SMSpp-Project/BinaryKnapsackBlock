@@ -462,7 +462,7 @@ protected:
 
 /* data of the Binary Knapsack instance - - - - - - - - - - - - - - - - - - */
 
- int f_N;                       ///< the number of Items 
+ Index f_N;                     ///< the number of Items 
  double f_C;                    ///< the Capacity of the Knapsack
  std::vector< int > v_W;        ///< vector of Weights          
  std::vector< double > v_P;     ///< vector of Profits
@@ -488,7 +488,7 @@ protected:
 
  std::vector< slice > G;                ///< DP Graph 
 
- int start_item;                        ///< index of the starting item
+ Index start_item;                      ///< index of the starting item
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
  

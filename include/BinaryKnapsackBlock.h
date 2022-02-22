@@ -791,11 +791,11 @@ class BinaryKnapsackBlock : public Block {
 
  void guts_of_destructor( void );
 
- void guts_of_add_Modification( p_Mod mod , ChnlName chnl );
+ void guts_of_add_Modification( c_p_Mod mod , ChnlName chnl );
 
  void compute_conditional_bounds( void );
 
- int p2i_x( Variable * const var ) const {
+ int p2i_x( const Variable * var ) const {
   return( std::distance( v_x.data() ,
 			 static_cast< const ColVariable * >( var ) ) ); 
   }
