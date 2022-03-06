@@ -104,13 +104,15 @@ class BinaryKnapsackBlock : public Block {
 /** @name Public types
  *  @{ */
 
- typedef std::vector< bool > boolVec;
- typedef const boolVec c_boolVec;
- typedef boolVec::iterator boolVec_it;
+ using boolVec = std::vector< bool >;
+ using c_boolVec = const boolVec;
+ using boolVec_it = boolVec::iterator;
+ using c_boolVec_it = boolVec::const_iterator;
 
- typedef std::vector< double > doubleVec;
- typedef const doubleVec c_doubleVec;
- typedef doubleVec::iterator dblVec_it;
+ using doubleVec = std::vector< double >;
+ using c_doubleVec = const doubleVec ;
+ using dblVec_it = doubleVec::iterator;
+ using c_dblVec_it = doubleVec::const_iterator;
 
 /** @} ---------------------------------------------------------------------*/
 /*------------------------------- FRIENDS ----------------------------------*/
@@ -234,7 +236,7 @@ class BinaryKnapsackBlock : public Block {
   *
   * The objective function is represented as a LinearFunction whose 
   * coefficients are the profits of the items. The sense of the objective is
-  * maximization or minimization according to f_sense.  */
+  * maximization if f_sense == true or minimization if f_sense == false. */
 
  void generate_objective( Configuration * objc = nullptr ) override;
 
@@ -611,40 +613,60 @@ class BinaryKnapsackBlock : public Block {
  * Modification. */
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// given an index and a value fix the variable of the corresponding variable
+ /// given an index and a value, fix the corresponding variable
+ /** Fixes the value of the variable \p i to 0 or 1 depending on the value of
+  * \p value; however, if \p is fixed already then the value of \p i is not
+  * changed, even if it differs from \p value. */
 
  void fix_x( bool value , Index i , ModParam issueMod = eNoBlck ,
                                     ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// fix variables of a contiguos interval of indeces
+ /// fix variables of a contiguos interval of indices
+ /** Fixes the value of the variables whose names are in the interval
+  * specified by \p rng to the values specified by \p value; that is, the
+  * variable rng.first + h takes value 1 if *( value + h ) == true and 0
+  * otherwise. \p value is assumed to point to an array at least as long as
+  * rng.second - rng.first, except if rng.second is larger than the number
+  * of variables, in which case is taken to mean "up until the end", and
+  * \p value need only be correspondingly long.
+  * Note that if any of the variable is fixed already then its value is not
+  * changed, even if it differs from what \p value would dictate. */
 
- void fix_x( c_boolVec & value , Range rng = Range( 0 , Inf< Index >() ) , 
+ void fix_x( c_boolVec_it value , Range rng = Range( 0 , Inf< Index >() ) , 
 	     ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// fix variables of an arbitrary subsets of indeces
+ /// fix variables of an arbitrary subsets of indices
+ /** Fixes the value of the variables whose names are in the Subset \p nms
+  * to the values specified by \p value; that is, the variable nms[ h ] takes
+  * value 1 if *( value + h ) == true and 0 otherwise. \p value is assumed to
+  * point to an array at least as long as nms.size(). \p nms is assumed to be
+  * ordered in increasing sense if ordered == true, and of course it must
+  * only contain names < get_NItems().
+  * Note that if any of the variable is fixed already then its value is not
+  * changed, even if it differs from what \p value would dictate. */
 
- void fix_x( c_boolVec & value , Subset && nms , 
+ void fix_x( c_boolVec_it value , Subset && nms , bool ordered = false ,
 	     ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// given an index unfix the variable of the corresponding variable
+ /// given an index, unfixes the corresponding variable
 
  void unfix_x( Index i , ModParam issueMod = eNoBlck ,
                          ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// unfix variables of a contiguos interval of indeces
+ /// unfix variables of a contiguos interval of indices
 
  void unfix_x( Range rng = Range( 0 , Inf< Index >() ) , 
 	       ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// unfix variables of an arbitrary subsets of indeces
+ /// unfix variables of an arbitrary subsets of indices
 
- void unfix_x( Subset && nms , ModParam issueMod = eNoBlck ,
-	                       ModParam issueAMod = eNoBlck ); 
+ void unfix_x( Subset && nms , bool ordered = false ,
+	       ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the weight of item i
@@ -656,7 +678,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of a contiguous interval of items
 
- void chg_weights( const dblVec_it NWeight , 
+ void chg_weights( c_dblVec_it NWeight ,
 		   Range rng = Range( 0 , Inf< Index >() ) , 
 		   ModParam issueMod = eNoBlck ,
 		   ModParam issueAMod = eNoBlck ); 
@@ -664,7 +686,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
- void chg_weights( const dblVec_it NWeight , 
+ void chg_weights( c_dblVec_it NWeight , 
 		   Subset && nms , bool ordered = false ,  
 		   ModParam issueMod = eNoBlck ,
 		   ModParam issueAMod = eNoBlck );
@@ -680,7 +702,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the integrality vector of a contiguous interval of items
 
- void chg_integrality( const boolVec_it NIntegrality , 
+ void chg_integrality( c_boolVec_it NIntegrality , 
 		       Range rng = Range( 0 , Inf< Index >() ) , 
 		       ModParam issueMod = eNoBlck ,
 		       ModParam issueAMod = eNoBlck ); 
@@ -688,7 +710,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
- void chg_integrality( const boolVec_it NIntegrality , 
+ void chg_integrality( c_boolVec_it NIntegrality , 
 		       Subset && nms , bool ordered = false ,  
 		       ModParam issueMod = eNoBlck ,
 		       ModParam issueAMod = eNoBlck );
@@ -703,7 +725,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of a contiguous interval of items
 
- void chg_profits( const dblVec_it NProfit , 
+ void chg_profits( c_dblVec_it NProfit , 
 		   Range rng = Range( 0 , Inf< Index >() ) , 
 		   ModParam issueMod = eNoBlck ,
 		   ModParam issueAMod = eNoBlck ); 
@@ -711,7 +733,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of an arbitrary subsets of items
 
- void chg_profits( const dblVec_it NProfit , 
+ void chg_profits( c_dblVec_it NProfit , 
 		   Subset && nms , bool ordered = false ,  
 		   ModParam issueMod = eNoBlck ,
 		   ModParam issueAMod = eNoBlck ); 
@@ -770,10 +792,12 @@ class BinaryKnapsackBlock : public Block {
  static constexpr unsigned char HasCns = 4;
  ///< third bit of AR == 1 if the Constraint has been constructed
 
- bool f_sense;                   ///< the sense of the objective 
+ bool f_sense;                   ///< the sense of the objective
+                                 /** - f_sense = true for maximization
+				  *    f_sense = false for minimization */
 
- double f_cond_lower;            ///< conditional lower bound, can be infinite
- double f_cond_upper;            ///< conditional upper bound, can be infinite
+ double f_cond_lower;            ///< conditional lower bound, can be +INF
+ double f_cond_upper;            ///< conditional upper bound, can be -INF
 
  std::vector< ColVariable > v_x; ///< the static binary/continuous variables
  FRowConstraint f_cnst;          ///< the static constraint 

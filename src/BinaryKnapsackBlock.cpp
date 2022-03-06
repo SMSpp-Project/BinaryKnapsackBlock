@@ -593,34 +593,85 @@ void BinaryKnapsackBlock::fix_x( bool value , Index i ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::fix_x( c_boolVec & value , Range rng , 
+void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng , 
                                  ModParam issueMod, ModParam issueAMod )
 {
  rng.second = std::min( rng.second , Index( v_x.size() ) );
  if( rng.second <= rng.first )  // nothing to do
   return;
 
- auto vi = value.begin();
+ Index i = rng.first;
+ for(  ; i < rng.second ; ++i )
+  if( ! v_x[ i ].is_fixed() )
+   break;      
 
- for( Index i = rng.first ; i < rng.second ; i++ , vi++ )
-  fix_x( * vi , i , eDryRun , issueAMod );
+ if( i == rng.second )  // all fixed already
+  return;
+
+ // reset conditional bounds
+ f_cond_lower = -Inf<double>();
+ f_cond_upper = Inf<double>();
+
+ // TODO: use a GroupModification
+ if( not_dry_run( issueAMod ) )
+  for( i = rng.first ; i < rng.second ; ++i )
+   if( ! v_x[ i ].is_fixed() ) {
+    v_x[ i ].set_value( *(value++) ); 
+    v_x[ i ].is_fixed( true , issueAMod ); 
+    }
+ 
+ // issue physical Modification
+ if( issue_pmod( issueMod ) )  
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
+	                       this , BinaryKnapsackBlockMod::eFixX , rng ) , 
+			   Observer::par2chnl( issueMod ) );
 
  }  // end( BinaryKnapsackBlock::fix_x )
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::fix_x( c_boolVec & value , Subset && nms , 
+void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,
+				 Subset && nms , bool ordered ,
                                  ModParam issueMod , ModParam issueAMod )
 {
  if( nms.empty() )
   return;
 
- auto vi = value.begin();
+ if( ! ordered )
+  std::sort( nms.begin() , nms.end() );
 
+ if( nms.back() >= v_x.size() )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::fix_x: invalid item" )
+	 );
+
+ bool done = true;
  for( auto i : nms )
-  fix_x( * vi++ , i , eDryRun , issueAMod );
+  if( ! v_x[ i ].is_fixed() ) {
+   done = false;
+   break;      
+   }
 
- // std::sort( nms.begin() , nms.end() );
+ if( done )  // all fixed already
+  return;
+
+ // reset conditional bounds
+ f_cond_lower = -Inf<double>();
+ f_cond_upper = Inf<double>();
+
+ // TODO: use a GroupModification
+ if( not_dry_run( issueAMod ) )
+  for( auto i : nms )
+   if( ! v_x[ i ].is_fixed() ) {
+    v_x[ i ].set_value( *(value++) ); 
+    v_x[ i ].is_fixed( true , issueAMod ); 
+    }
+
+ // issue physical Modification
+ if( issue_pmod( issueMod ) )  
+  Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(
+	                               this , BinaryKnapsackBlockMod::eFixX ,
+				       std::move( nms ) ) , 
+			   Observer::par2chnl( issueMod ) );
 
  }  // end( BinaryKnapsackBlock::fix_x )
 
@@ -660,8 +711,22 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
  if( rng.second <= rng.first )  // nothing to do
   return;
 
- for( Index i = rng.first ; i < rng.second ; ++i )
-  unfix_x( i , eDryRun , issueAMod );
+ Index i = rng.first;
+ for(  ; i < rng.second ; ++i )
+  if( v_x[ i ].is_fixed() )
+   break;      
+
+ if( i == rng.second )  // all unfixed already
+  return;
+
+ // reset conditional bounds
+ f_cond_lower = -Inf<double>();
+ f_cond_upper = Inf<double>();
+
+ // TODO: use a GroupModification
+ if( not_dry_run( issueAMod ) )
+  for( i = rng.first ; i < rng.second ; ++i )
+   v_x[ i ].is_fixed( false , issueAMod ); 
 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
@@ -673,17 +738,37 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::unfix_x( Subset && nms , ModParam issueMod ,
-                                   ModParam issueAMod )
+void BinaryKnapsackBlock::unfix_x( Subset && nms , bool ordered ,
+				   ModParam issueMod , ModParam issueAMod )
 {
  if( nms.empty() )
   return;
 
+ if( ! ordered )
+  std::sort( nms.begin() , nms.end() );
+
+ if( nms.back() >= v_x.size() )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::unfix_x: invalid item"
+				) );
+ bool done = true;
  for( auto i : nms )
-  unfix_x( i , eDryRun , issueAMod );
+  if( v_x[ i ].is_fixed() ) {
+   done = false;
+   break;      
+   }
 
- std::sort( nms.begin() , nms.end() );
+ if( done )  // all unfixed already
+  return;
 
+ // reset conditional bounds
+ f_cond_lower = -Inf<double>();
+ f_cond_upper = Inf<double>();
+
+ // TODO: use a GroupModification
+ if( not_dry_run( issueAMod ) )
+  for( auto i : nms )
+   v_x[ i ].is_fixed( false , issueAMod ); 
+ 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(
@@ -728,7 +813,7 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight , Range rng , 
+void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight , Range rng , 
                                        ModParam issueMod ,
 				       ModParam issueAMod )
 {
@@ -752,8 +837,9 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight , Range rng ,
   
   // abstract representation
   LinearFunction *lf = dynamic_cast<LinearFunction*>(f_cnst.get_function());
-  lf->modify_coefficients( std::vector<double>( NWeight , 
-                  NWeight + ( rng.second - rng.first ) ) , rng , issueAMod );
+  lf->modify_coefficients( doubleVec( NWeight ,
+				      NWeight + ( rng.second - rng.first ) ) ,
+			   rng , issueAMod );
   }
  else
   if( not_dry_run( issueMod ) )
@@ -771,7 +857,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight , Range rng ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
+void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight,
                                        Subset && nms , bool ordered ,  
                                        ModParam issueMod ,
 				       ModParam issueAMod )
@@ -794,7 +880,7 @@ void BinaryKnapsackBlock::chg_weights( const dblVec_it NWeight,
   // abstract representation
   LinearFunction *lf = dynamic_cast<LinearFunction*>(f_cnst.get_function());
   lf->modify_coefficients( doubleVec( NWeight , NWeight + nms.size() ) , 
-			   Subset( nms ) , issueAMod );
+			   Subset( nms ) , ordered , issueAMod );
   } 
  else
   if( not_dry_run( issueMod ) )
@@ -852,7 +938,7 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit , Range rng , 
+void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng , 
                                        ModParam issueMod ,
 				       ModParam issueAMod )
 {
@@ -896,7 +982,7 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit , Range rng ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
+void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit ,
                                        Subset && nms , bool ordered ,  
                                        ModParam issueMod ,
                                        ModParam issueAMod )
@@ -918,9 +1004,8 @@ void BinaryKnapsackBlock::chg_profits( const dblVec_it NProfit ,
   
   // abstract representation
   LinearFunction *lf = dynamic_cast<LinearFunction*>( f_obj.get_function() );
-  lf->modify_coefficients( std::vector<double>( NProfit , 
-                           NProfit + nms.size() ) , 
-                           Subset( nms ) , issueAMod );
+  lf->modify_coefficients( doubleVec( NProfit , NProfit + nms.size() ) , 
+                           Subset( nms ) , ordered , issueAMod );
   } 
  else
   if( not_dry_run( issueMod ) )
@@ -985,7 +1070,7 @@ void BinaryKnapsackBlock::chg_integrality( bool NIntegrality , Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality ,
+void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality ,
                                            Range rng , ModParam issueMod ,
                                                        ModParam issueAMod )
 {
@@ -1034,7 +1119,7 @@ void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_integrality( const boolVec_it NIntegrality,
+void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality,
                                            Subset && nms , bool ordered , 
                                            ModParam issueMod ,
                                            ModParam issueAMod )
