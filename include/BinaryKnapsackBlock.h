@@ -486,24 +486,24 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index gets the solution of the corresponding item
 
- double get_x( Index i );
+ double get_x( Index i ) const;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution
 
- void get_x( doubleVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
+ void get_x( dblVec_it xSol , Range rng = Range( 0 , Inf< Index >() ) ) const;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the solution for an arbitrary subset of items
 
- void get_x( doubleVec & xSol , c_Subset & nms );
+ void get_x( dblVec_it xSol , c_Subset & nms ) const;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// return the dual value of the knapsack constraint
  /** Returns the dual value of the knapsack constraint; this only makes sense
   * if all the variables are continuous. */
 
- double get_dual( void ) { return( f_cnst.get_dual() ); }
+ double get_dual( void ) const { return( f_cnst.get_dual() ); }
 
 /*--------------------------------------------------------------------------*/
  /// get the number of variables
@@ -517,17 +517,17 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set a contiguous interval of the solution
 
- void set_x( c_doubleVec & xSol , Range rng = Range( 0 , Inf< Index >() ) );
+ void set_x( c_dblVec_it xSol , Range rng = Range( 0 , Inf< Index >() ) );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the solution for an arbitrary subset of items
 
- void set_x( c_doubleVec & xSol , c_Subset & nms );
+ void set_x( c_dblVec_it xSol , c_Subset & nms );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i return true if the corresponding variable is fixed
 
- bool is_fixed( Index i ) { return( v_x[ i ].is_fixed() ); }
+ bool is_fixed( Index i ) const { return( v_x[ i ].is_fixed() ); }
 
 /** @} ---------------------------------------------------------------------*/
 /*-------------------- Methods for handling Modification -------------------*/

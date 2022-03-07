@@ -333,8 +333,8 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc )
   throw( std::invalid_argument( "compute() must be called first" ) );
 
  // check if the solution has already been computed
- if( ! v_x.empty() ){       
-  BKB->set_x( v_x );        // write the solution in the BinaryKnapsackBlock 
+ if( ! v_x.empty() ) {
+  BKB->set_x( v_x.begin() );  // write the solution in the BinaryKnapsackBlock 
   return;                     
   }
 
@@ -409,7 +409,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc )
   }  // end( continuous part )
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- BKB->set_x( v_x );         // write the solution in the BinaryKnapsackBlock
+ BKB->set_x( v_x.begin() );  // write the solution in the BinaryKnapsackBlock
 
  }  // end( DPBinaryKnapsackSolver::get_var_solution )
  

@@ -413,8 +413,8 @@ void BinaryKnapsackBlock::map_back_solution( Block * R3B ,
 
  // copy solution
  doubleVec xSol( v_x.size() );
- BKB->get_x( xSol );
- set_x( xSol );
+ BKB->get_x( xSol.begin() );
+ set_x( xSol.begin() );
  
  }  // end( BinaryKnapsackBlock::map_back_solution )
 
@@ -451,35 +451,33 @@ Solution * BinaryKnapsackBlock::get_Solution( Configuration * solc ,
 
 /*--------------------------------------------------------------------------*/
 
-double BinaryKnapsackBlock::get_x( Index i )
+double BinaryKnapsackBlock::get_x( Index i ) const
 {
  if( i >= v_x.size() )
   throw( std::invalid_argument( "BinaryKnapsackBlock::get_x: invalid item" )
 	 );
- return ( v_x[ i ].get_value());
+ return( v_x[ i ].get_value());
  }
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::get_x( doubleVec & xSol , Range rng )
+void BinaryKnapsackBlock::get_x( dblVec_it xSol , Range rng ) const
 {
  rng.second = std::min( rng.second , Index( v_x.size() ) );
 
- auto xSoli = xSol.begin();
  for( Index i = rng.first ; i < rng.second ; ++i )
-  ( * xSoli++ ) = v_x[ i ].get_value();
+  *(xSol++) = v_x[ i ].get_value();
  }
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::get_x( doubleVec & xSol , c_Subset & nms )
+void BinaryKnapsackBlock::get_x( dblVec_it xSol , c_Subset & nms ) const
 { 
- auto xSoli = xSol.begin();
  for( auto i : nms ){
   if( i >= v_x.size() )
    throw( std::invalid_argument( "BinaryKnapsackBlock::get_x: invalid item" )
 	  );
-  ( * xSoli++ ) = v_x[ i ].get_value();
+  *(xSol++) = v_x[ i ].get_value();
   }
  }
 
@@ -495,25 +493,23 @@ void BinaryKnapsackBlock::set_x( Index i , double value )
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( c_doubleVec & xSol , Range rng )
+void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , Range rng )
 { 
  rng.second = std::min( rng.second , get_NItems() );
 
- auto xSoli = xSol.begin();
  for( Index i = rng.first ; i < rng.second ; i++ )
-  v_x[ i ].set_value( * xSoli++ );
+  v_x[ i ].set_value( *(xSol++) );
  }
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_x( c_doubleVec & xSol , c_Subset & nms )
+void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 { 
- auto xSoli = xSol.begin();
  for( auto i : nms ){
   if( i >= v_x.size() )
    throw( std::invalid_argument( "BinaryKnapsackBlock::set_x: invalid item" )
 	  );
-  v_x[ i ].set_value( * xSoli++ );
+  v_x[ i ].set_value( *(xSol++) );
   }
  }
 
