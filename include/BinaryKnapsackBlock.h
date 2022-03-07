@@ -880,7 +880,7 @@ class BinaryKnapsackBlockMod : public Modification {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to the type of modification
 
- int type( void ) { return( f_type ); }
+ int type( void ) const { return( f_type ); }
 
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 
@@ -943,7 +943,7 @@ class BinaryKnapsackBlockRngdMod : public BinaryKnapsackBlockMod
 
  /// accessor to the range
 
- Block::c_Range & rng( void ) { return( f_rng ); }
+ Block::c_Range & rng( void ) const { return( f_rng ); }
  
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 
@@ -999,7 +999,7 @@ class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod
 
  /// accessor to the subset
 
- Block::c_Subset & nms( void ) { return( f_nms ); }
+ Block::c_Subset & nms( void ) const { return( f_nms ); }
 
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 
