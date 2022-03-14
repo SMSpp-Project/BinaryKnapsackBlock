@@ -188,6 +188,34 @@ class BinaryKnapsackBlock : public Block {
 	    doubleVec && Profits , boolVec && Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
+ /// load instance from txt file  
+ /** Loads a BinaryKnapsackBlock out of std::istream. The format is the
+  * following, with each element being separated by whitespaces and possibly
+  * comments:
+  *
+  * - number of nodes
+  *
+  * - capacity of the knapsack
+  *
+  * - for i = 1 to n: weight of item i
+  *
+  * - for i = 1 to n: profit of item i
+  *
+  * If the stream (after having extracted whitespaces and comments) does not
+  * eof() here, then
+  *
+  * - for i = 1 to n: integrality of item i (true if integral, false if not)
+  *
+  * If integrality is not specified, true is assumed for all objects.
+  *
+  * Since there is only one supported input format, \p frmt is ignored.
+  *
+  * Like load( memory ), if there is any Solver attached to this MCFBlock
+  * then a NBModification (the "nuclear option") is issued. */
+
+ void load( std::istream & input , char frmt = 0 ) override;
+
+/*--------------------------------------------------------------------------*/
  /// extends Block::deserialize( netCDF::NcGroup )
  /** Extends Block::deserialize( netCDF::NcGroup ) to the specific format of
   * a BinaryKnapsackBlock. Besides what is managed by serialize() method of 
@@ -584,11 +612,18 @@ class BinaryKnapsackBlock : public Block {
  void add_Modification( sp_Mod mod , ChnlName chnl = 0 ) override;
 
 /** @} ---------------------------------------------------------------------*/
-/*------ METHODS FOR LOADING, PRINTING & SAVING THE BinaryKnapsackBlock ----*/
+/*--------- METHODS FOR PRINTING & SAVING THE BinaryKnapsackBlock ----------*/
 /*--------------------------------------------------------------------------*/
-/** @name Methods for loading, printing & saving the BinaryKnapsackBlock
+/** @name Methods for printing & saving the BinaryKnapsackBlock
  *  @{ */
 
+ /// print the BinaryKnapsackBlock on an ostream
+ /** Print information about the BinaryKnapsackBlock with the given verbosity
+  * level. */ 
+
+ void print( std::ostream & output , char vlvl = 0 ) const override;
+
+/*--------------------------------------------------------------------------*/
 /// extends Block::serialize( netCDF::NcGroup )
 /** Extends Block::serialize( netCDF::NcGroup ) to the specific format of a
  * BinaryKnapsackBlock. See BinaryKnapsackBlock::deserialize(netCDF::NcGroup) 
@@ -759,21 +794,8 @@ class BinaryKnapsackBlock : public Block {
 /*--------------------------------------------------------------------------*/
 /*-------------------------- PROTECTED METHODS -----------------------------*/
 /*--------------------------------------------------------------------------*/
-/** @name Protected methods for inserting and extracting
- *  @{ */
-
- /// print the BinaryKnapsackBlock on an ostream
- /** Protected method to print information about the BinaryKnapsackBlock */ 
-
- void print( std::ostream & output ) const override;
 
 /*--------------------------------------------------------------------------*/
- /// load instance from txt file  
- /** Protected method for loading a BinaryKnapsackBlock out of std::istream */
-
- void load( std::istream & input ) override;
-
-/** @} ---------------------------------------------------------------------*/
 /*--------------------------- PROTECTED FIELDS  ----------------------------*/
 /*--------------------------------------------------------------------------*/
 

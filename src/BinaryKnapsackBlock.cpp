@@ -174,6 +174,50 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 
 /*--------------------------------------------------------------------------*/
 
+void BinaryKnapsackBlock::load( std::istream & input , char frmt )
+{
+ // erase previous instance, if any
+ if( get_NItems() )
+  guts_of_destructor();
+
+ // read problem data
+ Index n;
+ if( ! ( input >> eatcomments >> n ) )
+  throw( std::invalid_argument( "error reading number of items" ) );
+
+ if( ! ( input >> eatcomments >> f_C ) )
+  throw( std::invalid_argument( "error reading Capacity" ) );
+
+ v_W.resize( n );
+ v_P.resize( n );
+ v_I.assign( n , true );
+
+ for( Index i = 0 ; i < get_NItems() ; ++i )
+  if( ! ( input >> eatcomments >> v_W[ i ] ) )
+   throw( std::invalid_argument( "error reading Weights" ) );
+
+ for( Index i = 0 ; i < get_NItems() ; ++i )
+  if( ! ( input >> eatcomments >> v_P[ i ] ) )
+   throw( std::invalid_argument( "error reading Profits" ) );
+
+ input >> eatcomments;
+ if( ! input.eof() )
+  for( Index i = 0 ; i < get_NItems() ; ++i ) {
+   input >> eatcomments;
+   if( ! ( ( bool ) input >> v_I[ i ] ) )
+    throw( std::invalid_argument( "error reading Integrality Constraints" ) );
+   }
+
+ generate_abstract_variables();
+
+ // Modification- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ if( anyone_there() )
+  add_Modification( std::make_shared< NBModification >( this ) );
+ }
+
+/*--------------------------------------------------------------------------*/
+
 void BinaryKnapsackBlock::deserialize( const netCDF::NcGroup & group )
 {
  // erase previous instance, if any
@@ -529,6 +573,22 @@ void BinaryKnapsackBlock::add_Modification( sp_Mod mod , ChnlName chnl )
 
 /*--------------------------------------------------------------------------*/
 /*------ METHODS FOR LOADING, PRINTING & SAVING THE BinaryKnapsackBlock ----*/
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackBlock::print( std::ostream & output , char vlvl ) const
+{ 
+ output << "BinaryKnapsackBlock\n";
+ output << "Number of items: " << get_NItems() << std::endl; 
+ output << "Capacity: " << f_C << std::endl;
+
+ if( vlvl != 'C' )
+  return;
+
+ output << "\tWeights\tProfits\n";
+ for( Index i = 0 ; i < get_NItems() ; i++ )
+  output << "Item " << i << "\t" << v_W[ i ] << "\t" << v_P[ i ] << std::endl;
+ }
+
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::serialize( netCDF::NcGroup & group ) const
@@ -1220,59 +1280,6 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- PROTECTED METHODS -----------------------------*/
-/*--------------------------------------------------------------------------*/
-
-void BinaryKnapsackBlock::print( std::ostream & output ) const
-{ 
- output << "BinaryKnapsackBlock\n";
- output << "Number of items: " << get_NItems() << std::endl; 
- output << "Capacity: " << f_C << std::endl;
- 
- output << "\tWeights\tProfits\n";
- for( Index i = 0 ; i < get_NItems() ; i++ )
-  output << "Item " << i << "\t" << v_W[ i ] << "\t" << v_P[ i ] << std::endl;
- }
-
-/*--------------------------------------------------------------------------*/
-
-void BinaryKnapsackBlock::load( std::istream & input )
-{
- // erase previous instance, if any
- if( get_NItems() )
-  guts_of_destructor();
-
- // read problem data
- Index n;
- if( ! ( input >> n ) )
-  throw( std::invalid_argument( "error reading number of items" ) );
-
- if( ! ( input >> f_C ) )
-  throw( std::invalid_argument( "error reading Capacity" ) );
-
- v_W.resize( n );
- v_P.resize( n );
- v_I.resize( n );
-
- for( Index i = 0 ; i < get_NItems() ; i++ )
-  if( ! ( input >> v_W[ i ] ) )
-   throw( std::invalid_argument( "error reading Weights" ) );
-
- for( Index i = 0 ; i < get_NItems() ; i++ )
-  if( ! ( input >> v_P[ i ] ) )
-   throw( std::invalid_argument( "error reading Profits" ) );
-
- // TODO: it should be optional
- for( Index i = 0 ; i < get_NItems() ; i++ )
-  if( ! ( ( bool ) input >> v_I[ i ] ) )
-   throw( std::invalid_argument( "error reading Integrality Constraints" ) );
-
- generate_abstract_variables();
-
- // Modification- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
- if( anyone_there() )
-  add_Modification( std::make_shared< NBModification >( this ) );
- }
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- PRIVATE METHODS -------------------------------*/
