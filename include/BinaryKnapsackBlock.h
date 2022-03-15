@@ -165,7 +165,7 @@ class BinaryKnapsackBlock : public Block {
   * issued. */
 
  void load( Index n , double Capacity , c_doubleVec & Weights , 
-	    c_doubleVec & Profits , c_boolVec & Integrality = {} );
+            c_doubleVec & Profits , c_boolVec & Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
  /// loads the Binary Knapsack instance from memory, moving
@@ -185,7 +185,7 @@ class BinaryKnapsackBlock : public Block {
   * issued. */
 
  void load( Index n , double Capacity , doubleVec && Weights , 
-	    doubleVec && Profits , boolVec && Integrality = {} );
+            doubleVec && Profits , boolVec && Integrality = {} );
 
 /*--------------------------------------------------------------------------*/
  /// load instance from txt file  
@@ -193,7 +193,7 @@ class BinaryKnapsackBlock : public Block {
   * following, with each element being separated by whitespaces and possibly
   * comments:
   *
-  * - number of nodes
+  * - number of items
   *
   * - capacity of the knapsack
   *
@@ -210,8 +210,9 @@ class BinaryKnapsackBlock : public Block {
   *
   * Since there is only one supported input format, \p frmt is ignored.
   *
-  * Like load( memory ), if there is any Solver attached to this MCFBlock
-  * then a NBModification (the "nuclear option") is issued. */
+  * Like load( memory ), if there is any Solver attached to this 
+  * BinaryKnapsackBlock then a NBModification (the "nuclear option") is 
+  * issued. */
 
  void load( std::istream & input , char frmt = 0 ) override;
 
@@ -509,7 +510,7 @@ class BinaryKnapsackBlock : public Block {
   * because the former uses some type information declared in the latter. */ 
 
  Solution * get_Solution( Configuration * solc = nullptr, 
-			  bool emptys = true ) override;
+                          bool emptys = true ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index gets the solution of the corresponding item
@@ -669,7 +670,7 @@ class BinaryKnapsackBlock : public Block {
   * changed, even if it differs from what \p value would dictate. */
 
  void fix_x( c_boolVec_it value , Range rng = Range( 0 , Inf< Index >() ) , 
-	     ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
+             ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// fix variables of an arbitrary subsets of indices
@@ -683,7 +684,7 @@ class BinaryKnapsackBlock : public Block {
   * changed, even if it differs from what \p value would dictate. */
 
  void fix_x( c_boolVec_it value , Subset && nms , bool ordered = false ,
-	     ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
+             ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, unfixes the corresponding variable
@@ -695,83 +696,83 @@ class BinaryKnapsackBlock : public Block {
  /// unfix variables of a contiguos interval of indices
 
  void unfix_x( Range rng = Range( 0 , Inf< Index >() ) , 
-	       ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
+               ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// unfix variables of an arbitrary subsets of indices
 
  void unfix_x( Subset && nms , bool ordered = false ,
-	       ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
+               ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the weight of item i
 
  void chg_weight( double NWeight , Index item , 
-		  ModParam issueMod = eNoBlck ,
-		  ModParam issueAMod = eNoBlck ); 
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of a contiguous interval of items
 
  void chg_weights( c_dblVec_it NWeight ,
-		   Range rng = Range( 0 , Inf< Index >() ) , 
-		   ModParam issueMod = eNoBlck ,
-		   ModParam issueAMod = eNoBlck ); 
+                   Range rng = Range( 0 , Inf< Index >() ) , 
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
  void chg_weights( c_dblVec_it NWeight , 
-		   Subset && nms , bool ordered = false ,  
-		   ModParam issueMod = eNoBlck ,
-		   ModParam issueAMod = eNoBlck );
+                   Subset && nms , bool ordered = false ,  
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the boolean vector that tell which variable is 
  /// continuous and which integer (integraliy vector)
 
  void chg_integrality( bool NIntegrality , Index item , 
-		       ModParam issueMod = eNoBlck ,
-		       ModParam issueAMod = eNoBlck ); 
+                       ModParam issueMod = eNoBlck ,
+                       ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the integrality vector of a contiguous interval of items
 
  void chg_integrality( c_boolVec_it NIntegrality , 
-		       Range rng = Range( 0 , Inf< Index >() ) , 
-		       ModParam issueMod = eNoBlck ,
-		       ModParam issueAMod = eNoBlck ); 
+                       Range rng = Range( 0 , Inf< Index >() ) , 
+                       ModParam issueMod = eNoBlck ,
+                       ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
 
  void chg_integrality( c_boolVec_it NIntegrality , 
-		       Subset && nms , bool ordered = false ,  
-		       ModParam issueMod = eNoBlck ,
-		       ModParam issueAMod = eNoBlck );
+                       Subset && nms , bool ordered = false ,  
+                       ModParam issueMod = eNoBlck ,
+                       ModParam issueAMod = eNoBlck );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the profit of item i 
 
  void chg_profit( double NProfit , Index item , 
-		  ModParam issueMod = eNoBlck ,
-		  ModParam issueAMod = eNoBlck ); 
+                  ModParam issueMod = eNoBlck ,
+                  ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of a contiguous interval of items
 
  void chg_profits( c_dblVec_it NProfit , 
-		   Range rng = Range( 0 , Inf< Index >() ) , 
-		   ModParam issueMod = eNoBlck ,
-		   ModParam issueAMod = eNoBlck ); 
+                   Range rng = Range( 0 , Inf< Index >() ) , 
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of an arbitrary subsets of items
 
  void chg_profits( c_dblVec_it NProfit , 
-		   Subset && nms , bool ordered = false ,  
-		   ModParam issueMod = eNoBlck ,
-		   ModParam issueAMod = eNoBlck ); 
+                   Subset && nms , bool ordered = false ,  
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the capacity of the Knapsack
@@ -816,7 +817,7 @@ class BinaryKnapsackBlock : public Block {
 
  bool f_sense;                   ///< the sense of the objective
                                  /** - f_sense = true for maximization
-				  *    f_sense = false for minimization */
+          *    f_sense = false for minimization */
 
  double f_cond_lower;            ///< conditional lower bound, can be +INF
  double f_cond_upper;            ///< conditional upper bound, can be -INF
@@ -843,7 +844,7 @@ class BinaryKnapsackBlock : public Block {
 
  int p2i_x( const Variable * var ) const {
   return( std::distance( v_x.data() ,
-			 static_cast< const ColVariable * >( var ) ) ); 
+       static_cast< const ColVariable * >( var ) ) ); 
   }
 
 /*--------------------------------------------------------------------------*/
@@ -954,7 +955,7 @@ class BinaryKnapsackBlockRngdMod : public BinaryKnapsackBlockMod
  /// constructor: takes the BinaryKnapsackBlock, the type, and the range
 
  BinaryKnapsackBlockRngdMod( BinaryKnapsackBlock * const fblock , 
-			     int type , Block::Range rng )
+           int type , Block::Range rng )
   : BinaryKnapsackBlockMod( fblock , type ) , f_rng( rng ) {}
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -1010,7 +1011,7 @@ class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod
   * become property of the BinaryKnapsackBlockSbstMod object. */
 
  BinaryKnapsackBlockSbstMod( BinaryKnapsackBlock * const fblock , 
-			     int type , Block::Subset && nms )
+           int type , Block::Subset && nms )
   : BinaryKnapsackBlockMod( fblock , type ) , f_nms( std::move( nms ) ) {}
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
