@@ -520,7 +520,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get a contiguous interval of the solution
 
- void get_x( dblVec_it xSol , Range rng = Range( 0 , Inf< Index >() ) ) const;
+ void get_x( dblVec_it xSol , Range rng = INFRange ) const;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// get the solution for an arbitrary subset of items
@@ -546,7 +546,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set a contiguous interval of the solution
 
- void set_x( c_dblVec_it xSol , Range rng = Range( 0 , Inf< Index >() ) );
+ void set_x( c_dblVec_it xSol , Range rng = INFRange );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the solution for an arbitrary subset of items
@@ -669,7 +669,7 @@ class BinaryKnapsackBlock : public Block {
   * Note that if any of the variable is fixed already then its value is not
   * changed, even if it differs from what \p value would dictate. */
 
- void fix_x( c_boolVec_it value , Range rng = Range( 0 , Inf< Index >() ) , 
+ void fix_x( c_boolVec_it value , Range rng = INFRange , 
              ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -695,7 +695,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// unfix variables of a contiguos interval of indices
 
- void unfix_x( Range rng = Range( 0 , Inf< Index >() ) , 
+ void unfix_x( Range rng = INFRange , 
                ModParam issueMod = eNoBlck , ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -714,10 +714,9 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of a contiguous interval of items
 
- void chg_weights( c_dblVec_it NWeight ,
-                   Range rng = Range( 0 , Inf< Index >() ) , 
+ void chg_weights( c_dblVec_it NWeight , Range rng = INFRange , 
                    ModParam issueMod = eNoBlck ,
-                   ModParam issueAMod = eNoBlck ); 
+		   ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
@@ -738,8 +737,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the integrality vector of a contiguous interval of items
 
- void chg_integrality( c_boolVec_it NIntegrality , 
-                       Range rng = Range( 0 , Inf< Index >() ) , 
+ void chg_integrality( c_boolVec_it NIntegrality , Range rng = INFRange , 
                        ModParam issueMod = eNoBlck ,
                        ModParam issueAMod = eNoBlck ); 
 
@@ -761,8 +759,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of a contiguous interval of items
 
- void chg_profits( c_dblVec_it NProfit , 
-                   Range rng = Range( 0 , Inf< Index >() ) , 
+ void chg_profits( c_dblVec_it NProfit , Range rng = INFRange , 
                    ModParam issueMod = eNoBlck ,
                    ModParam issueAMod = eNoBlck ); 
 
