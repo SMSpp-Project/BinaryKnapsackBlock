@@ -275,7 +275,6 @@ class BinaryKnapsackBlock : public Block {
 /** @name Methods for reading the data of the BinaryKnapsackBlock
  *  @{ */
 
-/*--------------------------------------------------------------------------*/
  /// getting the current sense of the Objective
 
  int get_objective_sense( void ) const override final { 
@@ -512,7 +511,17 @@ class BinaryKnapsackBlock : public Block {
  Solution * get_Solution( Configuration * solc = nullptr, 
                           bool emptys = true ) override;
 
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*--------------------------------------------------------------------------*/
+ /// returns the objective value of the current solution
+
+ RealObjective::OFValue get_objective_value( void ) {
+  if( ! ( AR & HasObj ) )  // the objective is not there
+   return( Inf< RealObjective::OFValue >() );
+  f_obj.compute();
+  return( f_obj.value() );
+  }
+
+/*--------------------------------------------------------------------------*/
  /// given an index gets the solution of the corresponding item
 
  double get_x( Index i ) const;
@@ -569,12 +578,24 @@ class BinaryKnapsackBlock : public Block {
   * BinaryKnapsackBlock", or if the BinaryKnapsackBlock has to "listen" 
   * anyway because the "abstract" representation is constructed, and therefore
   * "abstract" Modification have to be generated anyway to keep the two 
-  * representations in sync. */
+  * representations in sync.
+  *
+  * No, this should not be needed. In fact, if the "abstract" representation
+  * is modified with the default eModBlck value of issueMod, it is issued
+  * irrespectively to the value of anyone_there(); see Observer::issue_mod().
+  * If the value of issueMod is anything else the  "abstract" representation
+  * has been modified already and there is no point in issuing the
+  * Modification.
+  * Note that that Observer::issue_mod() does not check if the "abstract"
+  * representation has been constructed, but this is clearly not
+  * necessary, as the Modification we are speaking of are issued while
+  * changing the "abstract" representation, if that has not been
+  * constructed then it cannot issue Modification
 
  bool anyone_there( void ) const override {
   return( AR ? true : Block::anyone_there() );
   }
-
+ */
 /*--------------------------------------------------------------------------*/ 
  /** Method for handling Modification. 
   *

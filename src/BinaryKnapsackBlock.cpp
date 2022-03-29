@@ -83,6 +83,13 @@ static void copyidx( std::vector<T> & vec , c_Subset & nms ,
  }
 
 /*--------------------------------------------------------------------------*/
+
+static LinearFunction * LF( Function * f )
+{
+ return( static_cast< LinearFunction * >( f ) );
+ }
+
+/*--------------------------------------------------------------------------*/
 /*----------------------------- STATIC MEMBERS -----------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -301,7 +308,8 @@ void BinaryKnapsackBlock::generate_abstract_variables( Configuration * stvv )
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::generate_abstract_constraints( Configuration * stcc )
+void BinaryKnapsackBlock::generate_abstract_constraints(
+						       Configuration * stcc )
 {
  if( AR & HasCns )  // the constraint is there already
   return;           // nothing to do
@@ -498,8 +506,8 @@ Solution * BinaryKnapsackBlock::get_Solution( Configuration * solc ,
 double BinaryKnapsackBlock::get_x( Index i ) const
 {
  if( i >= v_x.size() )
-  throw( std::invalid_argument( "BinaryKnapsackBlock::get_x: invalid item" )
-	 );
+  throw( std::invalid_argument( "BinaryKnapsackBlock::get_x: invalid item"
+				) );
  return( v_x[ i ].get_value());
  }
 
@@ -519,8 +527,8 @@ void BinaryKnapsackBlock::get_x( dblVec_it xSol , c_Subset & nms ) const
 { 
  for( auto i : nms ){
   if( i >= v_x.size() )
-   throw( std::invalid_argument( "BinaryKnapsackBlock::get_x: invalid item" )
-	  );
+   throw( std::invalid_argument( "BinaryKnapsackBlock::get_x: invalid item"
+				 ) );
   *(xSol++) = v_x[ i ].get_value();
   }
  }
@@ -530,8 +538,8 @@ void BinaryKnapsackBlock::get_x( dblVec_it xSol , c_Subset & nms ) const
 void BinaryKnapsackBlock::set_x( Index i , double value )
 {
  if( i >= v_x.size() )
-  throw( std::invalid_argument( "BinaryKnapsackBlock::set_x: invalid item" )
-	 );
+  throw( std::invalid_argument( "BinaryKnapsackBlock::set_x: invalid item"
+				) );
  v_x[ i ].set_value( value ); 
  }
 
@@ -551,8 +559,8 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 { 
  for( auto i : nms ){
   if( i >= v_x.size() )
-   throw( std::invalid_argument( "BinaryKnapsackBlock::set_x: invalid item" )
-	  );
+   throw( std::invalid_argument( "BinaryKnapsackBlock::set_x: invalid item"
+				 ) );
   v_x[ i ].set_value( *(xSol++) );
   }
  }
@@ -623,12 +631,10 @@ void BinaryKnapsackBlock::fix_x( bool value , Index i ,
                                  ModParam issueMod , ModParam issueAMod )
 {
  if( i >= v_x.size() )
-  throw( std::invalid_argument( "BinaryKnapsackBlock::fix_x: invalid item" )
-	 );
-
- // if i is already fixed return
- if( v_x[ i ].is_fixed() )
-  return;      
+  throw( std::invalid_argument( "BinaryKnapsackBlock::fix_x: invalid item"
+				) );
+ if( v_x[ i ].is_fixed() )  // if i is already fixed
+  return;                   // return
 
  // reset conditional bounds
  f_cond_lower = -Inf<double>();
@@ -636,7 +642,7 @@ void BinaryKnapsackBlock::fix_x( bool value , Index i ,
 
  if( not_dry_run( issueAMod ) ) {
   v_x[ i ].set_value( value ); 
-  v_x[ i ].is_fixed( true , issueAMod ); 
+  v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) ); 
   }
  
  // issue physical Modification
@@ -673,7 +679,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
   for( i = rng.first ; i < rng.second ; ++i )
    if( ! v_x[ i ].is_fixed() ) {
     v_x[ i ].set_value( *(value++) ); 
-    v_x[ i ].is_fixed( true , issueAMod ); 
+    v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) ); 
     }
  
  // issue physical Modification
@@ -697,9 +703,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,
   std::sort( nms.begin() , nms.end() );
 
  if( nms.back() >= v_x.size() )
-  throw( std::invalid_argument( "BinaryKnapsackBlock::fix_x: invalid item" )
-	 );
-
+  throw( std::invalid_argument( "BinaryKnapsackBlock::fix_x: invalid item"
+				) );
  bool done = true;
  for( auto i : nms )
   if( ! v_x[ i ].is_fixed() ) {
@@ -719,7 +724,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,
   for( auto i : nms )
    if( ! v_x[ i ].is_fixed() ) {
     v_x[ i ].set_value( *(value++) ); 
-    v_x[ i ].is_fixed( true , issueAMod ); 
+    v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) ); 
     }
 
  // issue physical Modification
@@ -748,7 +753,7 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod ,
  f_cond_upper = Inf<double>();
  
  if( not_dry_run( issueAMod ) )
-  v_x[ i ].is_fixed( false , issueAMod ); 
+  v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) ); 
 
  // issue physical Modification 
  if( issue_pmod( issueMod ) ) 
@@ -782,7 +787,7 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
  // TODO: use a GroupModification
  if( not_dry_run( issueAMod ) )
   for( i = rng.first ; i < rng.second ; ++i )
-   v_x[ i ].is_fixed( false , issueAMod ); 
+   v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) ); 
 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
@@ -823,7 +828,7 @@ void BinaryKnapsackBlock::unfix_x( Subset && nms , bool ordered ,
  // TODO: use a GroupModification
  if( not_dry_run( issueAMod ) )
   for( auto i : nms )
-   v_x[ i ].is_fixed( false , issueAMod ); 
+   v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) ); 
  
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
@@ -850,9 +855,9 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
 
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ) {
-  LinearFunction *lf = dynamic_cast<LinearFunction*>(f_cnst.get_function());
-  lf->modify_coefficient( item , NWeight , issueAMod ); // AR
-  v_W[ item ] = NWeight;                                // PR
+  LF( f_cnst.get_function() )->modify_coefficient( item , NWeight ,
+						   un_ModBlock( issueAMod ) );
+  v_W[ item ] = NWeight;
   }
  else
   if( not_dry_run( issueMod ) ) // otherwise only physical representation
@@ -878,7 +883,7 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight , Range rng ,
   return;   
 
  if( std::equal( NWeight , NWeight + ( rng.second - rng.first ) ,
-   v_W.begin() + rng.first ) )
+		 v_W.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -890,12 +895,11 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight , Range rng ,
   // physical representation
   std::copy( NWeight , NWeight + ( rng.second - rng.first ) ,
              v_W.begin() + rng.first );
-  
+
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>(f_cnst.get_function());
-  lf->modify_coefficients( doubleVec( NWeight ,
-				      NWeight + ( rng.second - rng.first ) ) ,
-			   rng , issueAMod );
+  LF( f_cnst.get_function() )->modify_coefficients(
+		doubleVec( NWeight , NWeight + ( rng.second - rng.first ) ) ,
+		rng , un_ModBlock( issueAMod ) );
   }
  else
   if( not_dry_run( issueMod ) )
@@ -934,9 +938,10 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight,
   copyidx( v_W , nms , NWeight );
   
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>(f_cnst.get_function());
-  lf->modify_coefficients( doubleVec( NWeight , NWeight + nms.size() ) , 
-			   Subset( nms ) , ordered , issueAMod );
+  LF( f_cnst.get_function() )->modify_coefficients(
+			       doubleVec( NWeight , NWeight + nms.size() ) , 
+			       Subset( nms ) , ordered ,
+			       un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )
@@ -976,8 +981,8 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
   v_P[ item ] = NProfit; 
 
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( f_obj.get_function() );
-  lf->modify_coefficient( item , NProfit , issueAMod );
+  LF( f_obj.get_function() )->modify_coefficient( item , NProfit ,
+						  un_ModBlock( issueAMod ) );
   }
  else
   if( not_dry_run( issueMod ) ) // otherwise only physical representation 
@@ -1018,10 +1023,9 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng ,
              v_P.begin() + rng.first );
   
   // abstract representation  
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( f_obj.get_function() );
-  lf->modify_coefficients( doubleVec( NProfit , 
-				      NProfit + ( rng.second - rng.first ) ) ,
-			   rng , issueAMod );
+  LF( f_obj.get_function() )->modify_coefficients(
+		doubleVec( NProfit , NProfit + ( rng.second - rng.first ) ) ,
+		rng , un_ModBlock( issueAMod ) );
   }
  else
   if( not_dry_run( issueMod ) )  // otherwise only physical representation 
@@ -1041,7 +1045,7 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng ,
 void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit ,
                                        Subset && nms , bool ordered ,  
                                        ModParam issueMod ,
-                                       ModParam issueAMod )
+				       ModParam issueAMod )
 {
  if( nms.empty() )  // nothing to change
   return;            
@@ -1059,9 +1063,9 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit ,
   copyidx( v_P , nms , NProfit );
   
   // abstract representation
-  LinearFunction *lf = dynamic_cast<LinearFunction*>( f_obj.get_function() );
-  lf->modify_coefficients( doubleVec( NProfit , NProfit + nms.size() ) , 
-                           Subset( nms ) , ordered , issueAMod );
+  LF( f_obj.get_function() )->modify_coefficients(
+			 doubleVec( NProfit , NProfit + nms.size() ) , 
+			 Subset( nms ) , ordered , un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )
@@ -1100,14 +1104,16 @@ void BinaryKnapsackBlock::chg_integrality( bool NIntegrality , Index item ,
   // abstract representation
   if( NIntegrality ) {
     if( v_x[ item ].get_type() == ColVariable::kPosUnitary ) {
+     v_x[ item ].set_type( ColVariable::kBinary ,
+			   un_ModBlock( issueAMod ) );
      countCont--;
-     v_x[ item ].set_type( ColVariable::kBinary , eNoBlck );
      }
    }
   else
-   if( v_x[ item ].get_type() == ColVariable::kBinary ){
+   if( v_x[ item ].get_type() == ColVariable::kBinary ) {
+    v_x[ item ].set_type( ColVariable::kPosUnitary ,
+			  un_ModBlock( issueAMod ) );
     countCont++;
-    v_x[ item ].set_type( ColVariable::kPosUnitary , eNoBlck );
     }
   } 
  else
@@ -1149,14 +1155,16 @@ void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality ,
   for( Index i = 0 ; i < rng.second - rng.first ; ++i ) {
    if( NIntegrality[ i ] ) {
     if( v_x[ rng.first + i ].get_type() == ColVariable::kPosUnitary ) {
+     v_x[ rng.first + i ].set_type( ColVariable::kBinary ,
+				    un_ModBlock( issueAMod ) );
      countCont--;
-     v_x[ rng.first + i ].set_type( ColVariable::kBinary , eNoBlck );
      }
     }
    else
     if( v_x[ rng.first + i ].get_type() == ColVariable::kBinary ) {
+     v_x[ rng.first + i ].set_type( ColVariable::kPosUnitary ,
+				    un_ModBlock( issueAMod ) );
      countCont++;
-     v_x[ rng.first + i ].set_type( ColVariable::kPosUnitary , eNoBlck );
      }
    }
   }
@@ -1195,14 +1203,16 @@ void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality,
   for(Index i=0;i<nms.size();i++){
    if( NIntegrality[ i ] ) {
     if( v_x[ nms[ i ] ].get_type() == ColVariable::kPosUnitary ) {
+     v_x[ nms[ i ] ].set_type( ColVariable::kBinary ,
+			       un_ModBlock( issueAMod ) );
      countCont--;
-     v_x[ nms[ i ] ].set_type( ColVariable::kBinary , eNoBlck );
      }
     }
    else
     if( v_x[ nms[ i ] ].get_type() == ColVariable::kBinary) {
+     v_x[ nms[ i ] ].set_type( ColVariable::kPosUnitary ,
+			       un_ModBlock( issueAMod ) );
      countCont++;
-     v_x[ nms[ i ] ].set_type( ColVariable::kPosUnitary , eNoBlck );
      }
    }
   } 
@@ -1224,8 +1234,8 @@ void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality,
 
 /*---------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_capacity( double NC ,  ModParam issueMod ,
-					             ModParam issueAMod )
+void BinaryKnapsackBlock::chg_capacity( double NC , ModParam issueMod ,
+					            ModParam issueAMod )
 {
  if( f_C == NC )  // nothing to do
   return;
@@ -1237,7 +1247,7 @@ void BinaryKnapsackBlock::chg_capacity( double NC ,  ModParam issueMod ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ) {
   f_C = NC; 
-  f_cnst.set_rhs( NC , issueAMod );
+  f_cnst.set_rhs( NC , un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )  // otherwise only physical representation 
@@ -1265,7 +1275,7 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ) {
   f_sense = sense; 
-  f_obj.set_sense( sense , issueAMod );
+  f_obj.set_sense( sense , un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )  // otherwise only physical representation 
@@ -1277,9 +1287,6 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
                            Observer::par2chnl( issueMod ) );
 
  }  // end( BinaryKnapsackBlock::set_objective_sense )
-
-/*--------------------------------------------------------------------------*/
-/*-------------------------- PROTECTED METHODS -----------------------------*/
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- PRIVATE METHODS -------------------------------*/
