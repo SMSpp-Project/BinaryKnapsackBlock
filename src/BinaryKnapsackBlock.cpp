@@ -350,7 +350,7 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc )
 
  LinearFunction * obj = new LinearFunction( std::move( p ) , 0  );
  f_obj.set_function( obj , eNoMod );
- f_obj.set_sense( f_sense , eNoMod );
+ f_obj.set_sense( f_sense ? Objective::eMax : Objective::eMin , eNoMod );
  set_objective( & f_obj , eNoMod );
  
  AR |= HasObj;
@@ -1275,7 +1275,8 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ) {
   f_sense = sense; 
-  f_obj.set_sense( sense , un_ModBlock( issueAMod ) );
+  f_obj.set_sense( sense ? Objective::eMax : Objective::eMin ,
+		   un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )  // otherwise only physical representation 

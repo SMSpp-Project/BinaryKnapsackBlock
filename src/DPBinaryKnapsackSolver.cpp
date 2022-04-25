@@ -483,20 +483,21 @@ void DPBinaryKnapsackSolver::load( void )
    
  // load Binary Knapsack instance - - - - - - - - - - - - - - - - - - - - - 
 
- f_sense = BKB->get_objective_sense();    // get the sense of the objective
+ f_sense = ( BKB->get_objective_sense() == Objective::eMax );
+ // get the sense of the objective
 
- f_N = BKB->get_NItems();                 // get the number of items
+ f_N = BKB->get_NItems();    // get the number of items
 
- f_C = BKB->get_Capacity(); // get the Capacity
+ f_C = BKB->get_Capacity();  // get the Capacity
 
  v_P.resize( f_N );     
 
- const auto & P = BKB->get_Profits();     // get profits  
+ const auto & P = BKB->get_Profits();      // get profits  
                                              
- for( Index i = 0 ; i < P.size() ; ++i )  // if the sense is minimization 
-  v_P[ i ] = f_sense ? P[ i ] : - P[ i ]; // change the sign of the profits 
+ for( Index i = 0 ; i < P.size() ; ++i )   // if the sense is minimization 
+  v_P[ i ] = f_sense ? P[ i ] : - P[ i ];  // change the sign of the profits 
 
- v_W.resize( f_N );                       // prepare vector of weights
+ v_W.resize( f_N );                        // prepare vector of weights
 
  const auto & W = BKB->get_Weights();
 
@@ -509,7 +510,7 @@ void DPBinaryKnapsackSolver::load( void )
  v_I.resize( f_N );    
 
  const auto & I = BKB->get_Integrality();
- for( Index i = 0 ; i < I.size() ; ++i )  // load weights and check 
+ for( Index i = 0 ; i < I.size() ; ++i )  // load values and check 
   v_I[ i ] = ( bool ) I[ i ] ;            // that they are booleans
 
  countCont = BKB->get_N_Cont_Items();
@@ -572,23 +573,22 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
     // algorithm from f_N, i.e. only recompute the optimal value
     // Otherwise restart from the first item   
 
-    case( BinaryKnapsackBlockMod::eChgCapacity ): {
+   case( BinaryKnapsackBlockMod::eChgCapacity ): {
+    double nC = BKB->get_Capacity();   // get new Capacity
 
-     double nC = BKB->get_Capacity();   // get new Capacity
+    start_item = nC > f_C ? 0 : std::min( f_N , start_item );
 
-     start_item = nC > f_C ? 0 : std::min( f_N , start_item );
-
-     f_C = nC;                          // update the Capacity
+    f_C = nC;                          // update the Capacity
       
-     mod = v_mod_tmp.erase( mod );
-     break;
-     }                    
+    mod = v_mod_tmp.erase( mod );
+    break;
+    }
 
     // Change Objective Sense - - - - - - - - - - - - - - - - - - - - - - - -
     // Change the sign of all profits and restart from the first item
-    case( BinaryKnapsackBlockMod::eChgSense ):{        
-
-     f_sense = BKB->get_objective_sense();  // update f_sense
+    case( BinaryKnapsackBlockMod::eChgSense ):
+     f_sense = ( BKB->get_objective_sense() == Objective::eMax );
+     // update f_sense
 
      for( Index i = 0 ; i < f_N ; ++i )     // change the sign of all profits
       v_P[ i ] = - v_P[ i ];
@@ -597,10 +597,9 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
       
      mod = v_mod_tmp.erase( mod );
      break;
-     }                                      
 
     default: mod++;
-    }                                              
+    }
    }
   else
    mod = v_mod_tmp.erase( mod );   // it is not a physical modification

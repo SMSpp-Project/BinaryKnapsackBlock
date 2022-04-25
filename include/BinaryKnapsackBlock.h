@@ -833,9 +833,9 @@ class BinaryKnapsackBlock : public Block {
  static constexpr unsigned char HasCns = 4;
  ///< third bit of AR == 1 if the Constraint has been constructed
 
- bool f_sense;                   ///< the sense of the objective
-                                 /** - f_sense = true for maximization
-          *    f_sense = false for minimization */
+ bool f_sense;         ///< the sense of the objective
+                       /** f_sense = true for maximization
+                        *  f_sense = false for minimization */
 
  double f_cond_lower;            ///< conditional lower bound, can be +INF
  double f_cond_upper;            ///< conditional upper bound, can be -INF
