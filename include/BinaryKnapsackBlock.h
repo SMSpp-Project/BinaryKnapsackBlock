@@ -35,13 +35,15 @@
 
 #include "Block.h"
 
-#include "Solution.h"
+#include "Change.h"
 
 #include "FRowConstraint.h"
 
 #include "FRealObjective.h"
 
 #include "LinearFunction.h"
+
+#include "Solution.h"
 
 /*--------------------------------------------------------------------------*/
 /*------------------------------ NAMESPACE ---------------------------------*/
@@ -1081,7 +1083,7 @@ class BinaryKnapsackSolution : public Solution {
 
 /*----------- CONSTRUCTING AND DESTRUCTING BinaryKnapsackSolution ----------*/
 
- explicit BinaryKnapsackSolution() { }  /// constructor, it has nothing to do
+ explicit BinaryKnapsackSolution() { }  ///< constructor
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
@@ -1128,7 +1130,71 @@ class BinaryKnapsackSolution : public Solution {
  }; // end( class( BinaryKnapsackSolution ) )
 
 /*--------------------------------------------------------------------------*/
+/*------------------- CLASS BinaryKnapsackBlockChange ----------------------*/
 /*--------------------------------------------------------------------------*/
+
+class BinaryKnapsackBlockChange : public Change {
+
+public:
+
+/*---------------------------- PUBLIC TYPES --------------------------------*/
+ /// public enum for the types of BinaryKnapsackBlockChange
+ 
+ enum BinaryKnapsackBlock_chg_type {
+  eChgWeight = 0  ,   ///< change the item weight
+  eChgProfit      ,   ///< change the item profit
+  eChgIntegrality ,   ///< change the variable integrality constraint
+  eChgCapacity    ,   ///< change the Knapsack capacity
+  eFixX           ,   ///< fix a variable x
+  eUnfixX         ,   ///< unfix a variable x
+  eChgSense           ///< change the sense of the objective
+  };
+
+/*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
+
+ BinaryKnapsackBlockChange() {}                     ///< constructor
+
+ ~BinaryKnapsackBlockChange() = default;            ///< destructor
+
+/*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+
+ Change * deserialize( const netCDF::NcGroup & group ) override {}
+
+ Change * deserialize( std::istream & input ) override {}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// accessor to the type of change
+
+ int type( void ) const { return( f_type ); }
+
+/*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
+
+ protected:
+
+/*-------------------------- PROTECTED METHODS -----------------------------*/
+ /// print the BinaryKnapsackBlockChange
+
+ void print( std::ostream &output ) const override {
+  output << "BinaryKnapsackBlockChange[" << this << "]: ";
+  switch( f_type ) {
+   case( eChgWeight ):  output << "change weight "; break;
+   case( eChgProfit ):  output << "change profit "; break;
+   case( eChgCapacity ):  output << "change capacity "; break;
+   case( eFixX ):  output << "fix x "; break;
+   case( eUnfixX ):  output << "unfix x "; break;
+   case( eChgSense ):  output << "change objective sense "; break;
+   }
+  }
+
+/*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
+
+ int f_type;   ///< type of change
+
+private:
+
+ SMSpp_insert_in_factory_h;
+
+}; // end( class( BinaryKnapsackBlockChange ) )
 
 } // end( namespace SMSpp_di_unipi_it )
 

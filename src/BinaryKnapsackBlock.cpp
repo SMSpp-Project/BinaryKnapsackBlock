@@ -101,6 +101,10 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlock );
 
 SMSpp_insert_in_factory_cpp_1( BinaryKnapsackSolution );
 
+// register BinaryKnapsackChange to the Change factory
+
+SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlockChange );
+
 /*--------------------------------------------------------------------------*/
 /*-------------------- METHODS OF BinaryKnapsackBlock ----------------------*/
 /*--------------------------------------------------------------------------*/
