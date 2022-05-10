@@ -29,12 +29,14 @@
 # macroes to be exported- - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 BKBkOBJ = $(BKBkSDR)obj/BinaryKnapsackBlock.o \
-          $(BKBkSDR)obj/DPBinaryKnapsackSolver.o 
+          $(BKBkSDR)obj/DPBinaryKnapsackSolver.o \
+          $(BKBkSDR)obj/GreedyRelaxationSolver.o 
 
 BKBkINC = -I$(BKBkSDR)/include
 
 BKBkH   = $(BKBkSDR)include/BinaryKnapsackBlock.h \
-          $(BKBkSDR)include/DPBinaryKnapsackSolver.h
+          $(BKBkSDR)include/DPBinaryKnapsackSolver.h \
+          $(BKBkSDR)include/GreedyRelaxationSolver.h
 
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -51,6 +53,11 @@ $(BKBkSDR)obj/BinaryKnapsackBlock.o: $(BKBkSDR)src/BinaryKnapsackBlock.cpp \
 $(BKBkSDR)obj/DPBinaryKnapsackSolver.o:\
  $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp $(BKBkH) $(SMS++OBJ)  
 	$(CC) -c $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp -o $@ \
+	$(BKBkINC) $(SMS++INC) $(SW)
+
+$(BKBkSDR)obj/GreedyRelaxationSolver.o:\
+ $(BKBkSDR)src/GreedyRelaxationSolver.cpp $(BKBkH) $(SMS++OBJ)  
+	$(CC) -c $(BKBkSDR)src/GreedyRelaxationSolver.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
 ########################## End of makefile ###################################
