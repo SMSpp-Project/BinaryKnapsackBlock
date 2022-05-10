@@ -545,10 +545,6 @@ class BinaryKnapsackBlock : public Block {
 
  double get_dual( void ) const { return( f_cnst.get_dual() ); }
 
-/*--------------------------------------------------------------------------*/
- /// get the number of variables
- //? Index get_VarSize( void ) { return( v_x.size() ); }
-
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, set the solution of the corresponding item
 
