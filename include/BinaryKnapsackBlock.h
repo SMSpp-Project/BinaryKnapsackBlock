@@ -1162,9 +1162,7 @@ public:
 
 /*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 
- Change * deserialize( const netCDF::NcGroup & group ) override {}
-
- Change * deserialize( std::istream & input ) override {}
+ void deserialize( const netCDF::NcGroup & group ) override {}
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to the type of change
