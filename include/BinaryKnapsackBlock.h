@@ -2,7 +2,7 @@
 /*---------------------- File BinaryKnapsackKBlock.h -----------------------*/
 /*--------------------------------------------------------------------------*/
 /** @file
- * Header file for the *concrete* class BinaryKnapsackKBlock, which
+ * Header file for the *concrete* class BinaryKnapsackBlock, which
  * implements the Block concept [see Block.h] for a Knapsack problem with
  * linear objective and both integer and continuous variables.
  *
@@ -563,7 +563,7 @@ class BinaryKnapsackBlock : public Block {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i return true if the corresponding variable is fixed
 
- bool is_fixed( Index i ) const { return( v_x[ i ].is_fixed() ); }
+ bool is_fixed( Index i ) const;
 
 /** @} ---------------------------------------------------------------------*/
 /*-------------------- Methods for handling Modification -------------------*/
@@ -735,7 +735,7 @@ class BinaryKnapsackBlock : public Block {
 
  void chg_weights( c_dblVec_it NWeight , Range rng = INFRange , 
                    ModParam issueMod = eNoBlck ,
-		   ModParam issueAMod = eNoBlck ); 
+		               ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
@@ -837,6 +837,14 @@ class BinaryKnapsackBlock : public Block {
 
  double f_cond_lower;            ///< conditional lower bound, can be +INF
  double f_cond_upper;            ///< conditional upper bound, can be -INF
+
+ std::vector< unsigned char > v_fxd;  ///< vector saying how the x are fixed
+                                      /* < v_fxd[ i ] indicates if x_i is
+                                       * fixed, with the following encoding:
+                                       * 0 = not fixed , 
+                                       * 1 = fixed to 0 , 
+                                       * 2 = fixed to 1                     */
+
 
  std::vector< ColVariable > v_x; ///< the static binary/continuous variables
  FRowConstraint f_cnst;          ///< the static constraint 
