@@ -72,7 +72,7 @@ void DPBinaryKnapsackSolver::set_Block( Block * block )
  Solver::set_Block( block );  // attach to the new Block
 
  load();                      // load Binary Knapsack instance
- }
+}
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
@@ -93,7 +93,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars )
   obj = - Inf< double >();
   unlock();  // unlock the mutex
   return( kInfeasible );
-  }
+ }
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  // start_item is the first item processed by the DP algorithm. If compute()
@@ -184,7 +184,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars )
   if( isNeg( i ) ) {                 // if the item has negative 
    p = -p;                           // profit and weight
    w = -w;                           // change both signs
-   }
+  }
 
   if( w > iC )                       // if the weight exceeds the capacity
    continue;                         // continue
@@ -270,7 +270,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars )
    if( isFixed( indexContinuous[ j ] ) ) {
     tempLastIndex++;
     continue;
-    }
+   }
 
    double p = v_P[ indexContinuous[ j ] ];  // profit of the current item   
    int w = v_W[ indexContinuous[ j ] ] ;    // weight of the current item
@@ -278,7 +278,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars )
    if( isNeg(  indexContinuous[ j ]  ) ) {  // if the item has negative 
     p = -p;                                 // profit and weight
     w = -w;                                 // change both signs
-    }
+   }
  
    // if the item does not fit entirely in the knapsack
    if( w * boundX + contWeight > rC ) {
@@ -287,14 +287,14 @@ int DPBinaryKnapsackSolver::compute( bool changedvars )
     contProfit += ( rC - contWeight ) / ( w ) * p ;
     contWeight = rC;
     break;
-    }
+   }
    else {  // otherwise take the whole item and consider the following item
     contProfit += p * boundX;
     contWeight += w * boundX;
     boundX = 1;
     tempLastIndex++;
-    }
    }
+  }
 
   // check if it is the best solution and update obj
   if( G[ f_N ].lab[ i ] + contProfit > obj ){
@@ -336,7 +336,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc )
  if( ! v_x.empty() ) {
   BKB->set_x( v_x.begin() );  // write the solution in the BinaryKnapsackBlock 
   return;                     
-  }
+ }
 
  // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - -
  // for each item check if it is fixed (because the corresponding variable is
@@ -469,6 +469,7 @@ void DPBinaryKnapsackSolver::load( void )
   indexContinuous.clear();
   G.clear();
   v_x.clear();
+  v_fxd.clear();
   return;
   }
 
@@ -482,46 +483,53 @@ void DPBinaryKnapsackSolver::load( void )
   throw( std::runtime_error( "Unable to lock the Block" ) );
    
  // load Binary Knapsack instance - - - - - - - - - - - - - - - - - - - - - 
-
+ 
+ // get scalar sense of the objective, number of items and capacity
  f_sense = ( BKB->get_objective_sense() == Objective::eMax );
- // get the sense of the objective
+ f_N = BKB->get_NItems();
+ f_C = BKB->get_Capacity();
 
- f_N = BKB->get_NItems();    // get the number of items
+ // data for handling the continuous part
+ countCont = BKB->get_N_Cont_Items();
+ indexContinuous.clear();  
 
- f_C = BKB->get_Capacity();  // get the Capacity
+ // resize all 
+ v_P.resize( f_N );
+ v_W.resize( f_N );
+ v_I.resize( f_N );
+ v_fxd.resize( f_N );
 
- v_P.resize( f_N );     
-
- const auto & P = BKB->get_Profits();      // get profits  
-                                             
- for( Index i = 0 ; i < P.size() ; ++i )   // if the sense is minimization 
-  v_P[ i ] = f_sense ? P[ i ] : - P[ i ];  // change the sign of the profits 
-
- v_W.resize( f_N );                        // prepare vector of weights
-
+ // get references to profits, weights and integrality values
+ const auto & P = BKB->get_Profits();
  const auto & W = BKB->get_Weights();
+ const auto & I = BKB->get_Integrality();
 
- for( Index i = 0 ; i < W.size() ; ++i ) {  // load weights and check 
-  v_W[ i ] = std::round( W[ i ] );          // that they are integers
+ // read and store all the data for each item
+ for( Index i = 0 ; i < f_N ; ++i ){
+
+  // Profits: if the sense is minimization change the sign of each profit
+  v_P[ i ] = f_sense ? P[ i ] : - P[ i ];
+
+  // Weights: check if they are integers
+  v_W[ i ] = std::round( W[ i ] );
   if( std::abs( v_W[ i ] - W[ i ] ) > WeightIntegrality )
    throw( std::invalid_argument( "Weights must be integers" ) );
-  }
 
- v_I.resize( f_N );    
+  // Integrality: store indices of continuous variables
+  v_I[ i ] = ( bool ) I[ i ];
+  if( ! v_I[ i ] )
+   indexContinuous.push_back( i );
 
- const auto & I = BKB->get_Integrality();
- for( Index i = 0 ; i < I.size() ; ++i )  // load values and check 
-  v_I[ i ] = ( bool ) I[ i ] ;            // that they are booleans
+  // check if the variables are fixed
+  if( BKB->is_fixed( i ) )
+   v_fxd[ i ] = std::abs( BKB->get_x( i ) ) < 1e-6 ? 1 : 2;
+  else
+   v_fxd[ i ] = 0;
 
- countCont = BKB->get_N_Cont_Items();
+ }
 
  if( ! owned )
   BKB->read_unlock();
-
- indexContinuous.clear();
- for( Index i = 0 ; i < f_N ; ++i )
-  if( ! v_I[ i ] )
-   indexContinuous.push_back( i ); 
 
  // end load Binary Knapsack instance- - - - - - - - - - - - - - - - - - - -
 
@@ -623,6 +631,14 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
     // fix x - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // update start item with the first fixed item
     case( BinaryKnapsackBlockMod::eFixX ):
+     for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ) {
+      // check if the variable is fixed to 0 or to 1
+      if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) ) < 1e-6 )
+       v_fxd[ i ] = 1;
+      else if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) - 1 ) < 1e-6 )
+       v_fxd[ i ] = 2; 
+     }
+
      start_item = std::min( start_item , tmod->rng().first );
      break;
     
@@ -630,6 +646,9 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
     // unfix a variable x could increase the residual capacity making
     // reoptimization not exploitable 
     case( BinaryKnapsackBlockMod::eUnfixX ):
+     for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ )
+      v_fxd[ i ] = 0;
+
      start_item = 0;
      break;
 
@@ -681,7 +700,15 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
     
     // fix x- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // update start item with the first fixed item 
-    case( BinaryKnapsackBlockMod::eFixX ):                
+    case( BinaryKnapsackBlockMod::eFixX ):
+     for( auto i : tmod->nms() ) {
+      // check if the variable is fixed to 0 or to 1
+      if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) ) < 1e-6 )
+       v_fxd[ i ] = 1;
+      else if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) - 1 ) < 1e-6 )
+       v_fxd[ i ] = 2; 
+     }
+
      start_item = std::min( start_item , tmod->nms()[ 0 ] );
      break;
 
@@ -689,6 +716,9 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void )
     // unfix a variable x could increase the residual capacity making
     // reoptimization not exploitable 
     case( BinaryKnapsackBlockMod::eUnfixX ):
+     for( auto i : tmod->nms() )
+      v_fxd[ i ] = 0;
+     
      start_item = 0;
      break;
 

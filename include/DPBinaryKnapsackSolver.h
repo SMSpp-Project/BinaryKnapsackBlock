@@ -314,8 +314,6 @@ void set_Block( Block * block ) override;
 /*-------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------*/
 
-
-
 int compute( bool changedvars = true ) override;
 
 /** @} ---------------------------------------------------------------------*/
@@ -467,6 +465,12 @@ protected:
  std::vector< int > v_W;        ///< vector of Weights          
  std::vector< double > v_P;     ///< vector of Profits
  std::vector< bool > v_I;       ///< vector of Integrality (Binary/Continuous)
+ std::vector< unsigned char > v_fxd;  ///< vector saying how the x are fixed
+                                      /* < v_fxd[ i ] indicates if x_i is
+                                       * fixed, with the following encoding:
+                                       * 0 = not fixed , 
+                                       * 1 = fixed to 0 , 
+                                       * 2 = fixed to 1                     */
  bool f_sense;                  ///< the sense of the objective
 
 
@@ -520,21 +524,19 @@ private:
 
  bool isFixed0( Index i ){
   
-  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+  // if the variable is fixed to 1 return false
+  if( v_fxd[ i ] == 2 )
+   return( false );
 
-  // if the variable is fixed to 0
-  if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) ) < 1e-6 )      
-   return( true );                                      
-
-  // if the variable is fixed to 1
-  if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) - 1 ) < 1e-6 )      
-   return( false );                                     
-   
-  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )          // if the item has positive
-   return( true );                              // weight and negative profit
-
+  // if the variable is fixed to 0 return true
+  if( v_fxd[ i ] == 1 )
+   return( true );
+  
+  // if the item has positive weight and negative profit
+  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )
+   return( true );
+ 
   return( false );
-
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -542,31 +544,27 @@ private:
 /// item can be preprocessed (i.e. it has negative weight and positive profit)  
 
  bool isFixed1( Index i ){
+
+  // if the variable is fixed to 0 return false
+  if( v_fxd[ i ] == 1 )
+   return( false );
+
+  // if the variable is fixed to 1 return true
+  if( v_fxd[ i ] == 2 )
+   return( true );
   
-  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
-
-  // if the variable is fixed to 0
-  if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) ) < 1e-6 )      
-   return( false );                                     
-
-  // if the variable is fixed to 1
-  if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) - 1 ) < 1e-6 )      
-   return( true );                                      
-   
-  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 )          // if the item has negative
-   return( true );                              // weight and positive profit
-
+  // if the item has negative weight and positive profit
+  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 )
+   return( true );
+ 
   return( false );
-  
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// return true if item i is fixed because the variable is fixed or the item
 /// can be preprocessed  
 
- bool isFixed( Index i ){                       // if the variable is fixed
-  return( isFixed0( i ) || isFixed1( i ) );     // to 1 or to 0
- }
+ bool isFixed( Index i ){ return( isFixed0( i ) || isFixed1( i ) ); }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// return true if the item is not fixed and it has negative weight and profit
