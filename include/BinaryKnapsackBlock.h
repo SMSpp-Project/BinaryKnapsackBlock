@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------*/
-/*---------------------- File BinaryKnapsackKBlock.h -----------------------*/
+/*----------------------- File BinaryKnapsackBlock.h -----------------------*/
 /*--------------------------------------------------------------------------*/
 /** @file
  * Header file for the *concrete* class BinaryKnapsackBlock, which
@@ -52,7 +52,7 @@
 /// namespace for the Structured Modeling System++ (SMS++)
 namespace SMSpp_di_unipi_it
 {
- class BinaryKnapsackSolution; //forward declaration of BinaryKnapsacKSolution
+ class BinaryKnapsackSolution;//forward declaration of BinaryKnapsacKSolution
 
 /*--------------------------------------------------------------------------*/
 /*------------------------------ CLASSES -----------------------------------*/
