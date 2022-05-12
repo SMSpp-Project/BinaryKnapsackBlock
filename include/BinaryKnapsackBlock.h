@@ -1087,7 +1087,7 @@ class BinaryKnapsackSolution : public Solution {
 
 /*----------- CONSTRUCTING AND DESTRUCTING BinaryKnapsackSolution ----------*/
 
- explicit BinaryKnapsackSolution() { }  ///< constructor
+ explicit BinaryKnapsackSolution() {}  ///< constructor
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
@@ -1156,9 +1156,9 @@ public:
 
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
 
- BinaryKnapsackBlockChange( int type ) : f_type( type )  {} ///< constructor
+ BinaryKnapsackBlockChange() {}                     ///< constructor
 
- ~BinaryKnapsackBlockChange() = default;                    ///< destructor
+ ~BinaryKnapsackBlockChange() = default;            ///< destructor
 
 /*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
@@ -1169,6 +1169,9 @@ public:
              bool doundo = false , 
              ModParam issueMod = eNoBlck , 
              ModParam issueAMod = eNoBlck ) override {}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ void set_type( int type ) { f_type = type; }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to the type of change

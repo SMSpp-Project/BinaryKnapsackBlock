@@ -61,10 +61,7 @@ SMSpp_insert_in_factory_cpp_1( GreedyRelaxationSolver );
 
 int GreedyRelaxationSolver::compute( bool changedvars ) {
 
- for( Index i = 0 ; i < v_I.size() ; ++i )
-  v_I[ i ] = false;
-
- return DPBinaryKnapsackSolver::compute();
+ return 1;
 
  }  // end( GreedyRelaxationSolver::compute() )
  

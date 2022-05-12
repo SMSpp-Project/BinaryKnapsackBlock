@@ -32,6 +32,8 @@
 
 #include "DPBinaryKnapsackSolver.h"
 
+#include "RelaxationSolver.h"
+
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -53,7 +55,7 @@ namespace SMSpp_di_unipi_it
 /**   */                       
 
 
-class GreedyRelaxationSolver : public DPBinaryKnapsackSolver {  
+class GreedyRelaxationSolver : public Solver , public RelaxationSolver {  
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
@@ -72,7 +74,7 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
-GreedyRelaxationSolver() : DPBinaryKnapsackSolver() {} 
+GreedyRelaxationSolver() {} 
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -89,6 +91,8 @@ GreedyRelaxationSolver() : DPBinaryKnapsackSolver() {}
 /**  */
 
 int compute( bool changedvars = true ) override;
+
+void get_var_solution( Configuration * solc = nullptr ) override {}
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
