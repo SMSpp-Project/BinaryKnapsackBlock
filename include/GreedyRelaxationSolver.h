@@ -30,8 +30,6 @@
 
 #include "BinaryKnapsackBlock.h"
 
-#include "DPBinaryKnapsackSolver.h"
-
 #include "RelaxationSolver.h"
 
 /*--------------------------------------------------------------------------*/
