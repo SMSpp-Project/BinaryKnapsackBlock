@@ -1156,13 +1156,19 @@ public:
 
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
 
- BinaryKnapsackBlockChange() {}                     ///< constructor
+ BinaryKnapsackBlockChange( int type ) : f_type( type )  {} ///< constructor
 
- ~BinaryKnapsackBlockChange() = default;            ///< destructor
+ ~BinaryKnapsackBlockChange() = default;                    ///< destructor
 
-/*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  void deserialize( const netCDF::NcGroup & group ) override {}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ void apply( Block * block , 
+             bool doundo = false , 
+             ModParam issueMod = eNoBlck , 
+             ModParam issueAMod = eNoBlck ) override {}
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to the type of change
@@ -1190,7 +1196,9 @@ public:
 
 /*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
 
- int f_type;   ///< type of change
+ int f_type;                    ///< type of change
+
+ std::vector< double > data;    ///< data to change
 
 private:
 
