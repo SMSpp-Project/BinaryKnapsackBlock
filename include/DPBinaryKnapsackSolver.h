@@ -5,7 +5,7 @@
  * Header file for the *concrete* class DPBinaryKnapsackSolver, which
  * implements the Solver concept [see Solver.h] for solving Knapsack problems
  * with linear objective and both integer and continuous variables, as
- * represented by a BinaryKnapsackKBlock, using a standard Dynamic
+ * represented by a BinaryKnapsackBlock, using a standard Dynamic
  * Programming approach to deal with the integer variables combined with the
  * exact greedy algorithm to deal with the continuous ones.
  *
