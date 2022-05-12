@@ -39,7 +39,7 @@
 
 # define input macros for SMS++ complete makefile, then include it
 SMS++SDR = $(BKBkSDR)../SMS++/
-include $(SMS++SDR)lib/makefile-inc
+include $(SMS++SDR)lib/makefile-c
 
 # include the makefile requiring all external modules in input
 include $(BKBkSDR)/makefile
