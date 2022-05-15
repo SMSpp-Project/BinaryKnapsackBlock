@@ -388,19 +388,17 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
 
  for( int i = f_N - 1 ; i >= 0 ; i-- ) {
   
-  if( skip[ i ] || ! v_I[ i ] )   // skip continuous variables
+  if( skip[ i ] || ! v_I[ i ] )  // skip preprocessed and continuous variables
    continue;
 
-  int w = v_W[ i ];               // weight of the current item
-
+  int w = v_W[ i ];                    // weight of the current item
   if( v_W[ i ] < 0 && v_P[ i ] < 0 )
     w = -w;
   
   if( w > int( besth ) ) {
+   v_x[ i ] = 0; 
    if( v_W[ i ] < 0 && v_P[ i ] < 0 )                      
-    v_x[ i ] = 1;
-   else
-    v_x[ i ] = 0;               
+    v_x[ i ] = 1 - v_x[ i ];             
    continue;                                    
   }                                             
   

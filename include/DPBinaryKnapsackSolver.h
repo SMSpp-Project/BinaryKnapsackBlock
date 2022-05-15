@@ -148,8 +148,16 @@ void set_Block( Block * block ) override;
 
 /// Solve the Binary Knapsack Problem encoded in the BinaryKnapsackBlock
 /** Solve the Binary Knapsack Problem encoded in the BinaryKnapsackBlock,
-* using the standard Dynamic Programming approach. 
-*
+* with both integers and continuous variables.
+* 
+* The standard dynamic programming approach is used to solve the integer part
+* of the problem (the problem restricted only to integer variables). The 
+* solution of the continuous part is then computed using the greedy algorithm.
+*/ 
+/*--------------------------------------------------------------------------*/
+/*--------------- METHOD FOR SOLVING THE INTEGER KNAPSACK ------------------*/
+/*--------------------------------------------------------------------------*/    
+/*
 * The implemented algorithm processes one item at a time and iteratevily  
 * constructs a graph G with the solutions of each sub-problem.
 *
@@ -246,9 +254,7 @@ void set_Block( Block * block ) override;
 *       - its weight exceeds the "residual" capacity, i.e. the capacity
 *         obtained subtrancting the weight of the items that are fixed to 1           
 *
-*   These conditions are checked at the beginning of each iteration. The last
-*   one is directly checked, whereas the first three are checked by calling
-*   the methods is_fixed0() and is_fixed1().
+*   These conditions are checked in the preprocessing method()
 *
 *
 * - The algorithm, as described above, only deals with item with positive 
@@ -265,8 +271,7 @@ void set_Block( Block * block ) override;
 *     been selected, it neutralizes the effect of the initial selection, i.e. 
 *     it is equivalent to not select the original item. Conversly, if the 
 *     added item has not been selected, it is equivalent to select the 
-*     original item. The method is_Neg() returns true if this transformation 
-*     must be done.
+*     original item. 
 *
 *
 * - The implemented algorithm always solves a maximization problem. However,
@@ -275,14 +280,9 @@ void set_Block( Block * block ) override;
 *   loaded and f_sense is set accordingly. The sign of the objective can then
 *   be properly changed when needed. 
 *                                                                           */
-
 /*--------------------------------------------------------------------------*/
 /*------------ METHOD FOR SOLVING THE CONTINUOUS KNAPSACK ------------------*/
 /*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
-/*---------------------------  PSEUDO - CODE--------------------------------*/ 
-/*--------------------------------------------------------------------------*/ 
 /*
 
 1) For each height (restricted capacity) consider the best binary solution
@@ -456,6 +456,7 @@ protected:
 
  Index f_N;                     ///< the number of items 
  double f_C;                    ///< the Capacity of the Knapsack
+ bool f_sense;                  ///< the sense of the objective
  std::vector< int > v_W;        ///< vector of Weights          
  std::vector< double > v_P;     ///< vector of Profits
  std::vector< bool > v_I;       ///< vector of Integrality (Binary/Continuous)
@@ -465,19 +466,17 @@ protected:
                                        * 0 = not fixed , 
                                        * 1 = fixed to 0 , 
                                        * 2 = fixed to 1                     */
- bool f_sense;                  ///< the sense of the objective
-
 
 /* handling of the continuous part- - - - - - - - - - - - - - - - - - - - - */
 
- Subset idxCont;         ///< indices of the continuous variables
+ Subset idxCont;               ///< indices of the continuous variables
 
 /* handling of the solution - - - - - - - - - - - - - - - - - - - - - - - - */
 
- Index besth;                  ///< best height of the integer part
-
  double obj;                   ///< the value of the objective
  std::vector< double > v_x;    ///< vector of variables
+
+ Index besth;                  ///< best height of the integer part
  bool HasSol;                  ///< if the solution has already been computed
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
@@ -518,17 +517,17 @@ private:
  void preprocessing();
 
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// Dynamic Programming
+ /// Dynamic Programming to solve the integer knapsack
 
  void dynamic_programming(); 
 
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// Greedy algorithm
+ /// Greedy algorithm to solve the continuous knapsack
 
  void greedy_algorithm(); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// process all the pending modifications 
+ /// process all the pending modifications and compute start_item 
 
  void process_outstanding_Modification();
  
