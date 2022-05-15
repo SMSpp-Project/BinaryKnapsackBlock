@@ -91,17 +91,12 @@ public:
 
  using Subset = Block::Subset;
  using c_Subset = Block::c_Subset;
-    
- /// data structure for the graph G constructed by the DP algorithm - - - - -
- 
- typedef struct{
-  std::vector< double > lab;            ///< vector of labels
-  std::vector< bool > pred;             ///< vector of predecessors
- } slice;
 
+ using idx_type = ThinComputeInterface::idx_type;
+    
  /// public enum for the algorithmic parameters - - - - - - - - - - - - - - - 
 
- enum dbl_par_type_DPBKSlv{
+ enum dbl_par_type_DPBKSlv {
 
   dblReopt = dblLastAlgPar,             ///< reoptimization parameter
   
@@ -125,9 +120,9 @@ public:
  /// constructor
 
 DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
-                           countCont( 0 ) , besth( 0 ) , lastIndex( 0 ) ,
-                           lastVar( 0 ) , obj( - Inf< double >() ) , 
-                           start_item( 0 ) , reopt( 0 ) {}
+                           besth( 0 ) , lastIndex( 0 ) , lastVar( 0 ) , 
+                           obj( - Inf< double >() ) , start_item( 0 ) , 
+                           reopt( 0 ) , step( 1 ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -205,32 +200,31 @@ void set_Block( Block * block ) override;
 * - The labels of slice[ i + 1 ] can be computed by comparing the two 
 *   possibilities (choosing the one with the best total profit).  
 * 
-* Therefore, G is implemented as a vector with ( N + 1 ) entries, one
-* for each item + the dummy node. Each entry contains a slice, which is  
-* implemented data structure with two vectors:  G[ i ].lab (or "labels") 
-* and G[ i ].pred (or "predecessors").
+* Therefore, G is implemented with two vectors (of vectors) containing
+* labels (lab) and predecessors (pred). Each vector has N + 1 entries, one 
+* for each item + the dummy node. 
 *
-* Labels (of type double) and predecessors (of type bool) are vectors s.t.
+* Labels (of type double) and predecessors (of type bool) are s.t.
 *   
-*   G[ i ].lab[ j ]  corresponds to node u_{i,j} and contains its label,
+*   lab[ i ][ j ]    corresponds to node u_{i,j} and contains its label,
 *                    that is the optimal value of SP( i , j ).
 *
-*   G[ i ].pred[ j ] corresponds to the last arc that has been selected in 
-*                    order to obtain the value in G[ i ].lab[ j ]. 
+*   pred[ i ][ j ]   corresponds to the last arc that has been selected in 
+*                    order to obtain the value in lab[ i ][ j ]. 
 *                    It is true if it is a "diagonal" arc, i.e. the 
 *                    corresponding solution contains the i-th item; it is 
 *                    false otherwise.     
 *
-* At each iteration i, each entry of G[ i + 1 ].lab is computed starting 
-* from G[ i ].lab, by comparing the profits of the two possible path reaching
-* the corresponding node (choosing the best one), and G[ i ].pred is updated 
+* At each iteration i, each entry of lab[ i + 1 ] is computed starting 
+* from lab[ i ], by comparing the profits of the two possible path reaching
+* the corresponding node (choosing the best one), and pred[ i ] is updated 
 * accordingly.
 * 
-* Eventually the last slice G[ N ].lab contains the optimal values of the  
-* problems containing all the items. The optimal value of the Binary Knapsack 
-* problem  is the the best value among those in G[ N ].lab[ j ] with j less or 
-* equal then the Capacity of the Knapsack, and the optimal solution can be 
-* reconstructed from the vectors of predecessors.
+* Eventually the last set of labels lab[ N ] contains the optimal values of 
+* the problems containing all the items. The optimal value of the Binary 
+* Knapsack problem is the the best value among those in lab[ N ][ j ] with j 
+* less or equal then the Capacity of the Knapsack, and the optimal solution 
+* can be reconstructed from the vectors of predecessors.
 *
 * Note that:
 *
@@ -240,7 +234,7 @@ void set_Block( Block * block ) override;
 *   Therefore, only two vectors of labels are used: one for the current 
 *   labels (currlab) and one for the next labels (nextlab). 
 *   However, for reoptimization purposes, some of them are stored in 
-*   G[ i ].lab according to the reopt algorithmic parameter.
+*   lab[ i ] according to the reopt algorithmic parameter.
 *
 *
 * - Some of the items are pre-processed and, therefore, discarded from the
@@ -265,13 +259,14 @@ void set_Block( Block * block ) override;
 *
 *   - if both weight and profit are negative, the idea is to "select" the 
 *     item, and therefore only update the capacity and the profit of the 
-*     solution, but discarding it from the computation. Then consider "another"  
-*     item with the same weight and profit but of opposite signs (both 
-*     positive). At the end of the algorithm, if the added item has been 
-*     selected, it neutralizes the effect of the initial selection, i.e. it is
-*     equivalent to not select the original item. Conversly, if the added item
-*     has not been selected, it is equivalent to select the original item.
-*     The method is_Neg() returns true if this transformation must be done.
+*     solution, but discarding it from the computation. Then consider 
+*     "another" item with the same weight and profit but of opposite signs 
+*     (both positive). At the end of the algorithm, if the added item has 
+*     been selected, it neutralizes the effect of the initial selection, i.e. 
+*     it is equivalent to not select the original item. Conversly, if the 
+*     added item has not been selected, it is equivalent to select the 
+*     original item. The method is_Neg() returns true if this transformation 
+*     must be done.
 *
 *
 * - The implemented algorithm always solves a maximization problem. However,
@@ -303,11 +298,11 @@ void set_Block( Block * block ) override;
           assign to the variable the maximum value allowed by 
           the residual capacity
    -3- Update/Memorize the optimal objective value obtained in the 
-       node G[H][bestBinIndex[H]]
+       node lab[H][bestBinIndex[H]]
    -4- update/memorize the complete solution (x_binary,x_continuous)
    
 3) For each height H=0,...,B:
-   -1- Compare the labels in G[H][bestBinIndex[H]] in order to find 
+   -1- Compare the labels in lab[H][bestBinIndex[H]] in order to find 
        the optimal solution                                                */ 
 
 /*-------------------------------------------------------------------------*/
@@ -373,11 +368,11 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  *                 such that, in the next call of compute(), it is possible 
  *                 to re-start from one of these intermediate points. Storing
  *                 labels can be computationally expensive, hence dblReopt   
- *                 defines how many labels have to be stored in G.
+ *                 defines how many labels have to be stored in lab.
  * 
  *                 The possibilities are:
  *                 ----------------------------------------------------------
- *                 # labels to store | Indexes of stored labels
+ *                 # labels to store | Indices of stored labels
  *                 ----------------------------------------------------------
  *                   1                [ N ]
  *                   2                [ (1/2)N , N ]
@@ -386,7 +381,7 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  *                   ...              ...
  *                   2^k              [ (1/k)N , ... , N ]                
  *                   ...              ...
- *                   f                [ 1 , 2 , ... , N ]
+ *                   N                [ 1 , 2 , ... , N ]
  *
  *                 hence, the number of possibilies is m = log2( N ).
  *                 The correspondence between dblReopt values and one of these
@@ -394,18 +389,17 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  *                 into m smaller intervals of equal size, and checking to 
  *                 which of these intervals dblReopt belongs. That is, if 
  *                 dblReopt \in k-th interval, then 2^k labels will be stored
- *                 in G. In particular, it follows that:
+ *                 in lab. In particular, it follows that:
  *                 
- *                 dblReopt = 0 -> store only G[ N ].lab
- *                 dblReopt = 1 -> store G[ i ].lab for all i
+ *                 dblReopt = 0 -> store only lab[ N ]
+ *                 dblReopt = 1 -> store lab[ i ] for all i
  *
  *                 Intermediate dblReopt values are handled by:
  *                 - retrieving the interval k to which they belong
  *                 - defining a step:
  *                      step = N / 2^k
  *                   such that at each multiple i of step the corresponding 
- *                   labels are stored in G[ i ].lab
- *                 The step is computed in the compute_step() method.                
+ *                   labels are stored in lab[ i ]               
  *                                                                         */
 
 void set_par( idx_type par , double value ) override;
@@ -460,7 +454,7 @@ protected:
 
 /* data of the Binary Knapsack instance - - - - - - - - - - - - - - - - - - */
 
- Index f_N;                     ///< the number of Items 
+ Index f_N;                     ///< the number of items 
  double f_C;                    ///< the Capacity of the Knapsack
  std::vector< int > v_W;        ///< vector of Weights          
  std::vector< double > v_P;     ///< vector of Profits
@@ -476,8 +470,7 @@ protected:
 
 /* handling of the continuous part- - - - - - - - - - - - - - - - - - - - - */
 
- Index countCont;        ///< counter for the number of continuous variables
- Subset indexContinuous; ///< indexes of the continuous variables
+ Subset idxCont;         ///< indices of the continuous variables
 
 /* handling of the solution - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -490,13 +483,14 @@ protected:
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
- std::vector< slice > G;                ///< DP Graph 
-
- Index start_item;                      ///< index of the starting item
+ std::vector< std::vector< double > > lab;  ///< labels
+ std::vector< std::vector< bool > > pred;   ///< predecessors
+ Index start_item;                          ///< index of the starting item
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
  
- double reopt;                          ///< reoptimization parameter 
+ double reopt;                          ///< reoptimization parameter
+ Index step;                            ///< step for reoptimization 
  
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
@@ -509,9 +503,43 @@ private:
 /*--------------------------------------------------------------------------*/
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// load the Binary Knapsack instance and perform the preprocessing    
+ /// load the Binary Knapsack instance  
 
  void load();
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// perform the preprocessing and return updated capacity and profit
+ 
+ std::tuple< double , double > preprocessing() {
+ 
+ // Process variables that are fixed to 1 - - - - - - - - - - - - - - - - - -
+ // Compute residual capacity by substracting the weight of the corresponding 
+ // item and save the profit which need to be added to the objective
+
+  double C = f_C;                         // "residual" capacity
+  double P = 0;                           // "residual" profit
+
+  for( Index i = 0 ; i < f_N ; ++i ) {     // the items with both negative
+   
+   if( isFixed0( i ) )
+    continue;
+
+   if(( isFixed1( i ) || isNeg( i ) ) ) {  // weight and profit are treated as
+    C -= v_W[ i ];                         // if they were fixed to 1         
+    P += v_P[ i ];                                  
+   }
+  }
+
+  // new integer residual capacity
+  Index iC = std::floor( C );
+
+  // resize lab[ start_item ] according to the new iC
+  if( iC + 1 < lab[ start_item ].size() )
+    lab[ start_item ].resize( iC + 1 );
+ 
+  return { C , P };
+ }
+
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// process all the pending modifications 
@@ -573,8 +601,8 @@ private:
 
  bool isNeg( Index i ){
  
-  if( isFixed( i ) )                        // if the variable is fixed
-   return( false ); 
+  //if( isFixed( i ) )                        // if the variable is fixed
+  // return( false ); 
 
   if( v_W[ i ] < 0 && v_P[ i ] < 0 )        // if the weight and the profit
    return( true );                          // are negative
@@ -582,21 +610,6 @@ private:
   return( false );
 
  }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// compute the step for reoptimization [see set_par() dblReopt for details ]
- 
- int compute_step(){
-
-  // find the interval to which reopt belongs
-  int k = std::floor( reopt * std::log2( f_N ) );
-
-  // define the step 
-  int step = std::floor( f_N / std::exp2( k ) );
-  
-  return step;
- }
- 
  
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
@@ -605,8 +618,9 @@ private:
  SMSpp_insert_in_factory_h;  // insert DPBinaryKnapsackSolver in the factory
 
 /*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
+
  }; // end( class( DPBinaryKnapsackSolver ) )
+
 }  // end( namespace SMSpp_di_unipi_it )
 
 /*--------------------------------------------------------------------------*/
