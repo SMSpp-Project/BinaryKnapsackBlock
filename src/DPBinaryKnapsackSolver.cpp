@@ -71,99 +71,148 @@ void DPBinaryKnapsackSolver::set_Block( Block * block ) {
 /*--------------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
+/// Solve the Binary Knapsack problem
 
 int DPBinaryKnapsackSolver::compute( bool changedvars ) {
-
- /* Solve the Binary Knapsack problem.
-  * 
-  * Phases of the algorithm:
-  * 
-  * - Process modifications, preliminary checks and preprocessing
-  *
-  * - Dynamic Programming: to solve the integer knapsack
-  *
-  * - Greedy algorithm: to solve the continuous knapsack */ 
  
- // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ lock();                     // lock the mutex
 
- lock();    // lock the mutex                       
+ // Modifications and preliminary checks- - - - - - - - - - - - - - - - - - -                          
 
  // Process modifications and compute the first item to process (start_item)
  process_outstanding_Modification();
-
- // check if the problem is empty. If so, unlock the mutex and return
- auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
- if( BKB->is_empty() ){ 
-  obj = - Inf< double >();
-  unlock();                    
-  return( kInfeasible );
+ 
+ // check if the problem is empty
+ if( static_cast< BinaryKnapsackBlock * >( f_Block )->is_empty() ){                
+  obj = - Inf< double >();            
+  unlock();                           // If so, unlock the mutex and
+  return( kInfeasible );              // return
+ }
+ 
+ // check start_item
+ if( start_item == Inf< int >() ) {   // INF means everything altready done
+  unlock();                           // unlock the mutex and
+  return( kOK );                      // return
  }
 
- // check start_item. If INF, nothing to do, unlock the mutex and return
- if( start_item == Inf< int >() ) { 
-  unlock();                         
-  return( kOK );
- }
+ // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- /*
- 
- // initialize solution 
- v_x.assign( f_N , 0 );     
+ HasSol = false;            // solution must be computed again    
 
- // apply preprocessing: some variables can be fixed in advance
- preprocessing();
+ preprocessing();           // apply preprocessing (fix some variables)
  
- // solve the integer knapsack
- dynamic_programming();
+ dynamic_programming();     // solve the integer knapsack
  
- // solve the continuous knapsack
- greedy_algorithm();
+ greedy_algorithm();        // solve the continuous knapsack
+
+ obj += rP;                 // add residual profit (from preprossing)
  
- // set start_item to INF to avoid solving again the same instance
- start_item = Inf< int >();
- 
- // return
+ // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ start_item = Inf< int >(); // to avoid solving again the same instance
+
  Return_OK:
- unlock();        // unlock the mutex
+ 
+ unlock();                  // unlock the mutex     
+ 
  return( kOK );
 
+}  // end( DPBinaryKnapsackSolver::compute() )
 
- */
- 
- // clear previous solution (if any)
- v_x.clear();   
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// perform the preprocessing 
 
- // compute new capacity and profit considering variables fixed to 1
- auto [ C , P ] = preprocessing();
- 
- // DYNAMIC PROGRAMMING - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+void DPBinaryKnapsackSolver::preprocessing() {
+  
+ // Initialize variables to skip during the solution algorithms
+ skip.assign( f_N , false );
 
- // Set of current/next labels 
- std::vector< double > currlab = lab[ start_item ];    
- std::vector< double > nextlab;  
+ // residual capacity and residual profit
+ rC = f_C;
+ rP = 0;
 
  // for each item
- for( Index i = start_item ; i < f_N ; ++i ) {
+ for( Index i = 0 ; i < f_N ; ++i ) {
 
-  // reoptimization: save current labels in lab[ i ] 
-  if( i % step == 0  )
+  // if the variable is fixed to 0
+  if( v_fxd[ i ] == 1 ) {
+   v_x[ i ] = 0;
+   skip[ i ] = true;
+   continue;
+  }
+
+  // if the variable is fixed to 1
+  if( v_fxd[ i ] == 2 ) {
+   v_x[ i ] = 1;
+   skip[ i ] = true;
+   rC -= v_W[ i ];
+   rP += v_P[ i ];
+   continue;
+  }
+
+  // if the item has positive weight and negative profit
+  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 ) {
+   v_x[ i ] = 0;
+   skip[ i ] = true;
+   continue; 
+  }
+
+  // if the item has negative weight and positive profit
+  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 ) {
+   v_x[ i ] = 1;
+   skip[ i ] = true;
+   rC -= v_W[ i ];
+   rP += v_P[ i ];
+   continue;
+  }
+   
+  // if the item has both negative weight and profit
+  if( v_W[ i ] < 0 && v_P[ i ] < 0 ) {
+   rC -= v_W[ i ];
+   rP += v_P[ i ];
+  }
+  
+ }
+
+ // new integer residual capacity
+ Index iC = std::floor( rC );
+
+ // resize lab[ start_item ] according to the new iC
+ if( iC + 1 < lab[ start_item ].size() )
+  lab[ start_item ].resize( iC + 1 );
+
+}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// Dynamic Programming
+
+void DPBinaryKnapsackSolver::dynamic_programming() {
+
+ std::vector< double > currlab = lab[ start_item ]; // set of current labels 
+ std::vector< double > nextlab;                     // set of next labels  
+
+ for( Index i = start_item ; i < f_N ; ++i ) {      // for each item
+
+  if( i % step == 0  )           // reoptimization: save currlab in lab[ i ]
    lab[ i ] = currlab;             
 
-  // skip fixed and continuous variables 
-  if( isFixed( i ) || ! v_I[ i ] )   
+  if( skip[ i ] || ! v_I[ i ] ) // skip preprocessed and continuous variables   
    continue;                               
 
-  // profit and weight of the current item (if isNeg( i ) change signs)
-  double p = isNeg( i ) ? - v_P[ i ] : v_P[ i ];                 
-  int w = isNeg( i ) ?  - v_W[ i ] : v_W[ i ] ;                 
+  double p = v_P[ i ];          // profit of the current item
+  int w = v_W[ i ];             // weight of the current item
+  
+  if( p < 0 && w < 0 ) {        // if both are negative, change the signs
+   p = -p;
+   w = -w;
+  }               
 
-  // check capacity limit
-  if( w > int( std::floor( C ) ) )   
+  if( w > int( std::floor( rC ) ) )   // check capacity limit   
    continue;       
 
-  // max size of next labels 
+  // max size of next labels   
   Index maxnextlab = std::min( Index( currlab.size() + w ) ,  
-                               Index( std::floor( C ) + 1 ) );
+                               Index( std::floor( rC ) + 1 ) );
 
   // initialize next labels (with -INF) and allocate precedessors
   nextlab.assign( maxnextlab , -Inf< double >() );
@@ -175,25 +224,20 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
   // compute nextlab
   for( int j = 0 ; j < currlab.size() ; ++j ) {
 
-   // skip nodes with label = -inf or with a worse label than bestlab
-   if( currlab[ j ] <= bestlab )
-    continue; 
+   if( currlab[ j ] <= bestlab )        // skip node with label = -inf or
+    continue;                           // with a worse label than bestlab
    
-   // update bestlab
-    bestlab = currlab[ j ];
+    bestlab = currlab[ j ];                       // update bestlab
                     
-   // horizontal arc
-   if( currlab[ j ] > nextlab[ j ] ) {
+   if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc
     pred[ i + 1 ][ j ] = false;                         
     nextlab[ j ] = currlab[ j ];
    }
 
-   // check capacity limit
-   if( j + w > C )                                
+   if( j + w > rC )                               // check capacity limit                               
     continue;                                    
 
-   // diagonal arc
-   if( currlab[ j ] + p > nextlab[ j + w ] ) {
+   if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
     pred[ i + 1 ][ j + w ] = true;             
     nextlab[ j + w ] = currlab[ j ] + p;
    }
@@ -207,8 +251,13 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  // always save last vector of labels (instead of copying just swap)
  std::swap( lab.back() , currlab );
 
- // GREEDY ALGORITHM- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- 
+}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// Greedy algorithm
+
+void DPBinaryKnapsackSolver::greedy_algorithm() {
+
  // sort continuous variable in order of profits/weights
  sort( idxCont.begin() , idxCont.end() , [ & ]( auto a , auto b ) { 
        return ( v_P[ a ] / v_W[ a ] > v_P[ b ] / v_W[ b ] ); 
@@ -220,18 +269,18 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  // compute continuous contribution for each label of lastlab and eventually
  // select the best one. Each label lastlab[ h ] corresponds to a (partial)
  // solution with total weight = h, hence the continuous part is computed by
- // considering only the residual capacity C - h, starting from the maximum
- // h and increasing C by 1 each time the next (lower) label is considered.  
+ // considering only the residual capacity rC - h, starting from the maximum
+ // h and increasing rC by 1 each time the next (lower) label is considered.  
  
  Index maxh = lastlab.size() - 1;   // maximum h
- C -= maxh;                         // residual capacity
+ rC -= maxh;                        // residual capacity
  
  // Initializations - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  besth = 0;               // lastlab[ besth ] will be optimal 
- lastIndex = 0;           // index of the critical variable           
+ Index lastIndex = 0;     // index of the critical variable           
  Index tempLastIndex = 0; // temporary lastIndex
- lastVar = 0;             // value of the critical variable
+ double lastVar = 0;      // value of the critical variable
  double boundX = 1;       // current bound for the critical variable,
                           // 0 <= boundX <=1
 
@@ -246,26 +295,24 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
   // starting from the index analyzed during the previous iteration
   for( Index j = tempLastIndex ; j < idxCont.size() ; ++j ) {
    
-   // skip fixed variables
-   if( isFixed( idxCont[ j ] ) ) {
+   if( skip[ idxCont[ j ] ] ) {       // skip preprocessed variables
     tempLastIndex++;
     continue;
    }
-   
-   // profit and weight of the current item (if isNeg( i ) change signs)
-   double p = v_P[ idxCont[ j ] ];    
-   int w = v_W[ idxCont[ j ] ] ;    
-   if( isNeg( idxCont[ j ] ) ) {    
-    p = -p;                         
+
+   double p = v_P[ idxCont[ j ] ];    // profit of the current item    
+   int w = v_W[ idxCont[ j ] ];       // weight of the current item    
+   if( p < 0 && w < 0 ) {             // if both are negative  
+    p = -p;                           // change the signs                         
     w = -w;                         
    }
  
    // if the item does not fit entirely in the knapsack
-   if( w * boundX + contWeight > C ) {
+   if( w * boundX + contWeight > rC ) {             
     // take only a fraction, update profit and weight and break
-    boundX -= ( C - contWeight ) / ( w );
-    contProfit += ( C - contWeight ) / ( w ) * p ;
-    contWeight = C;
+    boundX -= ( rC - contWeight ) / ( w );
+    contProfit += ( rC - contWeight ) / ( w ) * p ;
+    contWeight = rC;
     break;
    }
    else {  
@@ -277,7 +324,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
    }
   }
 
-  // check if it is the best solution and update obj
+  // check if it is the best solution and update obj 
   if( lastlab[ i ] + contProfit > obj ){
    obj = lastlab[ i ] + contProfit;
    besth = i;
@@ -285,22 +332,32 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
    lastIndex = tempLastIndex;
   }
 
-  C += 1;        // update residual capacity
+  rC += 1;        // update residual capacity
  }
 
- // add the profit coming from the preprocessing
- obj += P;        
+ // update the solution
+ for( Index i = 0 ; i < idxCont.size() ; ++i ) {
+  
+  Index item = idxCont[ i ];
 
- // set start_item to INF to avoid solving again the same instance
- start_item = Inf< int >();
+  if( skip[ item ] )
+   continue;
 
- // return
- Return_OK:
- unlock();        // unlock the mutex
+  if( i < lastIndex )          // it is before the critical variable
+    v_x[ item ] = 1;           // we fix the variable to one
+  else
+   if( i == lastIndex )        // it is exactly the critical variable
+    v_x[ item ] = lastVar;     // has value lastVar
+   else                        // it is after the critical variable
+    v_x[ item ] = 0;           // we fix the variable to zero
 
- return( kOK );
+  // items with negative weight and profit
+  if( v_W[ item ] < 0 && v_P[ item ] < 0 )               
+   v_x[ item ] = 1 - v_x[ item ];
 
-}  // end( DPBinaryKnapsackSolver::compute() )
+ }
+
+}
 
 /*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
@@ -315,9 +372,9 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
   throw( std::invalid_argument( "compute() must be called first" ) );
 
  // check if the solution has already been computed
- if( ! v_x.empty() ) {
-  BKB->set_x( v_x.begin() );  // write the solution in the BinaryKnapsackBlock 
-  return;                     
+ if( HasSol ){
+  BKB->set_x( v_x.begin() );  // write the solution in BinaryKnapsackBlock
+  return;
  }
 
  // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - -
@@ -327,31 +384,25 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
  // rest of the solution from pred[ i ]. For the "negative items" (with 
  // negative weight and profit) change x with 1 - x
 
- v_x.resize( f_N );
-
  // Integer part - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  for( int i = f_N - 1 ; i >= 0 ; i-- ) {
   
-  if( ! v_I[ i ] )                              // skip continuous variables
+  if( skip[ i ] || ! v_I[ i ] )   // skip continuous variables
    continue;
 
-  if( isFixed0( i ) ) {                         // items fixed to 0
-   v_x[ i ] = 0;
-   continue;
-  }
+  int w = v_W[ i ];               // weight of the current item
 
-  if( isFixed1( i ) ) {                         // items fixed to 1
-   v_x[ i ] = 1;
-   continue;    
-  }  
-
-  int w = isNeg( i ) ? - v_W[ i ] : v_W[ i ];   // weight of the current item
+  if( v_W[ i ] < 0 && v_P[ i ] < 0 )
+    w = -w;
   
-  if( w > int( besth ) ) {                      // if w > besth either the 
-   v_x[ i ] = isNeg( i ) ? 1 : 0;               // weight exceeds the capacity 
-   continue;                                    // or it has surely not been
-  }                                             // selected
+  if( w > int( besth ) ) {
+   if( v_W[ i ] < 0 && v_P[ i ] < 0 )                      
+    v_x[ i ] = 1;
+   else
+    v_x[ i ] = 0;               
+   continue;                                    
+  }                                             
   
   if( pred[ i + 1 ][ besth ] ) {
    v_x[ i ] = 1;
@@ -360,41 +411,15 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
   else
    v_x[ i ] = 0;
 
-  if( isNeg( i ) )                  // items with negative weight and profit
-   v_x[ i ] = ! v_x[ i ];
+  if( v_W[ i ] < 0 && v_P[ i ] < 0 )               
+   v_x[ i ] = 1 - v_x[ i ];
  }  
  
- // Continuous part - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
- for( Index i = 0 ; i < idxCont.size() ; ++i ) {
-  
-  if( isFixed0( idxCont[ i ] ) ) {       // items fixed to 0
-   v_x[ idxCont[ i ] ] = 0;
-   continue;    
-  }
-
-  if( isFixed1( idxCont[ i ] ) ) {       // items fixed to 1
-   v_x[ idxCont[ i ] ] = 1;
-   continue;    
-  }
-
-  if( i < lastIndex )                  // it is before the critical variable
-    v_x[ idxCont[ i ] ] = 1;           // we fix the variable to one
-  else
-   if( i == lastIndex )                // it is exactly the critical variable
-    v_x[ idxCont[ lastIndex ] ] = lastVar;  // has value lastVar
-   else                                // it is after the critical variable
-    v_x[ idxCont[ i ] ] = 0;           // we fix the variable to zero
-
-  // items with negative weight and profit
-  if( isNeg( idxCont[ i ] ) )               
-   v_x[ idxCont[ i ] ] = 1 - v_x[ idxCont[ i ] ];
-
- }  // end( continuous part )
-
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
- BKB->set_x( v_x.begin() );  // write the solution in the BinaryKnapsackBlock
+ BKB->set_x( v_x.begin() );  // write the solution in BinaryKnapsackBlock
+
+ HasSol = true;
 
 }  // end( DPBinaryKnapsackSolver::get_var_solution )
  
@@ -467,6 +492,7 @@ void DPBinaryKnapsackSolver::load( void ) {
   pred.clear();
   v_x.clear();
   v_fxd.clear();
+  skip.clear();
   return;
  }
 
@@ -544,8 +570,8 @@ void DPBinaryKnapsackSolver::load( void ) {
  Index k = std::floor( reopt * std::log2( f_N ) );
  step = std::floor( f_N / std::exp2( k ) );
 
- // clear previous solution (if any)
- v_x.clear();                          
+ // Initialize solution 
+ v_x.resize( f_N );                          
 
 } // end( DPBinaryKnapsackSolver::load() )
 
@@ -767,7 +793,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
 
  v_mod_tmp.clear();  // clear the temporary list of Modification
 
- // count again the number of continuous variables and store indices
+ // store again indices of continuous variables
  idxCont.clear();
  for( Index i = 0 ; i < f_N ; ++i ) {
   if( !v_I[ i ] ) {

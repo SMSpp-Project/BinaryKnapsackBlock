@@ -120,9 +120,9 @@ public:
  /// constructor
 
 DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
-                           besth( 0 ) , lastIndex( 0 ) , lastVar( 0 ) , 
-                           obj( - Inf< double >() ) , start_item( 0 ) , 
-                           reopt( 0 ) , step( 1 ) {}
+                           besth( 0 ) , obj( - Inf< double >() ) , 
+                           start_item( 0 ) , reopt( 1 ) , step( 1 ) , 
+                           rC( 0 ) , rP( 0 ) , HasSol( false ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -474,12 +474,11 @@ protected:
 
 /* handling of the solution - - - - - - - - - - - - - - - - - - - - - - - - */
 
- Index besth;            ///< best height of the integer part
- Index lastIndex;        ///< last continuous variables index
- double lastVar;         ///< fraction of solution of lastIndex
+ Index besth;                  ///< best height of the integer part
 
- double obj;                            ///< the value of the objective
- std::vector< double > v_x;             ///< vector of variables
+ double obj;                   ///< the value of the objective
+ std::vector< double > v_x;    ///< vector of variables
+ bool HasSol;                  ///< if the solution has already been computed
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
@@ -487,7 +486,13 @@ protected:
  std::vector< std::vector< bool > > pred;   ///< predecessors
  Index start_item;                          ///< index of the starting item
 
-/* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /* preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+ std::vector< bool > skip;      // skip preprocessed variables
+ double rC;                     // residual capacity after preprocessing
+ double rP;                     // residual profit of preprocessed items 
+
+ /* algorithmic parameters- - - - - - - - - - - - - - - - - - - - - - - - - */
  
  double reopt;                          ///< reoptimization parameter
  Index step;                            ///< step for reoptimization 
@@ -508,108 +513,24 @@ private:
  void load();
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// perform the preprocessing and return updated capacity and profit
- 
- std::tuple< double , double > preprocessing() {
- 
- // Process variables that are fixed to 1 - - - - - - - - - - - - - - - - - -
- // Compute residual capacity by substracting the weight of the corresponding 
- // item and save the profit which need to be added to the objective
+ /// perform the preprocessing 
 
-  double C = f_C;                         // "residual" capacity
-  double P = 0;                           // "residual" profit
+ void preprocessing();
 
-  for( Index i = 0 ; i < f_N ; ++i ) {     // the items with both negative
-   
-   if( isFixed0( i ) )
-    continue;
+ /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// Dynamic Programming
 
-   if(( isFixed1( i ) || isNeg( i ) ) ) {  // weight and profit are treated as
-    C -= v_W[ i ];                         // if they were fixed to 1         
-    P += v_P[ i ];                                  
-   }
-  }
+ void dynamic_programming(); 
 
-  // new integer residual capacity
-  Index iC = std::floor( C );
+ /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// Greedy algorithm
 
-  // resize lab[ start_item ] according to the new iC
-  if( iC + 1 < lab[ start_item ].size() )
-    lab[ start_item ].resize( iC + 1 );
- 
-  return { C , P };
- }
-
+ void greedy_algorithm(); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// process all the pending modifications 
 
  void process_outstanding_Modification();
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// return true if item i is fixed to 0 because the variable is fixed or the
-/// item can be preprocessed (i.e. it has positive weight and negative profit)  
-
- bool isFixed0( Index i ){
-  
-  // if the variable is fixed to 1 return false
-  if( v_fxd[ i ] == 2 )
-   return( false );
-
-  // if the variable is fixed to 0 return true
-  if( v_fxd[ i ] == 1 )
-   return( true );
-  
-  // if the item has positive weight and negative profit
-  if( v_W[ i ] >= 0 && v_P[ i ] <= 0 )
-   return( true );
- 
-  return( false );
- }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// return true if item i is fixed to 1 because the variable is fixed or the
-/// item can be preprocessed (i.e. it has negative weight and positive profit)  
-
- bool isFixed1( Index i ){
-
-  // if the variable is fixed to 0 return false
-  if( v_fxd[ i ] == 1 )
-   return( false );
-
-  // if the variable is fixed to 1 return true
-  if( v_fxd[ i ] == 2 )
-   return( true );
-  
-  // if the item has negative weight and positive profit
-  if( v_W[ i ] <= 0 && v_P[ i ] >= 0 )
-   return( true );
- 
-  return( false );
- }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// return true if item i is fixed because the variable is fixed or the item
-/// can be preprocessed  
-
- bool isFixed( Index i ){ return( isFixed0( i ) || isFixed1( i ) ); }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// return true if the item is not fixed and it has negative weight and profit
-/// isNeg( i ) is true if the item is not fixed and it has negative weight 
-/// and profit [see details in compute()]. 
-
- bool isNeg( Index i ){
- 
-  //if( isFixed( i ) )                        // if the variable is fixed
-  // return( false ); 
-
-  if( v_W[ i ] < 0 && v_P[ i ] < 0 )        // if the weight and the profit
-   return( true );                          // are negative
-
-  return( false );
-
- }
  
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
