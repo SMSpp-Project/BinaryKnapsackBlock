@@ -173,6 +173,19 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
   
  }
 
+ // check if some item has a weight > C (check only for integer items)
+ for( Index i = 0 ; i < f_N ; ++i ) {
+  
+  if( skip[ i ] || ! v_I[ i ] )
+   continue;
+
+  if( v_W[ i ] > C ) {
+   skip[ i ] = true;
+   v_x[ i ] = 0;
+  }
+ 
+ }
+
  // if the problem is not empty
  if( C >= 0 ) {
 
@@ -198,7 +211,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
  for( Index i = start_item ; i < f_N ; ++i ) {      // for each item
 
-  if( i % step == 0  )           // reoptimization: save currlab in lab[ i ]
+  if( i % step == 0  )          // reoptimization: save currlab in lab[ i ]
    lab[ i ] = currlab;             
 
   if( skip[ i ] || ! v_I[ i ] ) // skip preprocessed and continuous variables   
@@ -210,10 +223,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   if( p < 0 && w < 0 ) {        // if both are negative, change the signs
    p = -p;
    w = -w;
-  }               
-
-  if( w > C )                   // check capacity limit   
-   continue;       
+  }                    
 
   // max size of next labels   
   Index maxnextlab = std::min( Index( currlab.size() + w ) , C + 1 );
@@ -231,7 +241,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
    if( currlab[ j ] <= bestlab )        // skip node with label = -inf or
     continue;                           // with a worse label than bestlab
    
-    bestlab = currlab[ j ];                       // update bestlab
+   bestlab = currlab[ j ];                        // update bestlab
                     
    if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc
     pred[ i + 1 ][ j ] = false;                         
@@ -398,14 +408,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
   int w = v_W[ i ];                    // weight of the current item
   if( v_W[ i ] < 0 && v_P[ i ] < 0 )
     w = -w;
-  
-  if( w > int( besth ) ) {
-   v_x[ i ] = 0; 
-   if( v_W[ i ] < 0 && v_P[ i ] < 0 )                      
-    v_x[ i ] = 1 - v_x[ i ];             
-   continue;                                    
-  }                                             
-  
+
   if( pred[ i + 1 ][ besth ] ) {
    v_x[ i ] = 1;
    besth -= w;
