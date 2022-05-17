@@ -77,30 +77,29 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  
  lock();                     // lock the mutex
 
- // Modifications and preliminary checks- - - - - - - - - - - - - - - - - - -                          
-
  // Process modifications and compute the first item to process (start_item)
  process_outstanding_Modification();
- 
- // check if the problem is empty
- if( static_cast< BinaryKnapsackBlock * >( f_Block )->is_empty() ){                
-  obj = - Inf< double >();            
-  unlock();                           // If so, unlock the mutex and
-  return( kInfeasible );              // return
- }
- 
+
  // check start_item
  if( start_item == Inf< int >() ) {   // INF means everything altready done
   unlock();                           // unlock the mutex and
   return( kOK );                      // return
  }
+ 
+ // apply preprocessing (fix some variables)
+ preprocessing();           
 
+ // check if the problem is empty (residual capacity < 0)
+ if( rC < 0 ) {
+  obj = - Inf< double >();
+  unlock();
+  return( kInfeasible );
+ }
+
+ HasSol = false;            // solution must be computed again   
+ 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- HasSol = false;            // solution must be computed again    
-
- preprocessing();           // apply preprocessing (fix some variables)
- 
  dynamic_programming();     // solve the integer knapsack
  
  greedy_algorithm();        // solve the continuous knapsack
@@ -174,14 +173,18 @@ void DPBinaryKnapsackSolver::preprocessing() {
   
  }
 
- // new integer residual capacity
- Index iC = std::floor( rC );
+ // if the problem is not empty
+ if( rC >= 0 ) {
 
- // resize lab[ start_item ] according to the new iC
- if( iC + 1 < lab[ start_item ].size() )
-  lab[ start_item ].resize( iC + 1 );
+  // new integer residual capacity
+  Index iC = std::floor( rC );
 
-}
+  // resize lab[ start_item ] according to the new iC
+  if( iC + 1 < lab[ start_item ].size() )
+   lab[ start_item ].resize( iC + 1 );
+ }
+
+} // end( preprocessing() )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming

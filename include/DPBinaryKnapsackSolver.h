@@ -97,11 +97,8 @@ public:
  /// public enum for the algorithmic parameters - - - - - - - - - - - - - - - 
 
  enum dbl_par_type_DPBKSlv {
-
   dblReopt = dblLastAlgPar,             ///< reoptimization parameter
-  
   dblLastDPBKSlvPar
-
  };
 
  /// tolerance for integrality property of weights- - - - - - - - - - - - - -
@@ -322,14 +319,14 @@ int compute( bool changedvars = true ) override;
 /** Return a valid lower bound on the optimal objective function value.
 * get_lb() must be called after compute() has been called. */
 
-OFValue get_lb( void ) override{ return get_var_value(); }
+OFValue get_lb( void ) override { return get_var_value(); }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// return a valid upper bound on the optimal objective function value
 /** Return a valid upper bound on the optimal objective function value.
 * get_ub() must be called after compute() has been called. */
 
-OFValue get_ub( void ) override{ return get_var_value(); }
+OFValue get_ub( void ) override { return get_var_value(); }
 
 /*--------------------------------------------------------------------------*/
 /// write the current solution in the variables of the BinaryKnapsackBlock
@@ -406,13 +403,13 @@ void set_par( idx_type par , double value ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
-idx_type get_num_dbl_par( void ) const override{
+idx_type get_num_dbl_par( void ) const override {
  return( idx_type( dblLastDPBKSlvPar ) );
 }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
  
-double get_dbl_par( const idx_type par ) const override{
+double get_dbl_par( const idx_type par ) const override {
   
  if( par == dblReopt )
   return( reopt );
@@ -422,8 +419,7 @@ double get_dbl_par( const idx_type par ) const override{
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
-idx_type dbl_par_str2idx( const std::string & name ) const override
-{
+idx_type dbl_par_str2idx( const std::string & name ) const override {
  if( name == "dblReopt" )
   return( dblReopt );
  
