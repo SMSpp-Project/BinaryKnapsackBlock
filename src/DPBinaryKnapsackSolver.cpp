@@ -87,24 +87,24 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  }
  
  // apply preprocessing (fix some variables)
- preprocessing();           
+ auto [ C , P ] = preprocessing();           
 
  // check if the problem is empty (residual capacity < 0)
- if( rC < 0 ) {
+ if( C < 0 ) {
   obj = - Inf< double >();
   unlock();
   return( kInfeasible );
  }
 
- HasSol = false;            // solution must be computed again   
+ HasSol = false;                  // solution must be computed again   
  
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- dynamic_programming();     // solve the integer knapsack
+ dynamic_programming( std::floor( C ) );    // solve the integer knapsack
  
- greedy_algorithm();        // solve the continuous knapsack
+ greedy_algorithm( C );                     // solve the continuous knapsack
 
- obj += rP;                 // add residual profit (from preprocessing)
+ obj += P;                        // add residual profit (from preprocessing)
  
  // End - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -121,14 +121,14 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// perform the preprocessing 
 
-void DPBinaryKnapsackSolver::preprocessing() {
+std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
   
  // Initialize variables to skip during the solution algorithms
  skip.assign( f_N , false );
 
  // residual capacity and residual profit
- rC = f_C;
- rP = 0;
+ double C = f_C;
+ double P = 0;
 
  // for each item
  for( Index i = 0 ; i < f_N ; ++i ) {
@@ -144,8 +144,8 @@ void DPBinaryKnapsackSolver::preprocessing() {
   if( v_fxd[ i ] == 2 ) {
    v_x[ i ] = 1;
    skip[ i ] = true;
-   rC -= v_W[ i ];
-   rP += v_P[ i ];
+   C -= v_W[ i ];
+   P += v_P[ i ];
    continue;
   }
 
@@ -160,36 +160,38 @@ void DPBinaryKnapsackSolver::preprocessing() {
   if( v_W[ i ] <= 0 && v_P[ i ] >= 0 ) {
    v_x[ i ] = 1;
    skip[ i ] = true;
-   rC -= v_W[ i ];
-   rP += v_P[ i ];
+   C -= v_W[ i ];
+   P += v_P[ i ];
    continue;
   }
    
   // if the item has both negative weight and profit
   if( v_W[ i ] < 0 && v_P[ i ] < 0 ) {
-   rC -= v_W[ i ];
-   rP += v_P[ i ];
+   C -= v_W[ i ];
+   P += v_P[ i ];
   }
   
  }
 
  // if the problem is not empty
- if( rC >= 0 ) {
+ if( C >= 0 ) {
 
   // new integer residual capacity
-  Index iC = std::floor( rC );
+  Index iC = std::floor( C );
 
   // resize lab[ start_item ] according to the new iC
   if( iC + 1 < lab[ start_item ].size() )
    lab[ start_item ].resize( iC + 1 );
  }
 
+ return { C , P };
+
 } // end( preprocessing() )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming
 
-void DPBinaryKnapsackSolver::dynamic_programming() {
+void DPBinaryKnapsackSolver::dynamic_programming( int C ) {
 
  std::vector< double > currlab = lab[ start_item ]; // set of current labels 
  std::vector< double > nextlab;                     // set of next labels  
@@ -210,12 +212,12 @@ void DPBinaryKnapsackSolver::dynamic_programming() {
    w = -w;
   }               
 
-  if( w > int( std::floor( rC ) ) )   // check capacity limit   
+  if( w > C )                   // check capacity limit   
    continue;       
 
   // max size of next labels   
   Index maxnextlab = std::min( Index( currlab.size() + w ) ,  
-                               Index( std::floor( rC ) + 1 ) );
+                               Index( C + 1 ) );
 
   // initialize next labels (with -INF) and allocate precedessors
   nextlab.assign( maxnextlab , -Inf< double >() );
@@ -237,7 +239,7 @@ void DPBinaryKnapsackSolver::dynamic_programming() {
     nextlab[ j ] = currlab[ j ];
    }
 
-   if( j + w > rC )                               // check capacity limit                               
+   if( j + w > C )                                // check capacity limit                               
     continue;                                    
 
    if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
@@ -259,7 +261,7 @@ void DPBinaryKnapsackSolver::dynamic_programming() {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// Greedy algorithm
 
-void DPBinaryKnapsackSolver::greedy_algorithm() {
+void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
 
  // sort continuous variable in order of profits/weights
  sort( idxCont.begin() , idxCont.end() , [ & ]( auto a , auto b ) { 
@@ -276,7 +278,7 @@ void DPBinaryKnapsackSolver::greedy_algorithm() {
  // h and increasing rC by 1 each time the next (lower) label is considered.  
  
  Index maxh = lastlab.size() - 1;   // maximum h
- rC -= maxh;                        // residual capacity
+ C -= maxh;                         // residual capacity
  
  // Initializations - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -311,11 +313,11 @@ void DPBinaryKnapsackSolver::greedy_algorithm() {
    }
  
    // if the item does not fit entirely in the knapsack
-   if( w * boundX + contWeight > rC ) {             
+   if( w * boundX + contWeight > C ) {             
     // take only a fraction, update profit and weight and break
-    boundX -= ( rC - contWeight ) / ( w );
-    contProfit += ( rC - contWeight ) / ( w ) * p ;
-    contWeight = rC;
+    boundX -= ( C - contWeight ) / ( w );
+    contProfit += ( C - contWeight ) / ( w ) * p ;
+    contWeight = C;
     break;
    }
    else {  
@@ -335,7 +337,7 @@ void DPBinaryKnapsackSolver::greedy_algorithm() {
    lastIndex = tempLastIndex;
   }
 
-  rC += 1;        // update residual capacity
+  C += 1;        // update residual capacity
  }
 
  // update the solution

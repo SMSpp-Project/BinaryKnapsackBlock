@@ -119,7 +119,7 @@ public:
 DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
                            besth( 0 ) , obj( - Inf< double >() ) , 
                            start_item( 0 ) , reopt( 1 ) , step( 1 ) , 
-                           rC( 0 ) , rP( 0 ) , HasSol( false ) {}
+                           HasSol( false ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -484,8 +484,6 @@ protected:
  /* preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  std::vector< bool > skip;      // skip preprocessed variables
- double rC;                     // residual capacity after preprocessing
- double rP;                     // residual profit of preprocessed items 
 
  /* algorithmic parameters- - - - - - - - - - - - - - - - - - - - - - - - - */
  
@@ -510,17 +508,17 @@ private:
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// perform the preprocessing 
 
- void preprocessing();
+ std::tuple< double , double > preprocessing();
 
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming to solve the integer knapsack
 
- void dynamic_programming(); 
+ void dynamic_programming( int C ); 
 
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Greedy algorithm to solve the continuous knapsack
 
- void greedy_algorithm(); 
+ void greedy_algorithm( double C ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// process all the pending modifications and compute start_item 
