@@ -104,9 +104,9 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  
  greedy_algorithm();        // solve the continuous knapsack
 
- obj += rP;                 // add residual profit (from preprossing)
+ obj += rP;                 // add residual profit (from preprocessing)
  
- // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ // End - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  start_item = Inf< int >(); // to avoid solving again the same instance
 
