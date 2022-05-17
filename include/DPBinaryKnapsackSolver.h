@@ -84,15 +84,7 @@ public:
  @{ */
 
  using Index = Block::Index;
- using c_Index = Block::c_Index;   
-
- using Range = Block::Range;
- using c_Range = Block::c_Range;
-
  using Subset = Block::Subset;
- using c_Subset = Block::c_Subset;
-
- using idx_type = ThinComputeInterface::idx_type;
     
  /// public enum for the algorithmic parameters - - - - - - - - - - - - - - - 
 
