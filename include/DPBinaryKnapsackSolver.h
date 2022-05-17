@@ -513,7 +513,7 @@ private:
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming to solve the integer knapsack
 
- void dynamic_programming( int C ); 
+ void dynamic_programming( Index C ); 
 
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Greedy algorithm to solve the continuous knapsack

@@ -191,7 +191,7 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming
 
-void DPBinaryKnapsackSolver::dynamic_programming( int C ) {
+void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
  std::vector< double > currlab = lab[ start_item ]; // set of current labels 
  std::vector< double > nextlab;                     // set of next labels  
@@ -216,8 +216,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( int C ) {
    continue;       
 
   // max size of next labels   
-  Index maxnextlab = std::min( Index( currlab.size() + w ) ,  
-                               Index( C + 1 ) );
+  Index maxnextlab = std::min( Index( currlab.size() + w ) , C + 1 );
 
   // initialize next labels (with -INF) and allocate precedessors
   nextlab.assign( maxnextlab , -Inf< double >() );
@@ -227,7 +226,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( int C ) {
   double bestlab = -Inf< double >();
   
   // compute nextlab
-  for( int j = 0 ; j < currlab.size() ; ++j ) {
+  for( Index j = 0 ; j < currlab.size() ; ++j ) {
 
    if( currlab[ j ] <= bestlab )        // skip node with label = -inf or
     continue;                           // with a worse label than bestlab
