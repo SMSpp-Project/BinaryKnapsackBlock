@@ -86,10 +86,10 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
   return( kOK );                      // return
  }
  
- // apply preprocessing (fix some variables)
+ // apply preprocessing and compute residual capacity C and residual profit P
  auto [ C , P ] = preprocessing();           
 
- // check if the problem is empty (residual capacity < 0)
+ // check if the problem is empty (iff residual capacity < 0)
  if( C < 0 ) {
   obj = - Inf< double >();
   unlock();
@@ -119,7 +119,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
 }  // end( DPBinaryKnapsackSolver::compute() )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// perform the preprocessing 
+ /// perform the preprocessing and return residual Capacity and Profit
 
 std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
   
@@ -133,19 +133,19 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
  // for each item
  for( Index i = 0 ; i < f_N ; ++i ) {
 
-  // if the variable is fixed to 0
+  // if the variable is fixed to 0 by the user
   if( v_fxd[ i ] == 1 ) {
    v_x[ i ] = 0;
    skip[ i ] = true;
    continue;
   }
 
-  // if the variable is fixed to 1
+  // if the variable is fixed to 1 by the user
   if( v_fxd[ i ] == 2 ) {
    v_x[ i ] = 1;
    skip[ i ] = true;
-   C -= v_W[ i ];
-   P += v_P[ i ];
+   C -= v_W[ i ];         // update Capacity
+   P += v_P[ i ];         // update total Profit
    continue;
   }
 
@@ -160,15 +160,15 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
   if( v_W[ i ] <= 0 && v_P[ i ] >= 0 ) {
    v_x[ i ] = 1;
    skip[ i ] = true;
-   C -= v_W[ i ];
-   P += v_P[ i ];
+   C -= v_W[ i ];         // update Capacity
+   P += v_P[ i ];         // update total Profit
    continue;
   }
    
   // if the item has both negative weight and profit
   if( v_W[ i ] < 0 && v_P[ i ] < 0 ) {
-   C -= v_W[ i ];
-   P += v_P[ i ];
+   C -= v_W[ i ];         // update Capacity
+   P += v_P[ i ];         // update total Profit
   }
   
  }

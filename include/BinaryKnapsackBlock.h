@@ -1020,8 +1020,7 @@ class BinaryKnapsackBlockRngdMod : public BinaryKnapsackBlockMod
  * BinaryKnapsackBlock, i.e., modifications that apply to an arbitrary subset 
  * of items. */
 
-class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod
-{
+class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod {
 
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
 
@@ -1151,27 +1150,37 @@ public:
   eChgCapacity    ,   ///< change the Knapsack capacity
   eFixX           ,   ///< fix a variable x
   eUnfixX         ,   ///< unfix a variable x
-  eChgSense           ///< change the sense of the objective
-  };
+  eChgSense       ,   ///< change the sense of the objective
+  eEmpty
+ };
 
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
+ 
+ BinaryKnapsackBlockChange( int type = eEmpty ,
+                            std::vector< double > && data = {} ) : 
+                            f_type( type ) , v_data( data ) {}  
 
- BinaryKnapsackBlockChange() {}                     ///< constructor
-
- ~BinaryKnapsackBlockChange() = default;            ///< destructor
+ ~BinaryKnapsackBlockChange() = default;            
 
 /*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  void deserialize( const netCDF::NcGroup & group ) override {}
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- void apply( Block * block , 
-             bool doundo = false , 
-             ModParam issueMod = eNoBlck , 
-             ModParam issueAMod = eNoBlck ) override {}
+ Change * apply( Block * block , 
+                 bool doundo = false , 
+                 ModParam issueMod = eNoBlck , 
+                 ModParam issueAMod = eNoBlck ) override { return nullptr; }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  void set_type( int type ) { f_type = type; }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+ void set_data( std::vector< double > && data ) { 
+  v_data = std::move( data ); 
+ }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to the type of change
@@ -1194,14 +1203,15 @@ public:
    case( eFixX ):  output << "fix x "; break;
    case( eUnfixX ):  output << "unfix x "; break;
    case( eChgSense ):  output << "change objective sense "; break;
-   }
+   case( eEmpty ): output << "Empty Change "; break;
   }
+ }
 
 /*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
 
- int f_type;                    ///< type of change
+ int f_type;                      ///< type of change
 
- std::vector< double > data;    ///< data to change
+ std::vector< double > v_data;    ///< data to change
 
 private:
 
