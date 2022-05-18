@@ -1709,6 +1709,77 @@ BinaryKnapsackSolution * BinaryKnapsackSolution::clone( bool empty ) const
 }
 
 /*--------------------------------------------------------------------------*/
+/*-------------------- METHODS OF BinaryKnapsackChange----------------------*/
+/*--------------------------------------------------------------------------*/
+
+Change * BinaryKnapsackBlockChange::apply( Block * block , 
+                                           bool doUndo , 
+                                           ModParam issueMod , 
+                                           ModParam issueAMod ) {
+ 
+ auto BKB = dynamic_cast< BinaryKnapsackBlock * >( block );
+ if( ! BKB )
+  throw( std::invalid_argument( "Block must be a BinaryKnapsackBlock" ) );
+
+ switch( f_type ) {
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eEmpty:
+   throw( std::invalid_argument( "Empty BinaryKnapsackBlockChange" ) );
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eChgSense: {
+   
+   if( ! v_data.size() )
+    throw( std::invalid_argument( "New sense not available" ) );
+   
+   // get new and old objective sense
+   bool old_sense = ( BKB->get_objective_sense() ==  Objective::eMax );
+   bool new_sense = v_data[ 0 ];
+   
+   if( new_sense == old_sense )       // nothing to do
+    return( nullptr );
+
+   // Apply the Change to BinaryKnapsackBlock
+   BKB->set_objective_sense( new_sense , issueMod , issueAMod );
+   
+   if( doUndo ) {
+    Change * undoChg = new BinaryKnapsackBlockChange( 
+                           eChgSense , { double( old_sense ) } );
+    return( undoChg );
+   }
+
+   return( nullptr );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eChgCapacity: {
+   
+   if( ! v_data.size() )
+    throw( std::invalid_argument( "New capacity not available" ) );
+
+   double old_C = BKB->get_Capacity();
+   double new_C = v_data[ 0 ];
+
+   if( std::abs( old_C - new_C ) < 1e-6 )
+    return( nullptr );
+
+   // Apply the Change to BinaryKnapsackBlock
+   BKB->chg_capacity( new_C , issueMod , issueAMod );
+
+   if( doUndo ) {
+    Change * undoChg = new BinaryKnapsackBlockChange( eChgCapacity , 
+                                                      { old_C } );
+    return( undoChg );
+   }
+   
+   return( nullptr );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  default:
+   throw( std::invalid_argument( 
+          "BinaryKnapsackBlockChange type not supported" ) );
+ }
+}
+
+/*--------------------------------------------------------------------------*/
 /*------------------- End File BinaryKnapsackBlock.cpp ---------------------*/
 /*--------------------------------------------------------------------------*/
 

@@ -1168,9 +1168,9 @@ public:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  Change * apply( Block * block , 
-                 bool doundo = false , 
+                 bool doUndo = false , 
                  ModParam issueMod = eNoBlck , 
-                 ModParam issueAMod = eNoBlck ) override { return nullptr; }
+                 ModParam issueAMod = eNoBlck ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1178,8 +1178,8 @@ public:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- void set_data( std::vector< double > && data ) { 
-  v_data = std::move( data ); 
+ void set_data( const std::vector< double > & data ) { 
+  v_data = data; 
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

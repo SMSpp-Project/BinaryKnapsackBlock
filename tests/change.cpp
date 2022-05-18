@@ -41,10 +41,33 @@ int main( int argc , char **argv ) {
  BKB->load( 5 , 10 , { 1 , 3 , 2 , 3 , 5 } , { 3 , 2 , 5 , 2 , 5 } );
 
  // Create a BinaryKnapsackBlockChange from the factory
- std::string chgname = "BinaryKnapsackBlockChange";
+ string chgname = "BinaryKnapsackBlockChange";
  auto CHG = Change::new_Change( chgname );
+ auto BKCHG = dynamic_cast< BinaryKnapsackBlockChange * >( CHG );
+ if( ! BKCHG ) {
+  cerr << "Unable to cast to BinaryKnapsackBlockChange";
+  exit( 1 );
+ }
+
+ // Change Capacity
+ BKCHG->set_type( BinaryKnapsackBlockChange::eChgCapacity );
+ BKCHG->set_data( { 50 } );
  
- CHG->apply( BKB );
+ cout << BKB->get_Capacity() << endl;
+ auto UNDO = CHG->apply( BKB , true );
+ cout << BKB->get_Capacity() << endl;
+ UNDO->apply( BKB );
+ cout << BKB->get_Capacity() << endl;
+
+ // Change Sense of the objective
+ BKCHG->set_type( BinaryKnapsackBlockChange::eChgSense );
+ BKCHG->set_data( { 0 } );
+ 
+ cout << BKB->get_objective_sense() << endl;
+ UNDO = CHG->apply( BKB , true );
+ cout << BKB->get_objective_sense() << endl;
+ UNDO->apply( BKB );
+ cout << BKB->get_objective_sense() << endl;
 
  delete CHG;
  delete BKB;

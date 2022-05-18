@@ -648,3 +648,5 @@ TSWLatexianTemp*
 
 # Makeindex log files
 *.lpz
+tests/change
+tests/change
