@@ -102,6 +102,12 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackSolution );
 // register BinaryKnapsackChange to the Change factory
 SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlockChange );
 
+// register BinaryKnapsackRngdChange to the Change factory
+SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlockRngdChange );
+
+// register BinaryKnapsackChange to the Change factory
+SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlockSbstChange );
+
 /*--------------------------------------------------------------------------*/
 /*-------------------- METHODS OF BinaryKnapsackBlock ----------------------*/
 /*--------------------------------------------------------------------------*/
@@ -1709,7 +1715,7 @@ BinaryKnapsackSolution * BinaryKnapsackSolution::clone( bool empty ) const
 }
 
 /*--------------------------------------------------------------------------*/
-/*-------------------- METHODS OF BinaryKnapsackChange----------------------*/
+/*------------------ METHODS OF BinaryKnapsackBlockChange-------------------*/
 /*--------------------------------------------------------------------------*/
 
 Change * BinaryKnapsackBlockChange::apply( Block * block , 
@@ -1777,6 +1783,24 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
    throw( std::invalid_argument( 
           "BinaryKnapsackBlockChange type not supported" ) );
  }
+}
+
+/*--------------------------------------------------------------------------*/
+
+Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
+                                               bool doUndo ,
+                                               ModParam issueMod ,
+                                               ModParam issueAMod ) {
+  return( nullptr );
+}
+
+/*--------------------------------------------------------------------------*/
+
+Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
+                                               bool doUndo ,
+                                               ModParam issueMod ,
+                                               ModParam issueAMod ) {
+  return( nullptr );
 }
 
 /*--------------------------------------------------------------------------*/

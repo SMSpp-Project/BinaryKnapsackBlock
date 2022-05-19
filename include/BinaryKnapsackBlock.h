@@ -1219,6 +1219,135 @@ private:
 
 }; // end( class( BinaryKnapsackBlockChange ) )
 
+/*--------------------------------------------------------------------------*/
+/*----------------- CLASS BinaryKnapsackBlockRngdChange --------------------*/
+/*--------------------------------------------------------------------------*/
+
+class BinaryKnapsackBlockRngdChange : public BinaryKnapsackBlockChange {
+
+public:
+
+ static constexpr auto INFRange = Block::Range( 0 , Inf< Block::Index >() );
+
+/*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
+ 
+ BinaryKnapsackBlockRngdChange( int type = eEmpty ,
+                                std::vector< double > && data = {} ,
+                                Block::Range rng = INFRange ) : 
+                                BinaryKnapsackBlockChange( type , 
+                                std::move( data ) ) , f_rng( rng ) {}  
+
+ ~BinaryKnapsackBlockRngdChange() = default;            
+
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
+
+ void deserialize( const netCDF::NcGroup & group ) override {}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ Change * apply( Block * block , 
+                 bool doUndo = false , 
+                 ModParam issueMod = eNoBlck , 
+                 ModParam issueAMod = eNoBlck ) override;
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// set data to change
+
+ void set_data( const std::vector< double > & data , Block::Range rng ) { 
+  v_data = data;
+  f_rng = rng; 
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// accessor to f_rng
+
+ Block::Range rng( void ) const { return( f_rng ); }
+
+/*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
+
+ protected:
+
+/*-------------------------- PROTECTED METHODS -----------------------------*/
+ /// print the BinaryKnapsackBlockRngdChange
+
+ void print( std::ostream &output ) const override {
+  BinaryKnapsackBlockChange::print( output );
+  output << "[ " << f_rng.first << ", " << f_rng.second << " )" << std::endl;
+ }
+
+/*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
+
+ Block::Range f_rng;                      ///< type of change
+
+private:
+
+ SMSpp_insert_in_factory_h;
+
+}; // end( class( BinaryKnapsackBlockRngdChange ) )
+
+/*--------------------------------------------------------------------------*/
+/*----------------- CLASS BinaryKnapsackBlockSbstChange --------------------*/
+/*--------------------------------------------------------------------------*/
+
+class BinaryKnapsackBlockSbstChange : public BinaryKnapsackBlockChange {
+
+public:
+
+/*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
+ 
+ BinaryKnapsackBlockSbstChange( int type = eEmpty ,
+                                std::vector< double > && data = {} ,
+                                Block::Subset && nms = {} ) : 
+                                BinaryKnapsackBlockChange( type , 
+                                std::move( data ) ) , 
+                                f_nms( std::move( nms ) ) {}  
+
+ ~BinaryKnapsackBlockSbstChange() = default;            
+
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
+
+ void deserialize( const netCDF::NcGroup & group ) override {}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ Change * apply( Block * block , 
+                 bool doUndo = false , 
+                 ModParam issueMod = eNoBlck , 
+                 ModParam issueAMod = eNoBlck ) override;
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// set data to change
+
+ void set_data( const std::vector< double > & data , Block::Subset && nms ) { 
+  v_data = data;
+  f_nms = std::move( nms ); 
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// accessor to f_nms
+
+ Block::c_Subset & nms( void ) const { return( f_nms ); }
+
+/*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
+
+ protected:
+
+/*-------------------------- PROTECTED METHODS -----------------------------*/
+ /// print the BinaryKnapsackBlockSbstChange
+
+ void print( std::ostream &output ) const override {
+  BinaryKnapsackBlockChange::print( output );
+  output << "(# " << f_nms.size() << ")" << std::endl;
+ }
+
+/*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
+
+ Block::Subset f_nms;                      ///< subset of items to change
+
+private:
+
+ SMSpp_insert_in_factory_h;
+
+}; // end( class( BinaryKnapsackBlockSbstChange ) )
+
 } // end( namespace SMSpp_di_unipi_it )
 
 /*--------------------------------------------------------------------------*/
