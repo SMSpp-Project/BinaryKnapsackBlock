@@ -1736,24 +1736,22 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
    
    if( ! v_data.size() )
     throw( std::invalid_argument( "New sense not available" ) );
+
+   Change * undoChg = nullptr;
+
+   if( doUndo ) {
+    bool old_sense = ( BKB->get_objective_sense() ==  Objective::eMax );
+    undoChg = new BinaryKnapsackBlockChange( eChgSense , 
+                                            { double( old_sense ) } ); 
+   }
    
-   // get new and old objective sense
-   bool old_sense = ( BKB->get_objective_sense() ==  Objective::eMax );
+   // get new objective sense
    bool new_sense = v_data[ 0 ];
-   
-   if( new_sense == old_sense )       // nothing to do
-    return( nullptr );
 
    // Apply the Change to BinaryKnapsackBlock
    BKB->set_objective_sense( new_sense , issueMod , issueAMod );
-   
-   if( doUndo ) {
-    Change * undoChg = new BinaryKnapsackBlockChange( 
-                           eChgSense , { double( old_sense ) } );
-    return( undoChg );
-   }
 
-   return( nullptr );
+   return( undoChg );
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgCapacity: {
@@ -1761,22 +1759,19 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
    if( ! v_data.size() )
     throw( std::invalid_argument( "New capacity not available" ) );
 
-   double old_C = BKB->get_Capacity();
-   double new_C = v_data[ 0 ];
+   Change * undoChg = nullptr;
 
-   if( std::abs( old_C - new_C ) < 1e-6 )
-    return( nullptr );
+   if( doUndo ) {
+    double old_C = BKB->get_Capacity();
+    undoChg = new BinaryKnapsackBlockChange( eChgCapacity , { old_C } );
+   }
+
+   double new_C = v_data[ 0 ];
 
    // Apply the Change to BinaryKnapsackBlock
    BKB->chg_capacity( new_C , issueMod , issueAMod );
-
-   if( doUndo ) {
-    Change * undoChg = new BinaryKnapsackBlockChange( eChgCapacity , 
-                                                      { old_C } );
-    return( undoChg );
-   }
    
-   return( nullptr );
+   return( undoChg );
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   default:
@@ -1791,7 +1786,92 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
                                                bool doUndo ,
                                                ModParam issueMod ,
                                                ModParam issueAMod ) {
-  return( nullptr );
+ 
+ auto BKB = dynamic_cast< BinaryKnapsackBlock * >( block );
+ if( ! BKB )
+  throw( std::invalid_argument( "Block must be a BinaryKnapsackBlock" ) );
+
+ switch( f_type ) {
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eEmpty:
+   throw( std::invalid_argument( "Empty BinaryKnapsackBlockChange" ) );
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eChgWeight: {
+   
+   if( v_data.size() != f_rng.second - f_rng.first )
+    throw( std::invalid_argument( "..." ) );
+   
+   Change * undoChg = nullptr;
+
+   if( doUndo ) {
+    std::vector< double > old_data = BKB->get_Weights( f_rng );
+    undoChg = new BinaryKnapsackBlockRngdChange( eChgWeight , 
+                                                 std::move( old_data ) , 
+                                                 f_rng );
+   }
+
+   // Change data
+   BKB->chg_weights( v_data.begin() , f_rng , issueMod , issueAMod );
+
+   return( undoChg );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eChgProfit: {
+   
+   if( v_data.size() != f_rng.second - f_rng.first )
+    throw( std::invalid_argument( "..." ) );
+
+   Change * undoChg = nullptr;
+
+   if( doUndo ) {
+    std::vector< double > old_data = BKB->get_Profits( f_rng );
+    undoChg = new BinaryKnapsackBlockRngdChange( eChgProfit , 
+                                                 std::move( old_data ) , 
+                                                 f_rng );
+   }
+  
+   // Change data
+   BKB->chg_profits( v_data.begin() , f_rng , issueMod , issueAMod );
+
+   return( undoChg );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eChgIntegrality: {
+   
+   if( v_data.size() != f_rng.second - f_rng.first )
+    throw( std::invalid_argument( "..." ) );
+
+   Change * undoChg = nullptr;
+
+   if( doUndo ) {
+    std::vector< bool > old_int = BKB->get_Integrality( f_rng );
+    std::vector< double > old_data( old_int.begin() , old_int.end() );
+    undoChg = new BinaryKnapsackBlockRngdChange( eChgIntegrality , 
+                                                 std::move( old_data ) , 
+                                                 f_rng );
+   }
+  
+   // Change data (cast to bool first)
+   std::vector< bool > new_int( v_data.begin() , v_data.end() );
+   BKB->chg_integrality( new_int.begin() , f_rng , issueMod , issueAMod );
+
+   return( undoChg );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eFixX: {
+   
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eUnfixX: {
+   // code
+   return( nullptr );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  default:
+   throw( std::invalid_argument( 
+          "BinaryKnapsackBlockChange type not supported" ) );
+ }
+
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1800,7 +1880,101 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
                                                bool doUndo ,
                                                ModParam issueMod ,
                                                ModParam issueAMod ) {
-  return( nullptr );
+
+ auto BKB = dynamic_cast< BinaryKnapsackBlock * >( block );
+ if( ! BKB )
+  throw( std::invalid_argument( "Block must be a BinaryKnapsackBlock" ) );
+
+ switch( f_type ) {
+  //- - - - - - - - - - - - - - m- - - - - - - - - - - - - - - - - - - - - - -
+  case eEmpty:
+   throw( std::invalid_argument( "Empty BinaryKnapsackBlockChange" ) );
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eChgWeight: {
+   
+   if( v_data.size() != f_nms.size() )
+    throw( std::invalid_argument( "..." ) );
+
+   Change * undoChg = nullptr;
+
+   if( doUndo ) {
+    std::vector< double > old_data = BKB->get_Weights( Subset( f_nms ) );
+    doUndo = new BinaryKnapsackBlockSbstChange( eChgWeight , 
+                                                std::move( old_data ) ,
+                                                Subset( f_nms ) );
+   }
+
+   // Change data
+   BKB->chg_weights( v_data.begin() , 
+                     Subset( f_nms ) , 
+                     issueMod , 
+                     issueAMod );
+
+   return( undoChg );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eChgProfit: {
+   
+   if( v_data.size() != f_nms.size() )
+    throw( std::invalid_argument( "..." ) );
+
+   Change * undoChg = nullptr;
+
+   if( doUndo ) {
+    std::vector< double > old_data = BKB->get_Profits( Subset( f_nms ) );
+    doUndo = new BinaryKnapsackBlockSbstChange( eChgProfit , 
+                                                std::move( old_data ) ,
+                                                Subset( f_nms ) );
+   }
+
+   // Change data
+   BKB->chg_profits( v_data.begin() , 
+                     Subset( f_nms ) , 
+                     issueMod , 
+                     issueAMod );
+
+   return( undoChg );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eChgIntegrality: {
+   
+   if( v_data.size() != f_nms.size() )
+    throw( std::invalid_argument( "..." ) );
+
+   Change * undoChg = nullptr;
+
+   if( doUndo ) {
+    std::vector< bool > old_int = BKB->get_Integrality( Subset( f_nms ) );
+    std::vector< double > old_data( old_int.begin() , old_int.end() );
+    doUndo = new BinaryKnapsackBlockSbstChange( eChgWeight , 
+                                                std::move( old_data ) ,
+                                                Subset( f_nms ) );
+   }
+
+   // Change data (cast to bool first)
+   std::vector< bool > new_int( v_data.begin() , v_data.end() );
+   BKB->chg_integrality( new_int.begin() , 
+                         Subset( f_nms ) , 
+                         issueMod , 
+                         issueAMod );
+
+   return( undoChg );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eFixX: {
+   // code
+   return( nullptr );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  case eUnfixX: {
+   // code
+   return( nullptr );
+  }
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  default:
+   throw( std::invalid_argument( 
+          "BinaryKnapsackBlockChange type not supported" ) );
+ }
 }
 
 /*--------------------------------------------------------------------------*/

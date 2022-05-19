@@ -380,6 +380,40 @@ class BinaryKnapsackBlock : public Block {
   }
 
 /*--------------------------------------------------------------------------*/
+ /// given a range rng return the vector of weigths of items in that range
+
+ doubleVec get_Weights( Range rng ) const { 
+  
+  if( rng.second >= get_NItems() )
+   throw( std::invalid_argument( "Range not valid" ) );
+
+  doubleVec weights;
+
+  for( Index i = rng.first; i < rng.second ; ++i )
+   weights.push_back( v_W[ i ] );
+
+  return( weights );
+ }
+
+/*--------------------------------------------------------------------------*/
+ /// given a Subset of items nms return the vector of their weigths 
+
+ doubleVec get_Weights( Subset && nms ) const { 
+  
+  doubleVec weights;
+
+  for( Index i : nms ){
+   
+   if( i >= get_NItems() )
+    throw( std::invalid_argument( "Invalid index in nms" ) );
+
+   weights.push_back( v_W[ i ] );
+  }
+
+  return( weights );
+ }
+
+/*--------------------------------------------------------------------------*/
  /// get the vector of Weights
 
  c_doubleVec & get_Weights( void ) const { return( v_W ); }
@@ -394,6 +428,40 @@ class BinaryKnapsackBlock : public Block {
   }
 
 /*--------------------------------------------------------------------------*/
+ /// given a range rng return the integrality vector of items in that range
+
+ boolVec get_Integrality( Range rng ) const { 
+  
+  if( rng.second >= get_NItems() )
+   throw( std::invalid_argument( "Range not valid" ) );
+
+  boolVec integrality;
+
+  for( Index i = rng.first; i < rng.second ; ++i )
+   integrality.push_back( v_I[ i ] );
+
+  return( integrality );
+ }
+
+/*--------------------------------------------------------------------------*/
+ /// given a Subset of items nms return the vector of their integrality 
+
+ boolVec get_Integrality( Subset && nms ) const { 
+  
+  boolVec integrality;
+
+  for( Index i : nms ){
+   
+   if( i >= get_NItems() )
+    throw( std::invalid_argument( "Invalid index in nms" ) );
+
+   integrality.push_back( v_I[ i ] );
+  }
+
+  return( integrality );
+ }
+
+/*--------------------------------------------------------------------------*/
  /// get the vector of Integrality 
 
  c_boolVec & get_Integrality( void ) const { return( v_I ); }
@@ -406,6 +474,40 @@ class BinaryKnapsackBlock : public Block {
    throw( std::invalid_argument( "BinaryKnapsackBlock: invalid item" ) );
   return( v_P[ i ] ); 
   }
+
+/*--------------------------------------------------------------------------*/
+ /// given a range rng return the vector of profits of items in that range
+
+ doubleVec get_Profits( Range rng ) const { 
+  
+  if( rng.second >= get_NItems() )
+   throw( std::invalid_argument( "Range not valid" ) );
+
+  doubleVec profits;
+
+  for( Index i = rng.first; i < rng.second ; ++i )
+   profits.push_back( v_P[ i ] );
+
+  return( profits );
+ }
+
+/*--------------------------------------------------------------------------*/
+ /// given a Subset of items nms return the vector of their profits
+
+ doubleVec get_Profits( Subset && nms ) const { 
+  
+  doubleVec profits;
+
+  for( Index i : nms ){
+   
+   if( i >= get_NItems() )
+    throw( std::invalid_argument( "Invalid index in nms" ) );
+
+   profits.push_back( v_P[ i ] );
+  }
+
+  return( profits );
+ }
 
 /*--------------------------------------------------------------------------*/
  /// get the vector of Profits
@@ -564,6 +666,16 @@ class BinaryKnapsackBlock : public Block {
  /// given an index i return true if the corresponding variable is fixed
 
  bool is_fixed( Index i ) const;
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// given a range rng return if variable in that range are fixed
+
+ boolVec is_fixed( Range rng );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// given a subset nms return if variable in that subset are fixed
+
+ boolVec is_fixed( Subset && nms );
 
 /** @} ---------------------------------------------------------------------*/
 /*-------------------- Methods for handling Modification -------------------*/
@@ -941,6 +1053,7 @@ class BinaryKnapsackBlockMod : public Modification {
   switch( f_type ) {
    case( eChgWeight ):  output << "change weight "; break;
    case( eChgProfit ):  output << "change profit "; break;
+   case( eChgIntegrality ): output << "change integrality "; break;
    case( eChgCapacity ):  output << "change capacity "; break;
    case( eFixX ):  output << "fix x "; break;
    case( eUnfixX ):  output << "unfix x "; break;
@@ -1199,6 +1312,7 @@ public:
   switch( f_type ) {
    case( eChgWeight ):  output << "change weight "; break;
    case( eChgProfit ):  output << "change profit "; break;
+   case( eChgIntegrality ): output << "change integrality "; break;
    case( eChgCapacity ):  output << "change capacity "; break;
    case( eFixX ):  output << "fix x "; break;
    case( eUnfixX ):  output << "unfix x "; break;
@@ -1227,7 +1341,7 @@ class BinaryKnapsackBlockRngdChange : public BinaryKnapsackBlockChange {
 
 public:
 
- static constexpr auto INFRange = Block::Range( 0 , Inf< Block::Index >() );
+ static constexpr auto INFRange = BinaryKnapsackBlock::INFRange;
 
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
  

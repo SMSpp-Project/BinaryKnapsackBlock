@@ -69,7 +69,26 @@ int main( int argc , char **argv ) {
  UNDO->apply( BKB );
  cout << BKB->get_objective_sense() << endl;
 
+ // Change a range of weights
+ Block::Range rng = Block::Range( 0 , 3 );
+ auto RCHG = new BinaryKnapsackBlockRngdChange();
+
+ RCHG->set_type( BinaryKnapsackBlockChange::eChgWeight );
+ RCHG->set_data( { 0 , 0 , 0 } , rng );
+
+ cout << BKB->get_Weight( 0 ) << " " << BKB->get_Weight( 1 ) << " " 
+      << BKB->get_Weight( 2 ) << endl;
+ UNDO = RCHG->apply( BKB , true );
+ cout << BKB->get_Weight( 0 ) << " " << BKB->get_Weight( 1 ) << " " 
+      << BKB->get_Weight( 2 ) << endl;
+ UNDO->apply( BKB );
+ cout << BKB->get_Weight( 0 ) << " " << BKB->get_Weight( 1 ) << " " 
+      << BKB->get_Weight( 2 ) << endl;
+
+ 
+
  delete CHG;
+ delete RCHG;
  delete BKB;
 
  return( 0 );
