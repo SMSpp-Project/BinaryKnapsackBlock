@@ -389,7 +389,9 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
  // negative weight and profit) change x with 1 - x
 
  // Integer part - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
+ 
+ int h = besth;
+ 
  for( int i = f_N - 1 ; i >= 0 ; i-- ) {
   
   if( skip[ i ] || ! v_I[ i ] )  // skip preprocessed and continuous variables
@@ -399,9 +401,9 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
   if( v_W[ i ] < 0 && v_P[ i ] < 0 )
     w = -w;
 
-  if( pred[ i + 1 ][ besth ] ) {
+  if( pred[ i + 1 ][ h ] ) {
    v_x[ i ] = 1;
-   besth -= w;
+   h -= w;
   }
   else
    v_x[ i ] = 0;
