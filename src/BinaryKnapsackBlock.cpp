@@ -1062,9 +1062,9 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
  // issue physical Modification 
  if( issue_pmod( issueMod ) ) 
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
-         this , BinaryKnapsackBlockMod::eChgProfit ,
-         std::make_pair( item , item + 1 ) ), 
-         Observer::par2chnl( issueMod ) );
+                           this , BinaryKnapsackBlockMod::eChgProfit ,
+                           std::make_pair( item , item + 1 ) ), 
+                           Observer::par2chnl( issueMod ) );
 
 }  // end( BinaryKnapsackBlock::chg_profit )
 
@@ -1072,7 +1072,7 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
 
 void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng , 
                                        ModParam issueMod ,
-               ModParam issueAMod )
+                                       ModParam issueAMod )
 {
  rng.second = std::min( rng.second , get_NItems() );
  if( rng.second <= rng.first )  // nothing to change

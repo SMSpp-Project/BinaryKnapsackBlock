@@ -94,11 +94,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
   obj = - Inf< double >();
   unlock();
   return( kInfeasible );
- }
-
- HasSol = false;                  // solution must be computed again   
- 
- // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ } 
 
  dynamic_programming( std::floor( C ) );    // solve the integer knapsack
  
@@ -385,12 +381,6 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
  if( start_item != + Inf< int >() )
   throw( std::invalid_argument( "compute() must be called first" ) );
 
- // check if the solution has already been computed
- if( HasSol ){
-  BKB->set_x( v_x.begin() );  // write the solution in BinaryKnapsackBlock
-  return;
- }
-
  // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - -
  // for each item check if it is fixed (because the corresponding variable is
  // fixed or the item has been preprocessed) or if its weight exceeds the 
@@ -423,8 +413,6 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
  BKB->set_x( v_x.begin() );  // write the solution in BinaryKnapsackBlock
-
- HasSol = true;
 
 }  // end( DPBinaryKnapsackSolver::get_var_solution )
  

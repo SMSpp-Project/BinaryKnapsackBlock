@@ -110,8 +110,7 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
                            besth( 0 ) , obj( - Inf< double >() ) , 
-                           start_item( 0 ) , reopt( 1 ) , step( 1 ) , 
-                           HasSol( false ) {}
+                           start_item( 0 ) , reopt( 1 ) , step( 1 ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -465,7 +464,6 @@ protected:
  std::vector< double > v_x;    ///< vector of variables
 
  Index besth;                  ///< best height of the integer part
- bool HasSol;                  ///< if the solution has already been computed
 
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
