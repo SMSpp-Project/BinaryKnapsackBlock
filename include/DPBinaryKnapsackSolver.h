@@ -473,7 +473,7 @@ protected:
 
  /* preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- std::vector< bool > skip;      // skip preprocessed variables
+ std::vector< bool > skip;     ///< preprocessed variables to skip
 
  /* algorithmic parameters- - - - - - - - - - - - - - - - - - - - - - - - - */
  

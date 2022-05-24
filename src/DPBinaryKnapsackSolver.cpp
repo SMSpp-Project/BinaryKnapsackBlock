@@ -166,7 +166,7 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
    C -= v_W[ i ];         // update Capacity
    P += v_P[ i ];         // update total Profit
   }
-  
+
  }
 
  // check if some item has a weight > C (check only for integer items)

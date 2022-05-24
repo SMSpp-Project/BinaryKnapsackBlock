@@ -382,35 +382,25 @@ class BinaryKnapsackBlock : public Block {
 /*--------------------------------------------------------------------------*/
  /// given a range rng return the vector of weigths of items in that range
 
- doubleVec get_Weights( Range rng ) const { 
+ void get_Weights( dblVec_it weights, Range rng ) const { 
   
   if( rng.second >= get_NItems() )
    throw( std::invalid_argument( "Range not valid" ) );
 
-  doubleVec weights;
-
   for( Index i = rng.first; i < rng.second ; ++i )
-   weights.push_back( v_W[ i ] );
-
-  return( weights );
- }
+   *(weights++) = v_W[ i ];
+}
 
 /*--------------------------------------------------------------------------*/
  /// given a Subset of items nms return the vector of their weigths 
 
- doubleVec get_Weights( Subset && nms ) const { 
+ void get_Weights( dblVec_it weights , Subset && nms ) const { 
   
-  doubleVec weights;
-
   for( Index i : nms ){
-   
    if( i >= get_NItems() )
-    throw( std::invalid_argument( "Invalid index in nms" ) );
-
-   weights.push_back( v_W[ i ] );
+    throw( std::invalid_argument( "Invalid index in nms" ) ); 
+   *(weights++) = v_W[ i ];
   }
-
-  return( weights );
  }
 
 /*--------------------------------------------------------------------------*/
@@ -430,35 +420,28 @@ class BinaryKnapsackBlock : public Block {
 /*--------------------------------------------------------------------------*/
  /// given a range rng return the integrality vector of items in that range
 
- boolVec get_Integrality( Range rng ) const { 
+ void get_Integrality( boolVec_it integrality ,  Range rng ) const { 
   
   if( rng.second >= get_NItems() )
    throw( std::invalid_argument( "Range not valid" ) );
 
-  boolVec integrality;
 
   for( Index i = rng.first; i < rng.second ; ++i )
-   integrality.push_back( v_I[ i ] );
-
-  return( integrality );
+   *(integrality++) = v_I[ i ];
  }
 
 /*--------------------------------------------------------------------------*/
  /// given a Subset of items nms return the vector of their integrality 
 
- boolVec get_Integrality( Subset && nms ) const { 
-  
-  boolVec integrality;
+ void get_Integrality( boolVec_it integrality , Subset && nms ) const { 
 
   for( Index i : nms ){
    
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) );
 
-   integrality.push_back( v_I[ i ] );
+   *(integrality++) = v_I[ i ];
   }
-
-  return( integrality );
  }
 
 /*--------------------------------------------------------------------------*/
@@ -478,35 +461,27 @@ class BinaryKnapsackBlock : public Block {
 /*--------------------------------------------------------------------------*/
  /// given a range rng return the vector of profits of items in that range
 
- doubleVec get_Profits( Range rng ) const { 
+ void get_Profits( dblVec_it profits , Range rng ) const { 
   
   if( rng.second >= get_NItems() )
    throw( std::invalid_argument( "Range not valid" ) );
 
-  doubleVec profits;
-
   for( Index i = rng.first; i < rng.second ; ++i )
-   profits.push_back( v_P[ i ] );
-
-  return( profits );
+   *(profits++) = v_P[ i ];
  }
 
 /*--------------------------------------------------------------------------*/
  /// given a Subset of items nms return the vector of their profits
 
- doubleVec get_Profits( Subset && nms ) const { 
-  
-  doubleVec profits;
+ void get_Profits( dblVec_it profits , Subset && nms ) const { 
 
   for( Index i : nms ){
    
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) );
 
-   profits.push_back( v_P[ i ] );
+   *(profits++) = v_P[ i ];
   }
-
-  return( profits );
  }
 
 /*--------------------------------------------------------------------------*/
@@ -668,14 +643,9 @@ class BinaryKnapsackBlock : public Block {
  bool is_fixed( Index i ) const;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// given a range rng return if variable in that range are fixed
+ /// get a reference to v_fxd
 
- boolVec is_fixed( Range rng );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// given a subset nms return if variable in that subset are fixed
-
- boolVec is_fixed( Subset && nms );
+ const std::vector< unsigned char > & get_fxd() const { return( v_fxd ); }
 
 /** @} ---------------------------------------------------------------------*/
 /*-------------------- Methods for handling Modification -------------------*/
@@ -1422,6 +1392,7 @@ public:
  void deserialize( const netCDF::NcGroup & group ) override {}
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  Change * apply( Block * block , 
                  bool doUndo = false , 
                  ModParam issueMod = eNoBlck , 

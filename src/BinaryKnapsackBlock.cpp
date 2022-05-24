@@ -582,7 +582,7 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
  bool BinaryKnapsackBlock::is_fixed( Index i ) const { 
   
   if( i >= v_fxd.size() )
-    throw( std::invalid_argument("Invalid index of the item") );
+    throw( std::invalid_argument( "Invalid index of the item" ) );
   
   if( v_fxd[ i ] == 0 )
    return( false );
@@ -1804,7 +1804,8 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< double > old_data = BKB->get_Weights( f_rng );
+    std::vector< double > old_data( f_rng.second - f_rng.first ); 
+    BKB->get_Weights( old_data.begin() , f_rng );
     undoChg = new BinaryKnapsackBlockRngdChange( eChgWeight , 
                                                  std::move( old_data ) , 
                                                  f_rng );
@@ -1824,7 +1825,8 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< double > old_data = BKB->get_Profits( f_rng );
+    std::vector< double > old_data( f_rng.second - f_rng.first );
+    BKB->get_Profits( old_data.begin() , f_rng );
     undoChg = new BinaryKnapsackBlockRngdChange( eChgProfit , 
                                                  std::move( old_data ) , 
                                                  f_rng );
@@ -1844,7 +1846,8 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< bool > old_int = BKB->get_Integrality( f_rng );
+    std::vector< bool > old_int( f_rng.second - f_rng.first );
+    BKB->get_Integrality( old_int.begin() , f_rng );
     std::vector< double > old_data( old_int.begin() , old_int.end() );
     undoChg = new BinaryKnapsackBlockRngdChange( eChgIntegrality , 
                                                  std::move( old_data ) , 
@@ -1859,7 +1862,19 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eFixX: {
+
+   if( v_data.size() != f_rng.second - f_rng.first )
+    throw( std::invalid_argument( "..." ) );
+
+   Change * undoChg = nullptr;
+
+   if( doUndo ) {
+    // old v_fxd
+    // undoChg = new BinaryKnapsackBlockRngdChange( eFixX , std::move( old v_fxd ) , f_rng );
+   }
    
+   // change data
+   return( undoChg );
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eUnfixX: {
@@ -1898,7 +1913,8 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< double > old_data = BKB->get_Weights( Subset( f_nms ) );
+    std::vector< double > old_data( f_nms.size() );
+    BKB->get_Weights( old_data.begin() , Subset( f_nms ) );
     doUndo = new BinaryKnapsackBlockSbstChange( eChgWeight , 
                                                 std::move( old_data ) ,
                                                 Subset( f_nms ) );
@@ -1921,7 +1937,8 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< double > old_data = BKB->get_Profits( Subset( f_nms ) );
+    std::vector< double > old_data( f_nms.size() );
+    BKB->get_Profits( old_data.begin() , Subset( f_nms ) );
     doUndo = new BinaryKnapsackBlockSbstChange( eChgProfit , 
                                                 std::move( old_data ) ,
                                                 Subset( f_nms ) );
@@ -1944,7 +1961,8 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< bool > old_int = BKB->get_Integrality( Subset( f_nms ) );
+    std::vector< bool > old_int( f_nms.size() ); 
+    BKB->get_Integrality( old_int.begin() , Subset( f_nms ) );
     std::vector< double > old_data( old_int.begin() , old_int.end() );
     doUndo = new BinaryKnapsackBlockSbstChange( eChgWeight , 
                                                 std::move( old_data ) ,
