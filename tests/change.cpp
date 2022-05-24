@@ -85,7 +85,7 @@ int main( int argc , char **argv ) {
  cout << BKB->get_Weight( 0 ) << " " << BKB->get_Weight( 1 ) << " " 
       << BKB->get_Weight( 2 ) << endl;
 
- 
+
 
  delete CHG;
  delete RCHG;

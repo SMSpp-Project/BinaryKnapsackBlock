@@ -708,7 +708,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
 
  // TODO: use a GroupModification
  for( i = rng.first ; i < rng.second ; i++ ) {
-  bool val = *( value++ ); // new value
+  double val = *( value++ ); // new value
 
   if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 )  ){
     if( not_dry_run( issueAMod ) ){
@@ -761,7 +761,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
 
  // TODO: use a GroupModification
  for( auto i : nms ) {
-  bool val = *( value++ ); // new value
+  double val = *( value++ ); // new value
 
   if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ){
     if( not_dry_run( issueAMod ) ){
@@ -1868,18 +1868,32 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
 
    Change * undoChg = nullptr;
 
-   if( doUndo ) {
-    // old v_fxd
-    // undoChg = new BinaryKnapsackBlockRngdChange( eFixX , std::move( old v_fxd ) , f_rng );
-   }
+   if( doUndo )
+    undoChg = new BinaryKnapsackBlockRngdChange( eUnfixX , {} , f_rng );
    
-   // change data
+   // Before fixing a variable check if it is already fixed and in case unfix
+   auto & fxd = BKB->get_fxd();
+   for( Index i = f_rng.first ; i < f_rng.second ; ++i ) {
+    if( fxd[ i ] != 0 )
+     BKB->unfix_x( i ); 
+   }
+
+   // Change data
+   std::vector< bool > new_x( v_data.begin() , v_data.end() ); 
+   BKB->fix_x( new_x.begin() , f_rng , issueMod , issueAMod );
+
    return( undoChg );
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eUnfixX: {
-   // code
-   return( nullptr );
+
+   Change * undoChg = nullptr;
+
+   // la undo?
+
+   BKB->unfix_x( f_rng );
+
+   return( undoChg );
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   default:
@@ -1980,13 +1994,39 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eFixX: {
-   // code
-   return( nullptr );
+   
+   if( v_data.size() != f_nms.size() )
+    throw( std::invalid_argument( "..." ) );
+
+   Change * undoChg = nullptr;
+
+   if( doUndo )
+    undoChg = new BinaryKnapsackBlockSbstChange( eUnfixX , {} , 
+                                                 Subset( f_nms ) );
+   
+   // Before fixing a variable check if it is already fixed and in case unfix
+   auto & fxd = BKB->get_fxd();
+   for( Index i : f_nms ) {
+    if( fxd[ i ] != 0 )
+     BKB->unfix_x( i ); 
+   }
+
+   // Change data
+   std::vector< bool > new_x( v_data.begin() , v_data.end() ); 
+   BKB->fix_x( new_x.begin() , Subset( f_nms ) , issueMod , issueAMod );
+
+   return( undoChg );
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eUnfixX: {
-   // code
-   return( nullptr );
+   
+   Change * undoChg = nullptr;
+
+   // la undo?
+
+   BKB->unfix_x( Subset( f_nms ) );
+   
+   return( undoChg );
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   default:
