@@ -1249,6 +1249,11 @@ public:
 
  void deserialize( const netCDF::NcGroup & group ) override {}
 
+ void serialize( netCDF::NcFile & f ) const override {
+  // always call the method of the base class first
+  Change::serialize( f );
+ }
+
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  Change * apply( Block * block , 
                  bool doUndo = false , 
@@ -1327,6 +1332,11 @@ public:
 
  void deserialize( const netCDF::NcGroup & group ) override {}
 
+ void serialize( netCDF::NcFile & f ) const override {
+  // always call the method of the base class first
+  Change::serialize( f );
+ }
+
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  Change * apply( Block * block , 
                  bool doUndo = false , 
@@ -1390,6 +1400,11 @@ public:
 /*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  void deserialize( const netCDF::NcGroup & group ) override {}
+
+ void serialize( netCDF::NcFile & f ) const override {
+  // always call the method of the base class first
+  Change::serialize( f );
+ }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
