@@ -1653,6 +1653,10 @@ void BinaryKnapsackSolution::write( Block * const block )
 void BinaryKnapsackSolution::serialize( netCDF::NcGroup & group ) const
 {
  if( ! v_x.empty() ) {
+
+  // always call the method of the base class first
+  Solution::serialize( group );
+  
   netCDF::NcDim ni = group.addDim( "n" , v_x.size() ); 
   ( group.addVar( "x" , netCDF::NcDouble() , ni ) ).putVar( v_x.data() );
   }
