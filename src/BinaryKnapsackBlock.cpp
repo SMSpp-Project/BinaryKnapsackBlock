@@ -1925,22 +1925,22 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgWeight: {
    
-   if( v_data.size() != f_nms.size() )
+   if( v_data.size() != v_nms.size() )
     throw( std::invalid_argument( "..." ) );
 
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< double > old_data( f_nms.size() );
-    BKB->get_Weights( old_data.begin() , Subset( f_nms ) );
+    std::vector< double > old_data( v_nms.size() );
+    BKB->get_Weights( old_data.begin() , Subset( v_nms ) );
     doUndo = new BinaryKnapsackBlockSbstChange( eChgWeight , 
                                                 std::move( old_data ) ,
-                                                Subset( f_nms ) );
+                                                Subset( v_nms ) );
    }
 
    // Change data
    BKB->chg_weights( v_data.begin() , 
-                     Subset( f_nms ) , 
+                     Subset( v_nms ) , 
                      issueMod , 
                      issueAMod );
 
@@ -1949,22 +1949,22 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgProfit: {
    
-   if( v_data.size() != f_nms.size() )
+   if( v_data.size() != v_nms.size() )
     throw( std::invalid_argument( "..." ) );
 
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< double > old_data( f_nms.size() );
-    BKB->get_Profits( old_data.begin() , Subset( f_nms ) );
+    std::vector< double > old_data( v_nms.size() );
+    BKB->get_Profits( old_data.begin() , Subset( v_nms ) );
     doUndo = new BinaryKnapsackBlockSbstChange( eChgProfit , 
                                                 std::move( old_data ) ,
-                                                Subset( f_nms ) );
+                                                Subset( v_nms ) );
    }
 
    // Change data
    BKB->chg_profits( v_data.begin() , 
-                     Subset( f_nms ) , 
+                     Subset( v_nms ) , 
                      issueMod , 
                      issueAMod );
 
@@ -1973,24 +1973,24 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgIntegrality: {
    
-   if( v_data.size() != f_nms.size() )
+   if( v_data.size() != v_nms.size() )
     throw( std::invalid_argument( "..." ) );
 
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    std::vector< bool > old_int( f_nms.size() ); 
-    BKB->get_Integrality( old_int.begin() , Subset( f_nms ) );
+    std::vector< bool > old_int( v_nms.size() ); 
+    BKB->get_Integrality( old_int.begin() , Subset( v_nms ) );
     std::vector< double > old_data( old_int.begin() , old_int.end() );
     doUndo = new BinaryKnapsackBlockSbstChange( eChgWeight , 
                                                 std::move( old_data ) ,
-                                                Subset( f_nms ) );
+                                                Subset( v_nms ) );
    }
 
    // Change data (cast to bool first)
    std::vector< bool > new_int( v_data.begin() , v_data.end() );
    BKB->chg_integrality( new_int.begin() , 
-                         Subset( f_nms ) , 
+                         Subset( v_nms ) , 
                          issueMod , 
                          issueAMod );
 
@@ -1999,25 +1999,25 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eFixX: {
    
-   if( v_data.size() != f_nms.size() )
+   if( v_data.size() != v_nms.size() )
     throw( std::invalid_argument( "..." ) );
 
    Change * undoChg = nullptr;
 
    if( doUndo )
     undoChg = new BinaryKnapsackBlockSbstChange( eUnfixX , {} , 
-                                                 Subset( f_nms ) );
+                                                 Subset( v_nms ) );
    
    // Before fixing a variable check if it is already fixed and in case unfix
    auto & fxd = BKB->get_fxd();
-   for( Index i : f_nms ) {
+   for( Index i : v_nms ) {
     if( fxd[ i ] != 0 )
      BKB->unfix_x( i ); 
    }
 
    // Change data
    std::vector< bool > new_x( v_data.begin() , v_data.end() ); 
-   BKB->fix_x( new_x.begin() , Subset( f_nms ) , issueMod , issueAMod );
+   BKB->fix_x( new_x.begin() , Subset( v_nms ) , issueMod , issueAMod );
 
    return( undoChg );
   }
@@ -2028,7 +2028,7 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
 
    // la undo?
 
-   BKB->unfix_x( Subset( f_nms ) );
+   BKB->unfix_x( Subset( v_nms ) );
    
    return( undoChg );
   }

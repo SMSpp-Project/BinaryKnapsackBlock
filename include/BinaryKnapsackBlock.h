@@ -1247,14 +1247,44 @@ public:
 
 /*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
- void deserialize( const netCDF::NcGroup & group ) override {}
+ void deserialize( const netCDF::NcGroup & group ) override {
+  
+  // read f_type
+  auto ftype = group.getAtt( "BinaryKnapsackBlock_chg_type" );
+  if( ftype.isNull() )
+   throw( std::invalid_argument( 
+         "Error reading BinaryKnapsackBlock_chg_type" ) );
+  ftype.getValues( &f_type );
+  std::cout << f_type << std::endl;
 
- void serialize( netCDF::NcGroup & group ) const override {
-  // always call the method of the base class first
-  Change::serialize( group );
+  // read v_data
+  netCDF::NcDim ni = group.getDim( "dim" );
+  netCDF::NcVar data = group.getVar( "Data" );
+  if( data.isNull() )
+   v_data.clear();
+  else {
+   v_data.resize( ni.getSize() );
+   data.getVar( v_data.data() ); 
+  } 
+
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+ void serialize( netCDF::NcGroup & group ) const override {
+  
+  // always call the method of the base class first
+  Change::serialize( group );
+
+  group.putAtt( "BinaryKnapsackBlock_chg_type" , netCDF::NcInt() ,  f_type );
+  
+  netCDF::NcDim ni = group.addDim( "dim" , v_data.size() );
+  ( group.addVar( "Data" , 
+                  netCDF::NcDouble() , ni ) ).putVar( v_data.data() );
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  Change * apply( Block * block , 
                  bool doUndo = false , 
                  ModParam issueMod = eNoBlck , 
@@ -1330,11 +1360,19 @@ public:
 
 /*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
- void deserialize( const netCDF::NcGroup & group ) override {}
+ void deserialize( const netCDF::NcGroup & group ) override {
+  // read f_rng
+  netCDF::NcDim ni = group.getDim( "RangeDim" );
+  netCDF::NcVar rng = group.getVar( "Range" );
+  rng.getVar( &f_rng ); 
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  void serialize( netCDF::NcGroup & group ) const override {
-  // always call the method of the base class first
-  Change::serialize( group );
+  BinaryKnapsackBlockChange::serialize( group );
+  netCDF::NcDim ni = group.addDim( "RangeDim" , 2 );
+  ( group.addVar( "Range" , netCDF::NcInt() , ni ) ).putVar( &f_rng );
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -1393,17 +1431,25 @@ public:
                                 Block::Subset && nms = {} ) : 
                                 BinaryKnapsackBlockChange( type , 
                                 std::move( data ) ) , 
-                                f_nms( std::move( nms ) ) {}  
+                                v_nms( std::move( nms ) ) {}  
 
  ~BinaryKnapsackBlockSbstChange() = default;            
 
 /*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
- void deserialize( const netCDF::NcGroup & group ) override {}
+ void deserialize( const netCDF::NcGroup & group ) override {
+  // read v_nms
+  netCDF::NcDim ni = group.getDim( "SubsetDim" );
+  netCDF::NcVar nms = group.getVar( "Subset" );
+  nms.getVar( &v_nms ); 
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  void serialize( netCDF::NcGroup & group ) const override {
-  // always call the method of the base class first
-  Change::serialize( group );
+  BinaryKnapsackBlockChange::serialize( group );
+  netCDF::NcDim ni = group.addDim( "SubsetDim" , v_nms.size() );
+  ( group.addVar( "Subset" , netCDF::NcInt() , ni ) ).putVar( &v_nms );
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -1418,13 +1464,13 @@ public:
 
  void set_data( const std::vector< double > & data , Block::Subset && nms ) { 
   v_data = data;
-  f_nms = std::move( nms ); 
+  v_nms = std::move( nms ); 
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to f_nms
 
- Block::c_Subset & nms( void ) const { return( f_nms ); }
+ Block::c_Subset & nms( void ) const { return( v_nms ); }
 
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 
@@ -1435,12 +1481,12 @@ public:
 
  void print( std::ostream &output ) const override {
   BinaryKnapsackBlockChange::print( output );
-  output << "(# " << f_nms.size() << ")" << std::endl;
+  output << "(# " << v_nms.size() << ")" << std::endl;
  }
 
 /*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
 
- Block::Subset f_nms;                      ///< subset of items to change
+ Block::Subset v_nms;                      ///< subset of items to change
 
 private:
 

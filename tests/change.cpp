@@ -42,55 +42,26 @@ int main( int argc , char **argv ) {
 
  // Create a BinaryKnapsackBlockChange from the factory
  string chgname = "BinaryKnapsackBlockChange";
- auto CHG = Change::new_Change( chgname );
+ Change * CHG = Change::new_Change( chgname );
  auto BKCHG = dynamic_cast< BinaryKnapsackBlockChange * >( CHG );
  if( ! BKCHG ) {
   cerr << "Unable to cast to BinaryKnapsackBlockChange";
   exit( 1 );
  }
 
- // Change Capacity
  BKCHG->set_type( BinaryKnapsackBlockChange::eChgCapacity );
  BKCHG->set_data( { 50 } );
- 
- cout << BKB->get_Capacity() << endl;
- auto UNDO = CHG->apply( BKB , true );
- cout << BKB->get_Capacity() << endl;
- UNDO->apply( BKB );
- cout << BKB->get_Capacity() << endl;
 
- // Change Sense of the objective
- BKCHG->set_type( BinaryKnapsackBlockChange::eChgSense );
- BKCHG->set_data( { 0 } );
- 
- cout << BKB->get_objective_sense() << endl;
- UNDO = CHG->apply( BKB , true );
- cout << BKB->get_objective_sense() << endl;
- UNDO->apply( BKB );
- cout << BKB->get_objective_sense() << endl;
+ CHG->serialize( "file.nc4" );
 
- // Change a range of weights
- Block::Range rng = Block::Range( 0 , 3 );
- auto RCHG = new BinaryKnapsackBlockRngdChange();
+ Change * chg;
+ chg = chg->deserialize( "file.nc4" );
+ auto bkchg = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
 
- RCHG->set_type( BinaryKnapsackBlockChange::eChgWeight );
- RCHG->set_data( { 0 , 0 , 0 } , rng );
-
- cout << BKB->get_Weight( 0 ) << " " << BKB->get_Weight( 1 ) << " " 
-      << BKB->get_Weight( 2 ) << endl;
- UNDO = RCHG->apply( BKB , true );
- cout << BKB->get_Weight( 0 ) << " " << BKB->get_Weight( 1 ) << " " 
-      << BKB->get_Weight( 2 ) << endl;
- UNDO->apply( BKB );
- cout << BKB->get_Weight( 0 ) << " " << BKB->get_Weight( 1 ) << " " 
-      << BKB->get_Weight( 2 ) << endl;
-
-
+ std::cout << *chg;
 
  delete CHG;
- delete RCHG;
- delete BKB;
-
+ delete chg;
  return( 0 );
 }
 
