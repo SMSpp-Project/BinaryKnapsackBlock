@@ -1919,7 +1919,7 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   throw( std::invalid_argument( "Block must be a BinaryKnapsackBlock" ) );
 
  switch( f_type ) {
-  //- - - - - - - - - - - - - - m- - - - - - - - - - - - - - - - - - - - - - -
+  //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eEmpty:
    throw( std::invalid_argument( "Empty BinaryKnapsackBlockChange" ) );
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
