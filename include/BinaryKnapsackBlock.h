@@ -1241,7 +1241,11 @@ public:
  
  BinaryKnapsackBlockChange( int type = eEmpty ,
                             std::vector< double > && data = {} ) : 
-                            f_type( type ) , v_data( data ) {}  
+                            f_type( type ) , v_data( data ) {
+
+  if( ( type != eEmpty ) && ( ! data.size() ) )
+   throw( std::invalid_argument( "data not provided" ) );
+ }    
 
  ~BinaryKnapsackBlockChange() = default;            
 
@@ -1255,7 +1259,6 @@ public:
    throw( std::invalid_argument( 
          "Error reading BinaryKnapsackBlock_chg_type" ) );
   ftype.getValues( &f_type );
-  std::cout << f_type << std::endl;
 
   // read v_data
   netCDF::NcDim ni = group.getDim( "dim" );
@@ -1292,12 +1295,31 @@ public:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- void set_type( int type ) { f_type = type; }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
- void set_data( const std::vector< double > & data ) { 
-  v_data = data; 
+ void load( int type , const std::vector< double > & data = {} ) {
+  
+  switch( type ) {
+   case eEmpty: {
+    f_type = type;    // update type
+    v_data = {};      // ignore data (if any)
+    break;
+   }
+   case eChgSense: {
+    if( ! data.size() )
+     throw( std::invalid_argument( "New sense not provided" ) );
+    f_type = type;
+    v_data = data; 
+    break;
+   }
+   case eChgCapacity: {
+    if( ! data.size() )
+     throw( std::invalid_argument( "New capacity not provided" ) );
+    f_type = type;
+    v_data = data; 
+    break;
+   }
+   default:
+    throw( std::invalid_argument( "type not supported" ) ); 
+  }
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -1354,7 +1376,11 @@ public:
                                 std::vector< double > && data = {} ,
                                 Block::Range rng = INFRange ) : 
                                 BinaryKnapsackBlockChange( type , 
-                                std::move( data ) ) , f_rng( rng ) {}  
+                                std::move( data ) ) , f_rng( rng ) {
+
+  if( ( type != eEmpty ) && ( data.size() != rng.second - rng.first ) )
+   throw( std::invalid_argument( "data.size() != range size" ) );
+ }  
 
  ~BinaryKnapsackBlockRngdChange() = default;            
 
@@ -1364,7 +1390,8 @@ public:
   // read f_rng
   netCDF::NcDim ni = group.getDim( "RangeDim" );
   netCDF::NcVar rng = group.getVar( "Range" );
-  rng.getVar( &f_rng ); 
+  rng.getVar( &f_rng );
+  BinaryKnapsackBlockChange::deserialize( group ); 
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -1376,18 +1403,40 @@ public:
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+ void load( int type , const std::vector< double > & data = {} , 
+            Block::Range rng = INFRange ) {
+
+  if( type == eEmpty ) {
+   f_type = type;       // update type
+   v_data = {};         // discard data (if provided)
+   f_rng = INFRange;    // discard range (if provided)
+   return;
+  }
+  
+  if( ( type == eChgWeight ) || ( type == eChgProfit ) || 
+      ( type == eChgIntegrality ) || ( type == eFixX ) || 
+      ( type == eUnfixX ) ) {
+   
+   // check data size and range 
+   if( data.size() != rng.second - rng.first )
+    throw( std::invalid_argument( "data.size() != range size" ) );
+
+   // update all the data
+   f_type = type;
+   v_data = data;
+   f_rng = rng;
+  }
+  else
+   throw( std::invalid_argument( "type not supported" ) );
+
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  Change * apply( Block * block , 
                  bool doUndo = false , 
                  ModParam issueMod = eNoBlck , 
                  ModParam issueAMod = eNoBlck ) override;
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// set data to change
-
- void set_data( const std::vector< double > & data , Block::Range rng ) { 
-  v_data = data;
-  f_rng = rng; 
- }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to f_rng
@@ -1431,7 +1480,11 @@ public:
                                 Block::Subset && nms = {} ) : 
                                 BinaryKnapsackBlockChange( type , 
                                 std::move( data ) ) , 
-                                v_nms( std::move( nms ) ) {}  
+                                v_nms( std::move( nms ) ) {
+
+  if( ( type != eEmpty ) && ( data.size() != nms.size() ) )
+   throw( std::invalid_argument( "data.size() != nms.size()" ) );
+ }
 
  ~BinaryKnapsackBlockSbstChange() = default;            
 
@@ -1454,18 +1507,40 @@ public:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+ void load( int type , const std::vector< double > & data = {} , 
+            Block::Subset && nms = {} ) {
+
+  if( type == eEmpty ) {
+   f_type = type;       // update type
+   v_data = {};         // discard data (if provided)
+   v_nms = {};          // discard nms (if provided)
+   return;
+  }
+  
+  if( ( type == eChgWeight ) || ( type == eChgProfit ) || 
+      ( type == eChgIntegrality ) || ( type == eFixX ) || 
+      ( type == eUnfixX ) ) {
+   
+   // check data size and range 
+   if( data.size() != nms.size() )
+    throw( std::invalid_argument( "data.size() != nms.size()" ) );
+
+   // update all the data
+   f_type = type;
+   v_data = data;
+   v_nms = std::move( nms );
+  }
+  else
+   throw( std::invalid_argument( "type not supported" ) );
+
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  Change * apply( Block * block , 
                  bool doUndo = false , 
                  ModParam issueMod = eNoBlck , 
                  ModParam issueAMod = eNoBlck ) override;
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// set data to change
-
- void set_data( const std::vector< double > & data , Block::Subset && nms ) { 
-  v_data = data;
-  v_nms = std::move( nms ); 
- }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to f_nms

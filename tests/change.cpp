@@ -49,8 +49,9 @@ int main( int argc , char **argv ) {
   exit( 1 );
  }
 
- BKCHG->set_type( BinaryKnapsackBlockChange::eChgCapacity );
- BKCHG->set_data( { 50 } );
+ //BKCHG->set_type( BinaryKnapsackBlockChange::eChgCapacity );
+ //BKCHG->set_data( { 50 } );
+ BKCHG->load( BinaryKnapsackBlockChange::eChgCapacity , { 50 } );
 
  CHG->serialize( "file.nc4" );
 

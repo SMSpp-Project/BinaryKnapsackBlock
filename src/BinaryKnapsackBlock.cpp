@@ -1737,9 +1737,6 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
    throw( std::invalid_argument( "Empty BinaryKnapsackBlockChange" ) );
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgSense: {
-   
-   if( ! v_data.size() )
-    throw( std::invalid_argument( "New sense not available" ) );
 
    Change * undoChg = nullptr;
 
@@ -1759,9 +1756,6 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgCapacity: {
-   
-   if( ! v_data.size() )
-    throw( std::invalid_argument( "New capacity not available" ) );
 
    Change * undoChg = nullptr;
 
@@ -1801,10 +1795,7 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
    throw( std::invalid_argument( "Empty BinaryKnapsackBlockChange" ) );
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgWeight: {
-   
-   if( v_data.size() != f_rng.second - f_rng.first )
-    throw( std::invalid_argument( "..." ) );
-   
+
    Change * undoChg = nullptr;
 
    if( doUndo ) {
@@ -1823,9 +1814,6 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgProfit: {
    
-   if( v_data.size() != f_rng.second - f_rng.first )
-    throw( std::invalid_argument( "..." ) );
-
    Change * undoChg = nullptr;
 
    if( doUndo ) {
@@ -1844,9 +1832,6 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgIntegrality: {
    
-   if( v_data.size() != f_rng.second - f_rng.first )
-    throw( std::invalid_argument( "..." ) );
-
    Change * undoChg = nullptr;
 
    if( doUndo ) {
@@ -1867,21 +1852,19 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eFixX: {
 
-   if( v_data.size() != f_rng.second - f_rng.first )
-    throw( std::invalid_argument( "..." ) );
+   // if some of the variables are already fixed, throw an exception. This is
+   // needed to provide an undo change 
+   for( Index i = f_rng.first ; i < f_rng.second ; ++i ) {
+    if( BKB->is_fixed( i ) )
+     throw( std::invalid_argument( "variable " + std::to_string( i ) + 
+                                   "already fixed" ) ); 
+   }
 
    Change * undoChg = nullptr;
 
    if( doUndo )
     undoChg = new BinaryKnapsackBlockRngdChange( eUnfixX , {} , f_rng );
    
-   // Before fixing a variable check if it is already fixed and in case unfix
-   auto & fxd = BKB->get_fxd();
-   for( Index i = f_rng.first ; i < f_rng.second ; ++i ) {
-    if( fxd[ i ] != 0 )
-     BKB->unfix_x( i ); 
-   }
-
    // Change data
    std::vector< bool > new_x( v_data.begin() , v_data.end() ); 
    BKB->fix_x( new_x.begin() , f_rng , issueMod , issueAMod );
@@ -1891,10 +1874,26 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eUnfixX: {
 
+   // if some of the variables are not fixed, throw an exception. This is
+   // needed to provide an undo change 
+   for( Index i = f_rng.first ; i < f_rng.second ; ++i ) {
+    if( ! BKB->is_fixed( i ) )
+     throw( std::invalid_argument( "variable " + std::to_string( i ) + 
+                                   "is not fixed" ) ); 
+   }
+
    Change * undoChg = nullptr;
 
-   // la undo?
+   if( doUndo ) {
+    std::vector< double > old_data( f_rng.second - f_rng.first );
+    BKB->get_x( old_data.begin() , f_rng );
+    undoChg = new BinaryKnapsackBlockRngdChange( eFixX , 
+                                                 std::move( old_data ) ,
+                                                 f_rng );
+   }
 
+
+   // Change data
    BKB->unfix_x( f_rng );
 
    return( undoChg );
@@ -1924,9 +1923,6 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
    throw( std::invalid_argument( "Empty BinaryKnapsackBlockChange" ) );
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgWeight: {
-   
-   if( v_data.size() != v_nms.size() )
-    throw( std::invalid_argument( "..." ) );
 
    Change * undoChg = nullptr;
 
@@ -1948,9 +1944,6 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgProfit: {
-   
-   if( v_data.size() != v_nms.size() )
-    throw( std::invalid_argument( "..." ) );
 
    Change * undoChg = nullptr;
 
@@ -1973,9 +1966,6 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgIntegrality: {
    
-   if( v_data.size() != v_nms.size() )
-    throw( std::invalid_argument( "..." ) );
-
    Change * undoChg = nullptr;
 
    if( doUndo ) {
@@ -1998,9 +1988,14 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eFixX: {
-   
-   if( v_data.size() != v_nms.size() )
-    throw( std::invalid_argument( "..." ) );
+
+   // if some of the variables are already fixed, throw an exception. This is
+   // needed to provide an undo change 
+   for( Index i : v_nms ) {
+    if( BKB->is_fixed( i ) )
+     throw( std::invalid_argument( "variable " + std::to_string( i ) + 
+                                   "already fixed" ) ); 
+   }
 
    Change * undoChg = nullptr;
 
@@ -2008,13 +2003,6 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
     undoChg = new BinaryKnapsackBlockSbstChange( eUnfixX , {} , 
                                                  Subset( v_nms ) );
    
-   // Before fixing a variable check if it is already fixed and in case unfix
-   auto & fxd = BKB->get_fxd();
-   for( Index i : v_nms ) {
-    if( fxd[ i ] != 0 )
-     BKB->unfix_x( i ); 
-   }
-
    // Change data
    std::vector< bool > new_x( v_data.begin() , v_data.end() ); 
    BKB->fix_x( new_x.begin() , Subset( v_nms ) , issueMod , issueAMod );
@@ -2023,13 +2011,29 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eUnfixX: {
-   
+
+   // if some of the variables are not fixed, throw an exception. This is
+   // needed to provide an undo change 
+   for( Index i : v_nms ) {
+    if( ! BKB->is_fixed( i ) )
+     throw( std::invalid_argument( "variable " + std::to_string( i ) + 
+                                   "is not fixed" ) ); 
+   }
+
    Change * undoChg = nullptr;
 
-   // la undo?
+   if( doUndo ) {
+    std::vector< double > old_data( v_nms.size() );
+    BKB->get_x( old_data.begin() , Subset( v_nms ) );
+    undoChg = new BinaryKnapsackBlockSbstChange( eFixX , 
+                                                 std::move( old_data ) ,
+                                                 Subset( v_nms ) );
+   }
 
+
+   // Change data
    BKB->unfix_x( Subset( v_nms ) );
-   
+
    return( undoChg );
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
