@@ -66,7 +66,7 @@ void DPBinaryKnapsackSolver::set_Block( Block * block ) {
  Solver::set_Block( block );  // attach to the new Block
 
  load();                      // load Binary Knapsack instance
-}
+ }
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
@@ -84,7 +84,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  if( start_item == Inf< int >() ) {   // INF means everything altready done
   unlock();                           // unlock the mutex and
   return( kOK );                      // return
- }
+  }
  
  // apply preprocessing and compute residual capacity C and residual profit P
  auto [ C , P ] = preprocessing();           
@@ -94,7 +94,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
   obj = - Inf< double >();
   unlock();
   return( kInfeasible );
- } 
+  } 
 
  dynamic_programming( std::floor( C ) );    // solve the integer knapsack
  
@@ -112,7 +112,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  
  return( kOK );
 
-}  // end( DPBinaryKnapsackSolver::compute() )
+ }  // end( DPBinaryKnapsackSolver::compute() )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// perform the preprocessing and return residual Capacity and Profit
@@ -134,7 +134,7 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
    v_x[ i ] = 0;
    skip[ i ] = true;
    continue;
-  }
+   }
 
   // if the variable is fixed to 1 by the user
   if( v_fxd[ i ] == 2 ) {
@@ -143,14 +143,14 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
    C -= v_W[ i ];         // update Capacity
    P += v_P[ i ];         // update total Profit
    continue;
-  }
+   }
 
   // if the item has positive weight and negative profit
   if( v_W[ i ] >= 0 && v_P[ i ] <= 0 ) {
    v_x[ i ] = 0;
    skip[ i ] = true;
    continue; 
-  }
+   }
 
   // if the item has negative weight and positive profit
   if( v_W[ i ] <= 0 && v_P[ i ] >= 0 ) {
@@ -159,15 +159,15 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
    C -= v_W[ i ];         // update Capacity
    P += v_P[ i ];         // update total Profit
    continue;
-  }
+   }
    
   // if the item has both negative weight and profit
   if( v_W[ i ] < 0 && v_P[ i ] < 0 ) {
    C -= v_W[ i ];         // update Capacity
    P += v_P[ i ];         // update total Profit
-  }
+   }
 
- }
+  }
 
  // check if some item has a weight > C (check only for integer items)
  for( Index i = 0 ; i < f_N ; ++i ) {
@@ -178,9 +178,9 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
   if( v_W[ i ] > C ) {
    skip[ i ] = true;
    v_x[ i ] = 0;
-  }
+   }
  
- }
+  }
 
  // if the problem is not empty
  if( C >= 0 ) {
@@ -191,11 +191,11 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
   // resize lab[ start_item ] according to the new iC
   if( iC + 1 < lab[ start_item ].size() )
    lab[ start_item ].resize( iC + 1 );
- }
+  }
 
  return { C , P };
 
-} // end( preprocessing() )
+ } // end( preprocessing() )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming
@@ -219,7 +219,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   if( p < 0 && w < 0 ) {        // if both are negative, change the signs
    p = -p;
    w = -w;
-  }                    
+   }                    
 
   // max size of next labels   
   Index maxnextlab = std::min( Index( currlab.size() + w ) , C + 1 );
@@ -242,7 +242,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
    if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc
     pred[ i + 1 ][ j ] = false;                         
     nextlab[ j ] = currlab[ j ];
-   }
+    }
 
    if( j + w > C )                                // check capacity limit                               
     continue;                                    
@@ -250,18 +250,18 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
    if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
     pred[ i + 1 ][ j + w ] = true;             
     nextlab[ j + w ] = currlab[ j ] + p;
-   }
+    }
   
-  }
+   }
 
   std::swap( currlab , nextlab );
 
- }
+  }
 
  // always save last vector of labels (instead of copying just swap)
  std::swap( lab.back() , currlab );
 
-}
+ }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// Greedy algorithm
@@ -308,14 +308,14 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
    if( skip[ idxCont[ j ] ] ) {       // skip preprocessed variables
     tempLastIndex++;
     continue;
-   }
+    }
 
    double p = v_P[ idxCont[ j ] ];    // profit of the current item    
    int w = v_W[ idxCont[ j ] ];       // weight of the current item    
    if( p < 0 && w < 0 ) {             // if both are negative  
     p = -p;                           // change the signs                         
     w = -w;                         
-   }
+    }
  
    // if the item does not fit entirely in the knapsack
    if( w * boundX + contWeight > C ) {             
@@ -324,15 +324,15 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
     contProfit += ( C - contWeight ) / ( w ) * p ;
     contWeight = C;
     break;
-   }
+    }
    else {  
     // otherwise take the whole item and consider the following item
     contProfit += p * boundX;
     contWeight += w * boundX;
     boundX = 1;
     tempLastIndex++;
+    }
    }
-  }
 
   // check if it is the best solution and update obj 
   if( lastlab[ i ] + contProfit > obj ){
@@ -340,10 +340,10 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
    besth = i;
    lastVar = 1 - boundX;  
    lastIndex = tempLastIndex;
-  }
+   }
 
   C += 1;        // update residual capacity
- }
+  }
 
  // update the solution
  for( Index i = 0 ; i < idxCont.size() ; ++i ) {
@@ -365,9 +365,9 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
   if( v_W[ item ] < 0 && v_P[ item ] < 0 )               
    v_x[ item ] = 1 - v_x[ item ];
 
- }
+  }
 
-}
+ }
 
 /*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
@@ -404,19 +404,19 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
   if( pred[ i + 1 ][ h ] ) {
    v_x[ i ] = 1;
    h -= w;
-  }
+   }
   else
    v_x[ i ] = 0;
 
   if( v_W[ i ] < 0 && v_P[ i ] < 0 )               
    v_x[ i ] = 1 - v_x[ i ];
- }  
+  }  
  
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  
  BKB->set_x( v_x.begin() );  // write the solution in BinaryKnapsackBlock
 
-}  // end( DPBinaryKnapsackSolver::get_var_solution )
+ }  // end( DPBinaryKnapsackSolver::get_var_solution )
  
 /*--------------------------------------------------------------------------*/
 /*------------------- METHODS FOR HANDLING THE PARAMETERS ------------------*/
@@ -441,10 +441,10 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ) {
   start_item = 0;  
   
   return;
- }
+  }
 
  Solver::set_par( par , value );
-}
+ }
 
 /*--------------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
@@ -462,14 +462,14 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod & mod ) {
  if( const auto tmod = std::dynamic_pointer_cast< NBModification >( mod ) ) {
   load();                   
   v_mod.clear();
- }
+  }
  else
   v_mod.push_back( mod );
 
  // release lock
  f_mod_lock.clear( std::memory_order_release );  
 
-}  // end( add_Modification() )
+ }  // end( add_Modification() )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE METHODS ------------------------------*/
@@ -489,7 +489,7 @@ void DPBinaryKnapsackSolver::load( void ) {
   v_fxd.clear();
   skip.clear();
   return;
- }
+  }
 
  auto BKB = dynamic_cast< BinaryKnapsackBlock * >( f_Block );
  if( ! BKB )
@@ -543,7 +543,7 @@ void DPBinaryKnapsackSolver::load( void ) {
   else
    v_fxd[ i ] = 0;
 
- }
+  }
 
  if( ! owned )
   BKB->read_unlock();
@@ -568,7 +568,7 @@ void DPBinaryKnapsackSolver::load( void ) {
  // Initialize solution 
  v_x.resize( f_N );                          
 
-} // end( DPBinaryKnapsackSolver::load() )
+ } // end( DPBinaryKnapsackSolver::load() )
 
 /*--------------------------------------------------------------------------*/
 
@@ -618,7 +618,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
       
     mod = v_mod_tmp.erase( mod );
     break;
-   }
+    }
 
    // Change Objective Sense - - - - - - - - - - - - - - - - - - - - - - - -
    // Change the sign of all profits and restart from the first item
@@ -635,12 +635,12 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
     break;
 
     default: mod++;
+    }
    }
-  }
   else
    mod = v_mod_tmp.erase( mod );   // it is not a physical modification
  
- } // end( while() )
+  } // end( while() )
 
  for( auto mod : v_mod_tmp ) {
   
@@ -667,7 +667,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
        v_fxd[ i ] = 1;
       else if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) - 1 ) < 1e-6 )
        v_fxd[ i ] = 2; 
-     }
+      }
 
      start_item = std::min( start_item , tmod->rng().first );
      break;
@@ -708,7 +708,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
      for( Index i = tmod->rng().first ; i < tmod->rng().second ; i++ ) {
       bool ni = BKB->get_Integrality( i );  // new integrality 
       v_I[ i ] = ni;                       // update
-     }
+      }
 
      start_item = 0;
      break;
@@ -737,7 +737,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
        v_fxd[ i ] = 1;
       else if( BKB->is_fixed( i ) && std::abs( BKB->get_x( i ) - 1 ) < 1e-6 )
        v_fxd[ i ] = 2; 
-     }
+      }
 
      start_item = std::min( start_item , tmod->nms()[ 0 ] );
      break;
@@ -793,8 +793,8 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
  for( Index i = 0 ; i < f_N ; ++i ) {
   if( !v_I[ i ] ) {
    idxCont.push_back( i );
-  } 
- }
+   } 
+  }
 
  // compute start_item- - - - - - - - - - - - - - - - - - - - - - - - - - - - 
  // Each Modification updated start_item with the first modified item. At this
@@ -813,10 +813,10 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
   if( idxCont.size() == f_N ) {
    start_item = f_N;
    lab.back() = { 0 };
+   }
   }
- }
 
-}  // end( process_outstanding_Modification() )
+ }  // end( process_outstanding_Modification() )
 
 /*--------------------------------------------------------------------------*/
 /*----------------- End File DPBinaryKnapsackSolver.cpp --------------------*/

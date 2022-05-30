@@ -389,7 +389,7 @@ class BinaryKnapsackBlock : public Block {
 
   for( Index i = rng.first; i < rng.second ; ++i )
    *(weights++) = v_W[ i ];
-}
+  }
 
 /*--------------------------------------------------------------------------*/
  /// given a Subset of items nms return the vector of their weigths 
@@ -400,8 +400,8 @@ class BinaryKnapsackBlock : public Block {
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) ); 
    *(weights++) = v_W[ i ];
+   }
   }
- }
 
 /*--------------------------------------------------------------------------*/
  /// get the vector of Weights
@@ -428,7 +428,7 @@ class BinaryKnapsackBlock : public Block {
 
   for( Index i = rng.first; i < rng.second ; ++i )
    *(integrality++) = v_I[ i ];
- }
+  }
 
 /*--------------------------------------------------------------------------*/
  /// given a Subset of items nms return the vector of their integrality 
@@ -441,8 +441,8 @@ class BinaryKnapsackBlock : public Block {
     throw( std::invalid_argument( "Invalid index in nms" ) );
 
    *(integrality++) = v_I[ i ];
+   }
   }
- }
 
 /*--------------------------------------------------------------------------*/
  /// get the vector of Integrality 
@@ -468,7 +468,7 @@ class BinaryKnapsackBlock : public Block {
 
   for( Index i = rng.first; i < rng.second ; ++i )
    *(profits++) = v_P[ i ];
- }
+  }
 
 /*--------------------------------------------------------------------------*/
  /// given a Subset of items nms return the vector of their profits
@@ -481,8 +481,8 @@ class BinaryKnapsackBlock : public Block {
     throw( std::invalid_argument( "Invalid index in nms" ) );
 
    *(profits++) = v_P[ i ];
+   }
   }
- }
 
 /*--------------------------------------------------------------------------*/
  /// get the vector of Profits
@@ -817,7 +817,7 @@ class BinaryKnapsackBlock : public Block {
 
  void chg_weights( c_dblVec_it NWeight , Range rng = INFRange , 
                    ModParam issueMod = eNoBlck ,
-		               ModParam issueAMod = eNoBlck ); 
+                   ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
@@ -993,7 +993,7 @@ class BinaryKnapsackBlockMod : public Modification {
  /// constructor: takes the BinaryKnapsackBlock and the type
 
  BinaryKnapsackBlockMod( BinaryKnapsackBlock * const fblock , int type )
-  : f_Block( fblock ) , f_type( type ) {}
+                       : f_Block( fblock ) , f_type( type ) {}
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1236,7 +1236,7 @@ public:
   eUnfixX         ,   ///< unfix a variable x
   eChgSense       ,   ///< change the sense of the objective
   eEmpty
- };
+  };
 
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
  
@@ -1265,9 +1265,9 @@ public:
   else {
    v_data.resize( ni.getSize() );
    data.getVar( v_data.data() ); 
-  } 
+   } 
 
- }
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1281,7 +1281,7 @@ public:
   netCDF::NcDim ni = group.addDim( "dim" , v_data.size() );
   ( group.addVar( "Data" , 
                   netCDF::NcDouble() , ni ) ).putVar( v_data.data() );
- }
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1298,7 +1298,7 @@ public:
    f_type = type;         // update type
    v_data = {};           // discard data (if provided)
    return;
-  }
+   }
 
   if( ( type == eChgSense ) || ( type == eChgCapacity ) ) {
    
@@ -1309,10 +1309,11 @@ public:
    // update
    f_type = type;
    v_data = data;
-  }
+   }
   else
    throw( std::invalid_argument( "type not supported" ) );  
- }
+  
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to the type of change
@@ -1337,12 +1338,14 @@ public:
    case( eUnfixX ):  output << "unfix x "; break;
    case( eChgSense ):  output << "change objective sense "; break;
    case( eEmpty ): output << "Empty Change "; break;
-  }
+   }
+  
   output << std::endl << "New data: ";
   for( auto x : v_data )
    output << x << " ";
   output << std::endl;
- }
+  
+  }
 
 /*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
 
@@ -1392,7 +1395,7 @@ public:
   BinaryKnapsackBlockChange::serialize( group );
   netCDF::NcDim ni = group.addDim( "RangeDim" , 2 );
   ( group.addVar( "Range" , netCDF::NcInt() , ni ) ).putVar( &f_rng );
- }
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1404,7 +1407,7 @@ public:
    v_data = {};         // discard data (if provided)
    f_rng = INFRange;    // discard range (if provided)
    return;
-  }
+   }
   
   if( ( type == eChgWeight ) || ( type == eChgProfit ) || 
       ( type == eChgIntegrality ) || ( type == eFixX ) || 
@@ -1418,11 +1421,11 @@ public:
    f_type = type;
    v_data = data;
    f_rng = rng;
-  }
+   }
   else
    throw( std::invalid_argument( "type not supported" ) );
 
- }
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  Change * apply( Block * block , 
@@ -1446,7 +1449,7 @@ public:
   BinaryKnapsackBlockChange::print( output );
   output << "Range: ";
   output << "[ " << f_rng.first << ", " << f_rng.second << " )" << std::endl;
- }
+  }
 
 /*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
 
@@ -1484,7 +1487,7 @@ public:
   netCDF::NcDim ni = group.getDim( "SubsetDim" );
   netCDF::NcVar nms = group.getVar( "Subset" );
   nms.getVar( &v_nms ); 
- }
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1492,7 +1495,7 @@ public:
   BinaryKnapsackBlockChange::serialize( group );
   netCDF::NcDim ni = group.addDim( "SubsetDim" , v_nms.size() );
   ( group.addVar( "Subset" , netCDF::NcInt() , ni ) ).putVar( &v_nms );
- }
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1504,7 +1507,7 @@ public:
    v_data = {};         // discard data (if provided)
    v_nms = {};          // discard nms (if provided)
    return;
-  }
+   }
   
   if( ( type == eChgWeight ) || ( type == eChgProfit ) || 
       ( type == eChgIntegrality ) || ( type == eFixX ) || 
@@ -1518,11 +1521,11 @@ public:
    f_type = type;
    v_data = data;
    v_nms = std::move( nms );
-  }
+   }
   else
    throw( std::invalid_argument( "type not supported" ) );
 
- }
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1550,7 +1553,7 @@ public:
   for( auto i : v_nms )
    output << i << " ";
   output << std::endl;
- }
+  }
 
 /*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
 

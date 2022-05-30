@@ -91,7 +91,7 @@ public:
  enum dbl_par_type_DPBKSlv {
   dblReopt = dblLastAlgPar,             ///< reoptimization parameter
   dblLastDPBKSlvPar
- };
+  };
 
  /// tolerance for integrality property of weights- - - - - - - - - - - - - -
 
@@ -396,7 +396,7 @@ void set_par( idx_type par , double value ) override;
 
 idx_type get_num_dbl_par( void ) const override {
  return( idx_type( dblLastDPBKSlvPar ) );
-}
+ }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
  
@@ -406,7 +406,7 @@ double get_dbl_par( const idx_type par ) const override {
   return( reopt );
 
  return( Solver::get_dflt_dbl_par( par ) );
-}
+ }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
