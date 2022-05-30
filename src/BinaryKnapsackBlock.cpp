@@ -611,16 +611,32 @@ void BinaryKnapsackBlock::add_Modification( sp_Mod mod , ChnlName chnl )
 
 void BinaryKnapsackBlock::print( std::ostream & output , char vlvl ) const
 { 
- output << "BinaryKnapsackBlock\n";
+ output << "BinaryKnapsackBlock" << std::endl;
  output << "Number of items: " << get_NItems() << std::endl; 
  output << "Capacity: " << f_C << std::endl;
+ output << "Sense of the objective: ";
+ if( f_sense )
+  output << "Max" << std::endl;
+ else
+  output << "Min" << std::endl;
 
  if( vlvl != 'C' )
   return;
 
- output << "\tWeights\tProfits\n";
- for( Index i = 0 ; i < get_NItems() ; i++ )
-  output << "Item " << i << "\t" << v_W[ i ] << "\t" << v_P[ i ] << std::endl;
+ output << "\tWeights\tProfits\tBinary\tFixed\tFixed to\n";
+ for( Index i = 0 ; i < get_NItems() ; ++i ) {
+  output << "Item " << i << "\t" << v_W[ i ] << "\t" << v_P[ i ] << "\t";
+  output << v_I[ i ] << "\t";
+  if( v_fxd[ i ] == 0 )
+   output << "0" << "\t" << "-" << std::endl;
+  else {
+   if( v_fxd[ i ] == 1 )
+    output << "1" << "\t" << "0" << std::endl;
+   else
+    output << "1" << "\t" << "1" << std::endl;  
+  } 
+ }
+
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1796,6 +1812,10 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgWeight: {
 
+   // check data size and range 
+   if( v_data.size() != f_rng.second - f_rng.first )
+    throw( std::invalid_argument( "v_data.size() != range size" ) );
+
    Change * undoChg = nullptr;
 
    if( doUndo ) {
@@ -1813,7 +1833,11 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgProfit: {
-   
+  
+   // check data size and range 
+   if( v_data.size() != f_rng.second - f_rng.first )
+    throw( std::invalid_argument( "v_data.size() != range size" ) );
+
    Change * undoChg = nullptr;
 
    if( doUndo ) {
@@ -1831,7 +1855,11 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgIntegrality: {
-   
+  
+   // check data size and range 
+   if( v_data.size() != f_rng.second - f_rng.first )
+    throw( std::invalid_argument( "v_data.size() != range size" ) );
+
    Change * undoChg = nullptr;
 
    if( doUndo ) {
@@ -1851,6 +1879,10 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eFixX: {
+
+   // check data size and range 
+   if( v_data.size() != f_rng.second - f_rng.first )
+    throw( std::invalid_argument( "v_data.size() != range size" ) );
 
    // if some of the variables are already fixed, throw an exception. This is
    // needed to provide an undo change 
@@ -1879,7 +1911,7 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
    for( Index i = f_rng.first ; i < f_rng.second ; ++i ) {
     if( ! BKB->is_fixed( i ) )
      throw( std::invalid_argument( "variable " + std::to_string( i ) + 
-                                   "is not fixed" ) ); 
+                                   " is not fixed" ) ); 
    }
 
    Change * undoChg = nullptr;
@@ -1924,16 +1956,20 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgWeight: {
 
+   // check data size and subset size 
+   if( v_data.size() != v_nms.size() )
+    throw( std::invalid_argument( "v_data.size() != v_nms.size()" ) );
+
    Change * undoChg = nullptr;
 
    if( doUndo ) {
     std::vector< double > old_data( v_nms.size() );
     BKB->get_Weights( old_data.begin() , Subset( v_nms ) );
-    doUndo = new BinaryKnapsackBlockSbstChange( eChgWeight , 
-                                                std::move( old_data ) ,
-                                                Subset( v_nms ) );
+    undoChg = new BinaryKnapsackBlockSbstChange( eChgWeight , 
+                                                 std::move( old_data ) , 
+                                                 Subset( v_nms ) );
    }
-
+   
    // Change data
    BKB->chg_weights( v_data.begin() , 
                      Subset( v_nms ) , 
@@ -1945,14 +1981,18 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgProfit: {
 
+   // check data size and subset size 
+   if( v_data.size() != v_nms.size() )
+    throw( std::invalid_argument( "v_data.size() != v_nms.size()" ) );
+
    Change * undoChg = nullptr;
 
    if( doUndo ) {
     std::vector< double > old_data( v_nms.size() );
     BKB->get_Profits( old_data.begin() , Subset( v_nms ) );
-    doUndo = new BinaryKnapsackBlockSbstChange( eChgProfit , 
-                                                std::move( old_data ) ,
-                                                Subset( v_nms ) );
+    undoChg = new BinaryKnapsackBlockSbstChange( eChgProfit , 
+                                                 std::move( old_data ) ,
+                                                 Subset( v_nms ) );
    }
 
    // Change data
@@ -1965,6 +2005,10 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eChgIntegrality: {
+
+   // check data size and subset size 
+   if( v_data.size() != v_nms.size() )
+    throw( std::invalid_argument( "v_data.size() != v_nms.size()" ) );
    
    Change * undoChg = nullptr;
 
@@ -1972,9 +2016,9 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
     std::vector< bool > old_int( v_nms.size() ); 
     BKB->get_Integrality( old_int.begin() , Subset( v_nms ) );
     std::vector< double > old_data( old_int.begin() , old_int.end() );
-    doUndo = new BinaryKnapsackBlockSbstChange( eChgWeight , 
-                                                std::move( old_data ) ,
-                                                Subset( v_nms ) );
+    undoChg = new BinaryKnapsackBlockSbstChange( eChgIntegrality , 
+                                                 std::move( old_data ) ,
+                                                 Subset( v_nms ) );
    }
 
    // Change data (cast to bool first)
@@ -1988,6 +2032,10 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
   }
   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   case eFixX: {
+
+   // check data size and subset size 
+   if( v_data.size() != v_nms.size() )
+    throw( std::invalid_argument( "v_data.size() != v_nms.size()" ) );
 
    // if some of the variables are already fixed, throw an exception. This is
    // needed to provide an undo change 
@@ -2017,7 +2065,7 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
    for( Index i : v_nms ) {
     if( ! BKB->is_fixed( i ) )
      throw( std::invalid_argument( "variable " + std::to_string( i ) + 
-                                   "is not fixed" ) ); 
+                                   " is not fixed" ) ); 
    }
 
    Change * undoChg = nullptr;

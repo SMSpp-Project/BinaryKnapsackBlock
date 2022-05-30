@@ -1218,6 +1218,7 @@ class BinaryKnapsackSolution : public Solution {
 /*--------------------------------------------------------------------------*/
 /*------------------- CLASS BinaryKnapsackBlockChange ----------------------*/
 /*--------------------------------------------------------------------------*/
+/// derived class from Change for a BinaryKnapsackBlock
 
 class BinaryKnapsackBlockChange : public Change {
 
@@ -1241,11 +1242,7 @@ public:
  
  BinaryKnapsackBlockChange( int type = eEmpty ,
                             std::vector< double > && data = {} ) : 
-                            f_type( type ) , v_data( data ) {
-
-  if( ( type != eEmpty ) && ( ! data.size() ) )
-   throw( std::invalid_argument( "data not provided" ) );
- }    
+                            f_type( type ) , v_data( data ) {}    
 
  ~BinaryKnapsackBlockChange() = default;            
 
@@ -1296,30 +1293,25 @@ public:
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  void load( int type , const std::vector< double > & data = {} ) {
-  
-  switch( type ) {
-   case eEmpty: {
-    f_type = type;    // update type
-    v_data = {};      // ignore data (if any)
-    break;
-   }
-   case eChgSense: {
-    if( ! data.size() )
-     throw( std::invalid_argument( "New sense not provided" ) );
-    f_type = type;
-    v_data = data; 
-    break;
-   }
-   case eChgCapacity: {
-    if( ! data.size() )
-     throw( std::invalid_argument( "New capacity not provided" ) );
-    f_type = type;
-    v_data = data; 
-    break;
-   }
-   default:
-    throw( std::invalid_argument( "type not supported" ) ); 
+
+  if( type == eEmpty ) {
+   f_type = type;         // update type
+   v_data = {};           // discard data (if provided)
+   return;
   }
+
+  if( ( type == eChgSense ) || ( type == eChgCapacity ) ) {
+   
+   // check that data contains at least 1 entry (new sense or new capacity)
+   if( ! data.size() )
+    throw( std::invalid_argument( "Data not provided" ) );
+   
+   // update
+   f_type = type;
+   v_data = data;
+  }
+  else
+   throw( std::invalid_argument( "type not supported" ) );  
  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -1346,6 +1338,10 @@ public:
    case( eChgSense ):  output << "change objective sense "; break;
    case( eEmpty ): output << "Empty Change "; break;
   }
+  output << std::endl << "New data: ";
+  for( auto x : v_data )
+   output << x << " ";
+  output << std::endl;
  }
 
 /*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
@@ -1376,11 +1372,7 @@ public:
                                 std::vector< double > && data = {} ,
                                 Block::Range rng = INFRange ) : 
                                 BinaryKnapsackBlockChange( type , 
-                                std::move( data ) ) , f_rng( rng ) {
-
-  if( ( type != eEmpty ) && ( data.size() != rng.second - rng.first ) )
-   throw( std::invalid_argument( "data.size() != range size" ) );
- }  
+                                std::move( data ) ) , f_rng( rng ) {}  
 
  ~BinaryKnapsackBlockRngdChange() = default;            
 
@@ -1452,6 +1444,7 @@ public:
 
  void print( std::ostream &output ) const override {
   BinaryKnapsackBlockChange::print( output );
+  output << "Range: ";
   output << "[ " << f_rng.first << ", " << f_rng.second << " )" << std::endl;
  }
 
@@ -1480,11 +1473,7 @@ public:
                                 Block::Subset && nms = {} ) : 
                                 BinaryKnapsackBlockChange( type , 
                                 std::move( data ) ) , 
-                                v_nms( std::move( nms ) ) {
-
-  if( ( type != eEmpty ) && ( data.size() != nms.size() ) )
-   throw( std::invalid_argument( "data.size() != nms.size()" ) );
- }
+                                v_nms( std::move( nms ) ) {}
 
  ~BinaryKnapsackBlockSbstChange() = default;            
 
@@ -1521,7 +1510,7 @@ public:
       ( type == eChgIntegrality ) || ( type == eFixX ) || 
       ( type == eUnfixX ) ) {
    
-   // check data size and range 
+   // check data size and subset size 
    if( data.size() != nms.size() )
     throw( std::invalid_argument( "data.size() != nms.size()" ) );
 
@@ -1556,7 +1545,11 @@ public:
 
  void print( std::ostream &output ) const override {
   BinaryKnapsackBlockChange::print( output );
+  output << "Subset: ";
   output << "(# " << v_nms.size() << ")" << std::endl;
+  for( auto i : v_nms )
+   output << i << " ";
+  output << std::endl;
  }
 
 /*--------------------- PROTECTED FIELDS OF THE CLASS ----------------------*/
