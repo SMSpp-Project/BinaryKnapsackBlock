@@ -31,8 +31,6 @@
 
 #include "BinaryKnapsackBlock.h"
 
-#include "RelaxationSolver.h"
-
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -54,7 +52,7 @@ namespace SMSpp_di_unipi_it
 /**   */                       
 
 
-class GreedyRelaxationSolver : public Solver , public RelaxationSolver {  
+class GreedyRelaxationSolver : public Solver {  
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
