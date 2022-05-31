@@ -4,8 +4,8 @@
 /** @file
  * Header file for the *concrete* class GreedyRelaxationSolver, which
  * implements the RelaxationSolver concept [see RelaxationSolver.h] and the
- * Solver concept [see Solver.h] for solving a relaxation of a Knapsack 
- * problem represented by a BinaryKnapsackBlock.
+ * Solver concept [see Solver.h] for solving the continuous relaxation of a  
+ * Knapsack problem represented by a BinaryKnapsackBlock.
  *
  * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
