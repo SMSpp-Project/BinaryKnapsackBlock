@@ -90,6 +90,16 @@ GreedyRelaxationSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
 ~GreedyRelaxationSolver() override = default;
 
 /** @} ---------------------------------------------------------------------*/
+/*-------------------------- OTHER INITIALIZATIONS -------------------------*/
+/*--------------------------------------------------------------------------*/
+/** @name Other initializations @{ */
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// set the (pointer to the) Block that the Solver has to solve
+
+void set_Block( Block * block ) override;
+
+/** @} ---------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
 /** @name Solving a relaxation of the Binary Knapsack encoded by the current 
@@ -109,7 +119,7 @@ int compute( bool changedvars = true ) override;
 /*--------------------------------------------------------------------------*/
 /// write the current solution in the variables of the BinaryKnapsackBlock
 
-void get_var_solution( Configuration * solc = nullptr ) override {}
+void get_var_solution( Configuration * solc = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/
 /// return the value of the (current) solution
@@ -128,7 +138,7 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  * to NBModification, i.e. the Binary Knapsack instance must be reloaded and
  * the list of modification must be cleared. */
  
-//virtual void add_Modification( sp_Mod &mod ) override;
+virtual void add_Modification( sp_Mod &mod ) override;
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
@@ -168,7 +178,7 @@ private:
 /*--------------------------------------------------------------------------*/
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// load the Binary Knapsack instance and perform the preprocessing    
+ /// load the Binary Knapsack instance 
 
  void load();
 
