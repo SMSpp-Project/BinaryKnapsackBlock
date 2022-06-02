@@ -138,7 +138,15 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  * to NBModification, i.e. the Binary Knapsack instance must be reloaded and
  * the list of modification must be cleared. */
  
-virtual void add_Modification( sp_Mod &mod ) override;
+void add_Modification( sp_Mod &mod ) override;
+
+/*--------------------------------------------------------------------------*/
+
+std::vector< Change * > branch() override {}
+
+/*--------------------------------------------------------------------------*/
+
+void apply( Change * chg ) override {}
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
