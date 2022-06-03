@@ -150,8 +150,8 @@ int GreedyRelaxationSolver::compute( bool changedvars ) {
  double tot_W = 0;              // initiliaze total weight
  double tot_P = P;              // initialize total profit
 
- Index lastIdx = idx.back();    // index of the critical item
- double lastVar = 1;            // variable value of the critical item
+ f_ci = idx.back();             // index of the critical item
+ f_ciVal = 1;                   // variable value of the critical item
  
  for( Index i : idx ) {
 
@@ -167,10 +167,10 @@ int GreedyRelaxationSolver::compute( bool changedvars ) {
   
   if( tot_W + w > C ) {
    // take only a fraction
-   lastIdx = i;
-   lastVar = ( C - tot_W ) / w; 
+   f_ci = i;
+   f_ciVal = ( C - tot_W ) / w; 
    tot_W = C;
-   tot_P += lastVar * p;
+   tot_P += f_ciVal * p;
    break; 
    }
 
@@ -186,8 +186,8 @@ int GreedyRelaxationSolver::compute( bool changedvars ) {
   if( skip[ i ] )
    continue;
   
-  if( i == lastIdx ) {
-   v_x[ i ] = lastVar;
+  if( i == f_ci ) {
+   v_x[ i ] = f_ciVal;
    xval = 0;
    }
   else
@@ -209,6 +209,24 @@ int GreedyRelaxationSolver::compute( bool changedvars ) {
  return( kOK );
 
  }  // end( GreedyRelaxationSolver::compute() )
+
+/*--------------------------------------------------------------------------*/
+
+std::vector< Change * > GreedyRelaxationSolver::branch() {
+
+ // branch on the critical item
+ std::vector< Change * > branches( 2 );
+ 
+ branches[ 0 ] = new BinaryKnapsackBlockRngdChange( 
+                     BinaryKnapsackBlockChange::eFixX , { 0 } , 
+                     std::make_pair( f_ci , f_ci + 1 ) );
+
+ branches[ 1 ] = new BinaryKnapsackBlockRngdChange( 
+                     BinaryKnapsackBlockChange::eFixX , { 1 } , 
+                     std::make_pair( f_ci , f_ci + 1 ) );
+
+ return branches;
+}
 
 /*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/

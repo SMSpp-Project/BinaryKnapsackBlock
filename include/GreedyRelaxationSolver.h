@@ -82,7 +82,8 @@ public:
  /// constructor
 
 GreedyRelaxationSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
-                           obj( -Inf< double >() ) {} 
+                           f_ci( 0 ) , f_ciVal( 0 ) , obj( -Inf< double >() ) 
+                           {} 
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -128,6 +129,11 @@ void get_var_solution( Configuration * solc = nullptr ) override;
 
 OFValue get_var_value() override { return f_sense ? obj : - obj; }
 
+/*--------------------------------------------------------------------------*/
+/// return true if the obtained solution is integer
+
+bool is_solved() override { return( ( f_ciVal == 0 ) || ( f_ciVal == 1 ) ); }
+
 /** @} ---------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
@@ -142,7 +148,7 @@ void add_Modification( sp_Mod &mod ) override;
 
 /*--------------------------------------------------------------------------*/
 
-std::vector< Change * > branch() override {}
+std::vector< Change * > branch() override;
 
 /*--------------------------------------------------------------------------*/
 
@@ -167,7 +173,9 @@ protected:
                                        * 1 = fixed to 0 , 
                                        * 2 = fixed to 1                     */
  bool f_sense;                        ///< the sense of the objective
-
+ 
+ Index f_ci;                          ///< Index of the critical item
+ double f_ciVal;                      ///< Variable value of the critical  
  double obj;                          ///< the value of the objective
  std::vector< double > v_x;           ///< vector of variables
 
