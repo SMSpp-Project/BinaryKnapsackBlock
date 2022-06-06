@@ -129,11 +129,6 @@ void get_var_solution( Configuration * solc = nullptr ) override;
 
 OFValue get_var_value() override { return f_sense ? obj : - obj; }
 
-/*--------------------------------------------------------------------------*/
-/// return true if the obtained solution is integer
-
-bool is_solved() override { return( ( f_ciVal == 0 ) || ( f_ciVal == 1 ) ); }
-
 /** @} ---------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/

@@ -5,7 +5,7 @@
  * Implementation of the *concrete* class GreedyRelaxationSolver, which
  * implements the RelaxationSolver concept [see RelaxationSolver.h] and the
  * Solver concept [see Solver.h] for solving the continuous relaxation of a
- * Knapsack problem as represented by  a BinaryKnapsackBlock.
+ * Knapsack problem as represented by a BinaryKnapsackBlock.
  *
  * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
@@ -47,7 +47,7 @@ using c_Subset = Block::c_Subset;
 /*----------------------------- STATIC MEMBERS -----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-// register GreedyRelaxationkSolver to the factory
+// register GreedyRelaxationSolver to the factory
 
 SMSpp_insert_in_factory_cpp_1( GreedyRelaxationSolver );
 
@@ -78,7 +78,7 @@ int GreedyRelaxationSolver::compute( bool changedvars ) {
  // Process all the pending modifications 
  process_outstanding_Modification();
 
- // Initialize objective and resize solution
+ // Initialize objective and solution
  obj = - Inf< double >(); 
  v_x.assign( f_N , 0 );
 
