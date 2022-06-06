@@ -118,6 +118,30 @@ int compute( bool changedvars = true ) override;
  *  @{ */
 
 /*--------------------------------------------------------------------------*/
+ /// tells whether a true solution (a solution of the true original problem
+ /// and not of the relaxed one solved by RelaxationSolver) is available
+ /** Called after compute() this method has to return true if a true solution 
+  * of the original problem (not the relaxed one solved by RelaxationSolver)
+  * is available to be read with get_true_var_solution(). 
+  *
+  * Once "the first" solution (if ever) has been read, new ones may be
+  * produced, if the Solver allows it, by means of new_true_var_solution().*/
+
+// [[nodiscard]] ??
+
+bool has_true_var_solution( void ) override;
+
+/*--------------------------------------------------------------------------*/
+/// write the current true solution in the variables of the Block
+
+void get_true_var_solution( Configuration * solc = nullptr ) override {}
+
+/*--------------------------------------------------------------------------*/
+/// write the current true solution in the variables of the Block
+
+bool new_true_var_solution( void ) override { return false; }
+
+/*--------------------------------------------------------------------------*/
 /// write the current solution in the variables of the BinaryKnapsackBlock
 
 void get_var_solution( Configuration * solc = nullptr ) override;

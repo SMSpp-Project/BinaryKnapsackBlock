@@ -232,6 +232,10 @@ std::vector< Change * > GreedyRelaxationSolver::branch() {
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
 
+bool GreedyRelaxationSolver::has_true_var_solution( void ) { return false; }
+
+/*--------------------------------------------------------------------------*/
+
 void GreedyRelaxationSolver::get_var_solution( Configuration * solc ) {
  
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block ); 
