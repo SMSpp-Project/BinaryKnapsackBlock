@@ -110,7 +110,7 @@ public:
 
 DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
                            besth( 0 ) , obj( - Inf< double >() ) , 
-                           start_item( 0 ) , reopt( 1 ) , step( 1 ) {}
+                           start_item( 0 ) , reopt( 0 ) , step( 1 ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
