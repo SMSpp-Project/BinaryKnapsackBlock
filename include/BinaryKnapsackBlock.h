@@ -1374,10 +1374,9 @@ public:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- Change * apply( Block * block , 
-                 bool doUndo = false , 
-                 ModParam issueMod = eNoBlck , 
-                 ModParam issueAMod = eNoBlck ) override;
+ Change * apply( Block * block , bool doUndo = false , 
+                                 ModParam issueMod = eNoBlck , 
+                                 ModParam issueAMod = eNoBlck ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -1517,10 +1516,9 @@ public:
   }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- Change * apply( Block * block , 
-                 bool doUndo = false , 
-                 ModParam issueMod = eNoBlck , 
-                 ModParam issueAMod = eNoBlck ) override;
+ Change * apply( Block * block , bool doUndo = false , 
+                                 ModParam issueMod = eNoBlck , 
+                                 ModParam issueAMod = eNoBlck ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to f_rng
@@ -1618,10 +1616,9 @@ public:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- Change * apply( Block * block , 
-                 bool doUndo = false , 
-                 ModParam issueMod = eNoBlck , 
-                 ModParam issueAMod = eNoBlck ) override;
+ Change * apply( Block * block , bool doUndo = false , 
+                                 ModParam issueMod = eNoBlck , 
+                                 ModParam issueAMod = eNoBlck ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to f_nms

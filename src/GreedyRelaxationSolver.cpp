@@ -199,9 +199,17 @@ int GreedyRelaxationSolver::compute( bool changedvars ) {
  }
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
+/*
+ std::cout << "Soluzione\n";
+ for( Index i = 0 ; i < f_N ; ++i ) {
+  std::cout << v_x[ i ];
+ }
+ std::cout << std::endl << "critical item " << f_ci << " critical value " << f_ciVal << std::endl; 
+*/
  obj = tot_P;               // update objective value
  
+ //std::cout << "Obj " << obj << " true lb: " << get_true_lb() << std::endl;
+
  Return_OK:
  
  unlock();                  // unlock the mutex  
@@ -217,16 +225,35 @@ std::vector< Change * > GreedyRelaxationSolver::branch() {
  // branch on the critical item
  std::vector< Change * > branches( 2 );
  
+ std::vector< double > zero = { 0 };
+ std::vector< double > one = { 1 };
+ 
  branches[ 0 ] = new BinaryKnapsackBlockRngdChange( 
-                     BinaryKnapsackBlockChange::eFixX , { 0 } , 
-                     std::make_pair( f_ci , f_ci + 1 ) );
+                                   BinaryKnapsackBlockChange::eFixX , 
+                                   std::move( zero ) , 
+                                   std::make_pair( f_ci , f_ci + 1 ) );
 
  branches[ 1 ] = new BinaryKnapsackBlockRngdChange( 
-                     BinaryKnapsackBlockChange::eFixX , { 1 } , 
-                     std::make_pair( f_ci , f_ci + 1 ) );
+                                   BinaryKnapsackBlockChange::eFixX , 
+                                   std::move( one ) , 
+                                   std::make_pair( f_ci , f_ci + 1 ) );
 
  return branches;
 }
+
+/*--------------------------------------------------------------------------*/
+
+Change * GreedyRelaxationSolver::apply( Change * chg , bool doUndo ) 
+{
+ /*
+ auto CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
+
+ if( ! CHG )
+  throw(std::invalid_argument("Change must be a BinaryKnapsackBlockChange"));*/
+ 
+ return chg->apply( f_Block , doUndo );
+
+ }
 
 /*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/

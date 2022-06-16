@@ -122,7 +122,19 @@ int compute( bool changedvars = true ) override;
  /** TODO */
 
  OFValue get_true_lb( void ) override {
-  return( -Inf< OFValue >() );
+  
+  // if it is a minimization problem, the optimal value is a lower bound
+  // for the original problem  
+  if( ! f_sense )
+   return( - obj );
+  
+  // otherwise it is a maximization problem and the solution without the
+  // critical item is a feasible solution and it provides a lower bound for
+  // the original problem... if the critical item has negative weight?
+  if( f_ciVal == 1 )
+   return( obj );
+    
+  return( obj - f_ciVal * v_P[ f_ci ] );
   }
 
 /*--------------------------------------------------------------------------*/
@@ -130,7 +142,19 @@ int compute( bool changedvars = true ) override;
  /** */
 
  OFValue get_true_ub( void ) override {
-  return( Inf< OFValue >() );
+  
+  // if it is a maximization problem, the optimal value is un upper bound
+  // for the original problem  
+  if( f_sense )
+   return( obj );
+  
+  // otherwise it is a minimization problem and the solution without the
+  // critical item is a feasible solution and it provides an upper bound for
+  // the original problem... if the critical item has negative weight?
+  if( f_ciVal == 1 )
+   return( - obj );
+    
+  return( - obj - f_ciVal * v_P[ f_ci ] );
   }
 
 /*--------------------------------------------------------------------------*/
@@ -142,8 +166,6 @@ int compute( bool changedvars = true ) override;
   *
   * Once "the first" solution (if ever) has been read, new ones may be
   * produced, if the Solver allows it, by means of new_true_var_solution().*/
-
-// [[nodiscard]] ??
 
 bool has_true_var_solution( void ) override;
 
@@ -187,7 +209,7 @@ std::vector< Change * > branch() override;
 
 /*--------------------------------------------------------------------------*/
 
-void apply( Change * chg ) override {}
+Change * apply( Change * , bool doUndo = false ) override;
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
