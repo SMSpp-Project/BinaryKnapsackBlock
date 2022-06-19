@@ -435,6 +435,11 @@ virtual void add_Modification( sp_Mod &mod ) override;
 
 protected:
 
+ /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// Dynamic Programming to solve the integer knapsack
+
+ virtual void dynamic_programming( Index C ); 
+
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PROTECTED FIELDS ----------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -468,7 +473,7 @@ protected:
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
  std::vector< std::vector< double > > lab;  ///< labels
- std::vector< std::vector< bool > > pred;   ///< predecessors
+ std::vector< std::vector< int > > pred;   ///< predecessors 
  Index start_item;                          ///< index of the starting item
 
  /* preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -499,11 +504,6 @@ private:
  /// perform the preprocessing 
 
  std::tuple< double , double > preprocessing();
-
- /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// Dynamic Programming to solve the integer knapsack
-
- void dynamic_programming( Index C ); 
 
  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Greedy algorithm to solve the continuous knapsack

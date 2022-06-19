@@ -52,6 +52,9 @@ BKBkOBJ := $(BKBkOBJ) $(SMS++OBJ)
 BKBkINC := $(BKBkINC) $(SMS++INC) 
 
 # external libreries for BKBlock
-BKBkLIB = $(SMS++LIB)
+# OPENMP
+OPENMPLIB = -lomp
+
+BKBkLIB = $(SMS++LIB) $(OPENMPLIB)
 
 ############################ End of makefile #################################

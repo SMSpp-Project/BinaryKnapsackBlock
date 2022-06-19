@@ -33,6 +33,10 @@
 #include "DPBinaryKnapsackSolver.h"
 
 /*--------------------------------------------------------------------------*/
+/*-------------------------------- MACROS ----------------------------------*/
+/*--------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------*/
 /*--------------------------- NAMESPACE AND USING --------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -225,42 +229,39 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   Index maxnextlab = std::min( Index( currlab.size() + w ) , C + 1 );
 
   // initialize next labels (with -INF) and allocate precedessors
-  nextlab.resize( maxnextlab );
+  nextlab.assign( maxnextlab , -Inf< double >() );
   pred[ i + 1 ].resize( maxnextlab ); 
- 
+  
+  // initialize the best label among ( i , j ) nodes with fixed i
+  double bestlab = -Inf< double >();
+
   // compute nextlab
-  for( int j = 0 ; j < nextlab.size() ; ++j ) {
+  for( Index j = 0 ; j < currlab.size() ; ++j ) {
 
-   nextlab[ j ] = -Inf< double >();       // initialize with -INF 
-
-   if( ( j < currlab.size() ) && ( j - w >= 0 ) ) {     // both arcs
-    if( currlab[ j ] > currlab[ j - w ] + p ) {         // horizontal
-     pred[ i + 1 ][ j ] = false;
-     nextlab[ j ] = currlab[ j ];
-     }
-    else {                                              // diagonal
-     pred[ i + 1 ][ j ] = true;
-     nextlab[ j ] = currlab[ j - w ] + p;
-     }
-    continue;   
-    }
-    
-   if( ( j - w >= 0 ) && ( currlab[ j - w ] != -Inf< double >() ) ) {
-    pred[ i + 1 ][ j ] = true;
-    nextlab[ j ] = currlab[ j - w ] + p; 
-    }
-
-   if( ( j < currlab.size() ) && ( currlab[ j ] != -Inf< double >() ) ) {
-    pred[ i + 1 ][ j ] = false;
+   if( currlab[ j ] <= bestlab )        // skip node with label = -inf or
+    continue;                           // with a worse label than bestlab
+   
+    bestlab = currlab[ j ];                       // update bestlab
+                              
+   if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc
+    pred[ i + 1 ][ j ] = false;                         
     nextlab[ j ] = currlab[ j ];
     }
 
+   if( j + w > C )                                // check capacity limit                               
+    continue;                                    
+
+   if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
+    pred[ i + 1 ][ j + w ] = true;             
+    nextlab[ j + w ] = currlab[ j ] + p;
+    }
+  
    }
 
-   std::swap( currlab , nextlab );
+  std::swap( currlab , nextlab );
 
   }
- 
+
  // always save last vector of labels (instead of copying just swap)
  std::swap( lab.back() , currlab );
 
