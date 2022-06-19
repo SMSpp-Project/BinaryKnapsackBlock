@@ -44,16 +44,20 @@ include $(SMS++SDR)lib/makefile-c
 # include the makefile requiring all external modules in input
 include $(BKBkSDR)/makefile
 
+# FastFlow
+FFINC = -I /Users/federicadipasquale/fastflow
+
+# OPENMP
+OPENMPLIB = -lomp
+
 # macroes to be exported- - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # append external -I directives to BKBkINC, BKBkOBJ and BKBkH as defined
 # by the makefile, thus the := assignment has to be used (use GNU make)
 BKBkOBJ := $(BKBkOBJ) $(SMS++OBJ)
-BKBkINC := $(BKBkINC) $(SMS++INC) 
+BKBkINC := $(BKBkINC) $(SMS++INC) $(FFINC)
 
 # external libreries for BKBlock
-# OPENMP
-OPENMPLIB = -lomp
 
 BKBkLIB = $(SMS++LIB) $(OPENMPLIB)
 

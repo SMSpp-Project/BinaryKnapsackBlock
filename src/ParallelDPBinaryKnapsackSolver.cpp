@@ -18,8 +18,6 @@
 
 #include "ParallelDPBinaryKnapsackSolver.h"
 
-#include <omp.h>
-
 /*--------------------------------------------------------------------------*/
 /*-------------------------------- MACROS ----------------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -46,10 +44,14 @@ SMSpp_insert_in_factory_cpp_1( ParallelDPBinaryKnapsackSolver );
 /*-------------- METHODS OF ParallelDPBinaryKnapsackSolver -----------------*/
 /*--------------------------------------------------------------------------*/
 
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// Dynamic Programming
-
 void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
+ OPENMP_dynamic_programming( C );
+ }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// OPENMP
+
+void ParallelDPBinaryKnapsackSolver::OPENMP_dynamic_programming( Index C ) {
 
  std::vector< double > currlab = lab[ start_item ]; // set of current labels 
  std::vector< double > nextlab;                     // set of next labels  
