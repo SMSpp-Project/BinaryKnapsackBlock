@@ -473,7 +473,7 @@ protected:
 /* data of the graph constructed by the DP algorithm- - - - - - - - - - - - */
 
  std::vector< std::vector< double > > lab;  ///< labels
- std::vector< std::vector< int > > pred;   ///< predecessors 
+ std::vector< std::vector< char > > pred;   ///< predecessors 
  Index start_item;                          ///< index of the starting item
 
  /* preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

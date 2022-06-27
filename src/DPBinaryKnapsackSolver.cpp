@@ -100,6 +100,16 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
   return( kInfeasible );
   } 
 
+ // compute step for reoptimization
+ Index k = std::floor( reopt * std::log2( f_N ) );
+
+ if( k == 0 )
+  step = f_N;
+ else  
+  step = std::floor( f_N / std::exp2( k ) ); 
+
+ // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
  dynamic_programming( std::floor( C ) );    // solve the integer knapsack
  
  greedy_algorithm( C );                     // solve the continuous knapsack
@@ -237,20 +247,20 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
   // compute nextlab
   for( Index j = 0 ; j < currlab.size() ; ++j ) {
-
+   
    if( currlab[ j ] <= bestlab )        // skip node with label = -inf or
     continue;                           // with a worse label than bestlab
    
-    bestlab = currlab[ j ];                       // update bestlab
-                              
-   if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc
+   bestlab = currlab[ j ];                       // update bestlab
+                          
+   if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc 
     pred[ i + 1 ][ j ] = false;                         
     nextlab[ j ] = currlab[ j ];
     }
 
    if( j + w > C )                                // check capacity limit                               
     continue;                                    
-
+   
    if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
     pred[ i + 1 ][ j + w ] = true;             
     nextlab[ j + w ] = currlab[ j ] + p;
@@ -436,11 +446,7 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ) {
   
   // update reopt
   reopt = value;
-  
-  // compute step for reoptimization
-  Index k = std::floor( reopt * std::log2( f_N ) );
-  step = std::floor( f_N / std::exp2( k ) );
-  
+    
   // restart from 0 in the next call of compute()
   start_item = 0;  
   

@@ -27,13 +27,16 @@
 // FastFlow - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #include <ff/ff.hpp>
-#include <ff/map.hpp>
 #include <ff/parallel_for.hpp>
 using namespace ff;
 
 // OpenMP - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #include <omp.h>
+
+// Thread - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+#include <thread>
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
@@ -70,11 +73,6 @@ public:
 /** @name Public types
  @{ */
 
- /// public enum for the algorithmic parameters - - - - - - - - - - - - - - - 
-
- /// tolerance for integrality property of weights- - - - - - - - - - - - - -
-
-
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -86,12 +84,37 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
-ParallelDPBinaryKnapsackSolver() : DPBinaryKnapsackSolver() {}
+ParallelDPBinaryKnapsackSolver( Index maxthread = 1 , 
+                                Index whichparallel = 0 ) : 
+                                DPBinaryKnapsackSolver() , 
+                                MaxThread( maxthread ) , 
+                                WhichParallel( whichparallel ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
 
 ~ParallelDPBinaryKnapsackSolver() override = default;
+
+/*@} -----------------------------------------------------------------------*/
+/*-------------------------- OTHER INITIALIZATIONS -------------------------*/
+/*--------------------------------------------------------------------------*/
+/** @name Other initializations
+ *
+ *  @{ */
+
+ /// set the int paramaters of ParallelDPBinaryKnapsackSolver
+ /** Set the int paramaters specific of ParallelDPBinaryKnapsackSolver:
+  *
+  * - intMaxThread [1]: maximum number of threads that compute() can spawn. */
+
+ void set_par( idx_type par , int value ) override {
+  if( par == intMaxThread ) {
+   MaxThread = value;
+   }
+  else
+   DPBinaryKnapsackSolver::set_par( par , value );
+  }
+
 
 
 /** @} ---------------------------------------------------------------------*/
@@ -112,6 +135,16 @@ protected:
  void dynamic_programming( Index C ) override;
 
 /*--------------------------------------------------------------------------*/
+/*---------------------------- PROTECTED FIELDS  ---------------------------*/
+/*--------------------------------------------------------------------------*/
+
+ // algorthmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+ Index MaxThread;       ///< maximum number of threads 
+
+ Index WhichParallel;   ///< 0 for OpenMP, 1 for FastFlow, 2 for thread
+
+/*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -121,10 +154,6 @@ private:
 /*--------------------------- PRIVATE METHODS ------------------------------*/
 /*--------------------------------------------------------------------------*/
 
- void OPENMP_dynamic_programming( Index C );
- void PTHREAD_dynamic_programming( Index C );
- void FASTFLOW_dynamic_programming( Index C );
- 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
 /*--------------------------------------------------------------------------*/
