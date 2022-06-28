@@ -496,7 +496,7 @@ private:
  void load();
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// perform the preprocessing 
+ /// perform the preprocessing and return residual capacity and profit
 
  std::tuple< double , double > preprocessing();
 

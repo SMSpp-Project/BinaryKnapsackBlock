@@ -94,7 +94,17 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
   obj = - Inf< double >();
   unlock();
   return( kInfeasible );
-  } 
+  }
+
+ // compute step for reoptimization
+ Index k = std::floor( reopt * std::log2( f_N ) );
+
+ if( k == 0 )
+  step = f_N;
+ else  
+  step = std::floor( f_N / std::exp2( k ) ); 
+
+ // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  dynamic_programming( std::floor( C ) );    // solve the integer knapsack
  
@@ -432,11 +442,7 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ) {
   
   // update reopt
   reopt = value;
-  
-  // compute step for reoptimization
-  Index k = std::floor( reopt * std::log2( f_N ) );
-  step = std::floor( f_N / std::exp2( k ) );
-  
+    
   // restart from 0 in the next call of compute()
   start_item = 0;  
   
@@ -445,6 +451,7 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ) {
 
  Solver::set_par( par , value );
  }
+
 
 /*--------------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
