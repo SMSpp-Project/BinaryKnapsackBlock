@@ -73,6 +73,42 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   nextlab.resize( maxnextlab );
   pred[ i + 1 ].resize( maxnextlab );
 
+  // define the lambda function to be executed in parallel
+  auto f = [ & ]( Index j ) {
+   
+   nextlab[ j ] = -Inf< double >();       // initialize with -INF 
+     
+   if( ( j < currlab.size() ) && ( j >= w ) ) {     // both arcs
+
+    // if both node don't exist
+    if( ( currlab[ j ] == -Inf< double >() ) && 
+        ( currlab[ j - w ] == -Inf< double >() ) )
+     return;
+
+     if( currlab[ j ] > currlab[ j - w ] + p ) {         // horizontal
+      pred[ i + 1 ][ j ] = false;
+      nextlab[ j ] = currlab[ j ];
+      }
+     else {                                              // diagonal
+      pred[ i + 1 ][ j ] = true;
+      nextlab[ j ] = currlab[ j - w ] + p;
+      }
+      return;
+    }
+    
+   if( ( j >= w ) && ( currlab[ j - w ] != -Inf< double >() ) ) {
+    pred[ i + 1 ][ j ] = true;
+    nextlab[ j ] = currlab[ j - w ] + p;
+    }
+
+   if( ( j < currlab.size() ) && ( currlab[ j ] != -Inf< double >() ) ) {
+    pred[ i + 1 ][ j ] = false;
+    nextlab[ j ] = currlab[ j ];
+    } 
+  
+   }; // end lambda function  
+
+
   // compute nextlab in parallel
   switch( WhichParallel ) {
 
@@ -80,39 +116,8 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
    case( -1 ): {
     
-    for( Index j = 0 ; j < nextlab.size() ; ++j ) {
-
-     nextlab[ j ] = -Inf< double >();       // initialize with -INF 
-
-     if( ( j < currlab.size() ) && ( j >= w ) ) {         // check both arcs
-
-      // if both node don't exist
-      if( ( currlab[ j ] == -Inf< double >() ) && 
-          ( currlab[ j - w ] == -Inf< double >() ) )
-       continue; 
-
-      if( currlab[ j ] > currlab[ j - w ] + p ) {         // horizontal
-       pred[ i + 1 ][ j ] = false;
-       nextlab[ j ] = currlab[ j ];
-       }
-      else {                                              // diagonal
-       pred[ i + 1 ][ j ] = true;
-       nextlab[ j ] = currlab[ j - w ] + p;
-       }
-      continue;   
-      }
-    
-     if( ( j >= w ) && ( currlab[ j - w ] != -Inf< double >() ) ) {
-      pred[ i + 1 ][ j ] = true;
-      nextlab[ j ] = currlab[ j - w ] + p;
-      }
-
-     if( ( j < currlab.size() ) && ( currlab[ j ] != -Inf< double >() ) ) {
-      pred[ i + 1 ][ j ] = false;
-      nextlab[ j ] = currlab[ j ];
-      }
-
-     }
+    for( Index j = 0 ; j < nextlab.size() ; ++j )
+     f( j );
 
     break;
    } 
@@ -120,42 +125,11 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
    case( 0 ): {
    
    // OpenMP- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    // compute nextlab
+   
     #pragma omp parallel for num_threads( MaxThread )
-    for( Index j = 0 ; j < nextlab.size() ; ++j ) {
-
-     nextlab[ j ] = -Inf< double >();       // initialize with -INF 
-
-     if( ( j < currlab.size() ) && ( j >= w ) ) {         // check both arcs
-
-      // if both node don't exist
-      if( ( currlab[ j ] == -Inf< double >() ) && 
-          ( currlab[ j - w ] == -Inf< double >() ) )
-       continue; 
-
-      if( currlab[ j ] > currlab[ j - w ] + p ) {         // horizontal
-       pred[ i + 1 ][ j ] = false;
-       nextlab[ j ] = currlab[ j ];
-       }
-      else {                                              // diagonal
-       pred[ i + 1 ][ j ] = true;
-       nextlab[ j ] = currlab[ j - w ] + p;
-       }
-      continue;   
-      }
+    for( Index j = 0 ; j < nextlab.size() ; ++j )
+     f( j ); 
     
-     if( ( j >= w ) && ( currlab[ j - w ] != -Inf< double >() ) ) {
-      pred[ i + 1 ][ j ] = true;
-      nextlab[ j ] = currlab[ j - w ] + p;
-      }
-
-     if( ( j < currlab.size() ) && ( currlab[ j ] != -Inf< double >() ) ) {
-      pred[ i + 1 ][ j ] = false;
-      nextlab[ j ] = currlab[ j ];
-      }
-
-     }
     break;
     }
    
@@ -167,40 +141,6 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     int chunksize = ( NChunk == -1 ) ? 0 : nextlab.size() / NChunk;
     if( Schedule )
      chunksize = - chunksize; 
-
-    // define the lambda function to be executed in parallel
-    auto f = [ & ]( Index j ) {
-     
-     nextlab[ j ] = -Inf< double >();       // initialize with -INF 
-     
-     if( ( j < currlab.size() ) && ( j >= w ) ) {     // both arcs
-
-      // if both node don't exist
-      if( ( currlab[ j ] == -Inf< double >() ) && 
-          ( currlab[ j - w ] == -Inf< double >() ) )
-       return;
-
-      if( currlab[ j ] > currlab[ j - w ] + p ) {         // horizontal
-       pred[ i + 1 ][ j ] = false;
-       nextlab[ j ] = currlab[ j ];
-       }
-      else {                                              // diagonal
-       pred[ i + 1 ][ j ] = true;
-       nextlab[ j ] = currlab[ j - w ] + p;
-       }
-       return;
-      }
-    
-      if( ( j >= w ) && ( currlab[ j - w ] != -Inf< double >() ) ) {
-       pred[ i + 1 ][ j ] = true;
-       nextlab[ j ] = currlab[ j - w ] + p;
-       }
-
-      if( ( j < currlab.size() ) && ( currlab[ j ] != -Inf< double >() ) ) {
-       pred[ i + 1 ][ j ] = false;
-       nextlab[ j ] = currlab[ j ];
-       } 
-     };     
     
     // Run the parallel for
     ParallelFor pf( MaxThread );    
@@ -214,40 +154,9 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     // Thread - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
     // define the lambda function to be executed in parallel
-    auto f = [ & ]( Index start , Index stop ) {
-
-     for( Index j = start ; j < stop ; ++j ) { 
-
-      nextlab[ j ] = -Inf< double >();       // initialize with -INF 
-     
-      if( ( j < currlab.size() ) && ( j >= w ) ) {     // both arcs
-
-       // if both node don't exist
-       if( ( currlab[ j ] == -Inf< double >() ) && 
-           ( currlab[ j - w ] == -Inf< double >() ) )
-        continue;
-
-       if( currlab[ j ] > currlab[ j - w ] + p ) {         // horizontal
-        pred[ i + 1 ][ j ] = false;
-        nextlab[ j ] = currlab[ j ];
-        }
-       else {                                              // diagonal
-        pred[ i + 1 ][ j ] = true;
-        nextlab[ j ] = currlab[ j - w ] + p;
-        }
-        continue;
-       }
-    
-       if( ( j >= w ) && ( currlab[ j - w ] != -Inf< double >() ) ) {
-        pred[ i + 1 ][ j ] = true;
-        nextlab[ j ] = currlab[ j - w ] + p;
-        }
-
-       if( ( j < currlab.size() ) && ( currlab[ j ] != -Inf< double >() ) ) {
-        pred[ i + 1 ][ j ] = false;
-        nextlab[ j ] = currlab[ j ];
-        } 
-      } 
+    auto g = [ & ]( Index start , Index stop ) {
+     for( Index j = start ; j < stop ; ++j )
+      f( j );
      };
 
     Index n_threads = MaxThread;
@@ -261,12 +170,12 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     std::vector< std::thread * > VecThreads;
 
     for( Index t = 0 ; t < n_threads - 1 ; ++t ) {
-     VecThreads.push_back( new std::thread( f , t * chunksize , 
+     VecThreads.push_back( new std::thread( g , t * chunksize , 
                                           ( t + 1 ) * chunksize ) );
      }
 
     // last thread
-    VecThreads.push_back( new std::thread( f , 
+    VecThreads.push_back( new std::thread( g , 
                         ( n_threads - 1 ) * chunksize ,
                         ( n_threads - 1 ) * chunksize + last_chunksize ) );
 
