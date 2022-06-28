@@ -45,10 +45,10 @@ include $(SMS++SDR)lib/makefile-c
 include $(BKBkSDR)/makefile
 
 # FastFlow
-FFINC = -I /Users/federicadipasquale/fastflow
+FFINC = -I /home/fdipasq/fastflow
 
 # OPENMP
-OPENMPLIB = -lomp
+OPENMPLIB = # -lomp
 
 # macroes to be exported- - - - - - - - - - - - - - - - - - - - - - - - - - -
 
