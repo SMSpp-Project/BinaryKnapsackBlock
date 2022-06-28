@@ -29,12 +29,12 @@
 # macroes to be exported- - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 BKBkOBJ = $(BKBkSDR)obj/BinaryKnapsackBlock.o \
-          $(BKBkSDR)obj/DPBinaryKnapsackSolver.o 
+          $(BKBkSDR)obj/DPBinaryKnapsackSolver.o  
 
 BKBkINC = -I$(BKBkSDR)/include
 
 BKBkH   = $(BKBkSDR)include/BinaryKnapsackBlock.h \
-          $(BKBkSDR)include/DPBinaryKnapsackSolver.h
+          $(BKBkSDR)include/DPBinaryKnapsackSolver.h 
 
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -44,7 +44,7 @@ clean::
 # dependencies: every .o from its .cpp + every recursively included .h- - - -
 
 $(BKBkSDR)obj/BinaryKnapsackBlock.o: $(BKBkSDR)src/BinaryKnapsackBlock.cpp \
-	$(BKBkSDR)include/BinaryKnapsackBlock.h $(SMS++OBJ)
+	$(BKBkSDR)include/BinaryKnapsackBlock.h $(SMS++H) $(SMS++OBJ)
 	$(CC) -c $(BKBkSDR)src/BinaryKnapsackBlock.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
