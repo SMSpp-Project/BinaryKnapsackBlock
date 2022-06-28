@@ -85,10 +85,14 @@ public:
  /// constructor
 
 ParallelDPBinaryKnapsackSolver( Index maxthread = 1 , 
-                                Index whichparallel = 0 ) : 
+                                int whichparallel = 0 ,
+                                int nchunk = -1 , 
+                                bool schedule = true ) : 
                                 DPBinaryKnapsackSolver() , 
                                 MaxThread( maxthread ) , 
-                                WhichParallel( whichparallel ) {}
+                                WhichParallel( whichparallel ) ,
+                                NChunk( nchunk ) ,
+                                Schedule( schedule ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -142,7 +146,11 @@ protected:
 
  Index MaxThread;       ///< maximum number of threads 
 
- Index WhichParallel;   ///< 0 for OpenMP, 1 for FastFlow, 2 for thread
+ int WhichParallel;     ///< 0 for OpenMP, 1 for FastFlow, 2 for thread
+
+ int NChunk;            ///< chunksize will be nextlab.size() / NChunck
+
+ bool Schedule;         ///< true = static and false = dynamic scheduling
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/

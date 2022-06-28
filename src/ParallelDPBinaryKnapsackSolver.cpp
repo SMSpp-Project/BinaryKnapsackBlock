@@ -71,10 +71,51 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
   // initialize next labels (with -INF) and allocate precedessors
   nextlab.resize( maxnextlab );
-  pred[ i + 1 ].resize( maxnextlab ); 
+  pred[ i + 1 ].resize( maxnextlab );
 
   // compute nextlab in parallel
   switch( WhichParallel ) {
+
+   // seq - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+   case( -1 ): {
+    
+    for( Index j = 0 ; j < nextlab.size() ; ++j ) {
+
+     nextlab[ j ] = -Inf< double >();       // initialize with -INF 
+
+     if( ( j < currlab.size() ) && ( j >= w ) ) {         // check both arcs
+
+      // if both node don't exist
+      if( ( currlab[ j ] == -Inf< double >() ) && 
+          ( currlab[ j - w ] == -Inf< double >() ) )
+       continue; 
+
+      if( currlab[ j ] > currlab[ j - w ] + p ) {         // horizontal
+       pred[ i + 1 ][ j ] = false;
+       nextlab[ j ] = currlab[ j ];
+       }
+      else {                                              // diagonal
+       pred[ i + 1 ][ j ] = true;
+       nextlab[ j ] = currlab[ j - w ] + p;
+       }
+      continue;   
+      }
+    
+     if( ( j >= w ) && ( currlab[ j - w ] != -Inf< double >() ) ) {
+      pred[ i + 1 ][ j ] = true;
+      nextlab[ j ] = currlab[ j - w ] + p;
+      }
+
+     if( ( j < currlab.size() ) && ( currlab[ j ] != -Inf< double >() ) ) {
+      pred[ i + 1 ][ j ] = false;
+      nextlab[ j ] = currlab[ j ];
+      }
+
+     }
+
+    break;
+   } 
    
    case( 0 ): {
    
@@ -122,6 +163,11 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     
     // FastFlow - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     
+    // compute chunksize
+    int chunksize = ( NChunk == -1 ) ? 0 : nextlab.size() / NChunk;
+    if( Schedule )
+     chunksize = - chunksize; 
+
     // define the lambda function to be executed in parallel
     auto f = [ & ]( Index j ) {
      
@@ -157,9 +203,9 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
      };     
     
     // Run the parallel for
-    ParallelFor pf( MaxThread );
-    pf.parallel_for( 0 , nextlab.size() , 1 , 0 , f );
-
+    ParallelFor pf( MaxThread );    
+    pf.parallel_for( 0 , nextlab.size() , 1 , chunksize , f );
+    
     break;
     }
 
