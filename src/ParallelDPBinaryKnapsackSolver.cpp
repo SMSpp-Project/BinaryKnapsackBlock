@@ -185,7 +185,7 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     
     // OpenMP in avanti - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    // compute nextlab
+    // initialize nextlab
     nextlab.assign( maxnextlab , - Inf< double >() );
     
     #pragma omp parallel for num_threads( MaxThread )
@@ -200,11 +200,13 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
       }
      
      }
+
+    Index h = w > maxnextlab ? 0 : maxnextlab - w;
         
     #pragma omp parallel for num_threads( MaxThread )
-    for( Index j = 0 ; j < currlab.size() ; ++j ) {
+    for( Index j = 0 ; j < h ; ++j ) {
 
-     if( currlab[ j ] == -Inf< double >() || j + w > C )        
+     if( currlab[ j ] == -Inf< double >() )
       continue;  
      
      if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
