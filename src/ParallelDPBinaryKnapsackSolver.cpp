@@ -50,6 +50,8 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
  std::vector< double > currlab = lab[ start_item ]; // set of current labels 
  std::vector< double > nextlab;                     // set of next labels  
 
+ ParallelFor pf( MaxThread );   // fastflow ParallelFor
+
  for( Index i = start_item ; i < f_N ; ++i ) {      // for each item
 
   if( i % step == 0  )          // reoptimization: save currlab in lab[ i ]
@@ -108,7 +110,6 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   
    }; // end lambda function  
 
-
   // compute nextlab in parallel
   switch( WhichParallel ) {
 
@@ -137,14 +138,8 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     
     // FastFlow - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     
-    // compute chunksize
-    int chunksize = ( NChunk == -1 ) ? 0 : nextlab.size() / NChunk;
-    if( Schedule )
-     chunksize = - chunksize; 
-    
     // Run the parallel for
-    ParallelFor pf( MaxThread );    
-    pf.parallel_for( 0 , nextlab.size() , 1 , chunksize , f );
+    pf.parallel_for( 0 , nextlab.size() , 1 , 0 , f );
     
     break;
     }
@@ -182,6 +177,42 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     // join all threads 
     for( auto th : VecThreads )
      th->join(); 
+
+    break;
+    }
+   
+   case( 3 ): {
+    
+    // OpenMP in avanti - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    // compute nextlab
+    nextlab.assign( maxnextlab , - Inf< double >() );
+    
+    #pragma omp parallel for num_threads( MaxThread )
+    for( Index j = 0 ; j < currlab.size() ; ++j ) {
+   
+     if( currlab[ j ] == -Inf< double >() )   // skip node with label = -inf 
+      continue;                          
+                          
+     if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc 
+      pred[ i + 1 ][ j ] = false;                         
+      nextlab[ j ] = currlab[ j ];
+      }
+     
+     }
+        
+    #pragma omp parallel for num_threads( MaxThread )
+    for( Index j = 0 ; j < currlab.size() ; ++j ) {
+
+     if( currlab[ j ] == -Inf< double >() || j + w > C )        
+      continue;  
+     
+     if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
+      pred[ i + 1 ][ j + w ] = true;             
+      nextlab[ j + w ] = currlab[ j ] + p;
+      }     
+
+     }   
 
     break;
     }
