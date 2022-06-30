@@ -218,6 +218,42 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
     break;
     }
+
+   case( 4 ): {
+    
+    // Doppio n avanti- - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    // initialize nextlab
+    nextlab.assign( maxnextlab , - Inf< double >() );
+    
+    for( Index j = 0 ; j < currlab.size() ; ++j ) {
+   
+     if( currlab[ j ] == -Inf< double >() )   // skip node with label = -inf 
+      continue;                          
+                          
+     if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc 
+      pred[ i + 1 ][ j ] = false;                         
+      nextlab[ j ] = currlab[ j ];
+      }
+     
+     }
+
+    Index h = w > maxnextlab ? 0 : maxnextlab - w;
+        
+    for( Index j = 0 ; j < h ; ++j ) {
+
+     if( currlab[ j ] == -Inf< double >() )
+      continue;  
+     
+     if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
+      pred[ i + 1 ][ j + w ] = true;             
+      nextlab[ j + w ] = currlab[ j ] + p;
+      }     
+
+     }   
+
+    break;
+    }
    
    default:
     throw( std::invalid_argument( " " ) );
