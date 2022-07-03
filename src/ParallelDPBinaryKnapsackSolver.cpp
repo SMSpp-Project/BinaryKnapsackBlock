@@ -76,36 +76,21 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   // define the lambda function to be executed in parallel
   auto f = [ & ]( Index j ) {
    
-   nextlab[ j ] = -Inf< double >();       // initialize with -INF 
-     
-   if( ( j < currlab.size() ) && ( j >= w ) ) {     // both arcs
+   nextlab[ j ] = -Inf< double >();       // initialize with -INF
 
-    // if both node don't exist
-    if( ( currlab[ j ] == -Inf< double >() ) && 
-        ( currlab[ j - w ] == -Inf< double >() ) )
-     return;
-
-     if( currlab[ j ] > currlab[ j - w ] + p ) {         // horizontal
-      pred[ i + 1 ][ j ] = false;
-      nextlab[ j ] = currlab[ j ];
-      }
-     else {                                              // diagonal
-      pred[ i + 1 ][ j ] = true;
-      nextlab[ j ] = currlab[ j - w ] + p;
-      }
-      return;
-    }
-    
-   if( ( j >= w ) && ( currlab[ j - w ] != -Inf< double >() ) ) {
-    pred[ i + 1 ][ j ] = true;
-    nextlab[ j ] = currlab[ j - w ] + p;
-    }
-
-   if( ( j < currlab.size() ) && ( currlab[ j ] != -Inf< double >() ) ) {
+   // horizontal arc
+   if( j < currlab.size() && currlab[ j ] > nextlab[ j ] ) {
     pred[ i + 1 ][ j ] = false;
     nextlab[ j ] = currlab[ j ];
-    } 
-  
+    }
+
+   // diagonal arc
+   if( j >= w && 
+      currlab[ j - w ] != - Inf< double >() && 
+      currlab[ j - w ] + p > nextlab[ j ] ) {
+    pred[ i + 1 ][ j ] = true;
+    nextlab[ j ] = currlab[ j - w ] + p;
+    }  
    }; // end lambda function  
 
   // compute nextlab in parallel

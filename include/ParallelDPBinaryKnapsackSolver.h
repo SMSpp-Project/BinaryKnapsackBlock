@@ -85,7 +85,7 @@ public:
  /// constructor
 
 ParallelDPBinaryKnapsackSolver( Index maxthread = 1 , 
-                                int whichparallel = 0 ) : 
+                                int whichparallel = -1 ) : 
                                 DPBinaryKnapsackSolver() , 
                                 MaxThread( maxthread ) , 
                                 WhichParallel( whichparallel ) {}
