@@ -50,8 +50,6 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
  std::vector< double > currlab = lab[ start_item ]; // set of current labels 
  std::vector< double > nextlab;                     // set of next labels  
 
- ParallelFor pf( MaxThread );   // fastflow ParallelFor
-
  for( Index i = start_item ; i < f_N ; ++i ) {      // for each item
 
   if( i % step == 0  )          // reoptimization: save currlab in lab[ i ]
@@ -139,7 +137,7 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     // FastFlow - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     
     // Run the parallel for
-    pf.parallel_for( 0 , nextlab.size() , 1 , 0 , f );
+    pf.parallel_for( 0 , nextlab.size() , 1 , 0 , f , MaxThread );
     
     break;
     }

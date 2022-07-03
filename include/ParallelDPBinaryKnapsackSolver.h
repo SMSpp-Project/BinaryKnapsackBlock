@@ -144,6 +144,8 @@ protected:
 
  int WhichParallel;     ///< 0 for OpenMP, 1 for FastFlow, 2 for thread
 
+ ParallelFor pf;        ///< fastflow parallel for
+
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
