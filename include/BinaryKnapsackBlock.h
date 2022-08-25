@@ -623,6 +623,15 @@ class BinaryKnapsackBlock : public Block {
  double get_dual( void ) const { return( f_cnst.get_dual() ); }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// set the dual value of the knapsack constraint
+ /** Set the dual value of the knapsack constraint; this only makes sense
+  * if all the variables are continuous. */
+
+ void set_dual( RowConstraint::c_RHSValue d_value ) {  
+  f_cnst.set_dual( d_value );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, set the solution of the corresponding item
 
  void set_x( Index i , double value );
