@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2022-08-25
+
+### Added
+
+- set_dual() method to BinaryKnapsackBlock
+
 ## [0.3.0] - 2022-06-28
 
 ### Added
@@ -41,7 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First test release.
 
-[Unreleased]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.2.0...develop
-[0.3.0]: https://gitlab.com/smspp/binaryknapsackblock/-/tags/0.3.0 
-[0.2.0]: https://gitlab.com/smspp/binaryknapsackblock/-/tags/0.2.0
+[Unreleased]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.3.1...develop
+[0.3.1]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.3.0...0.3.1
+[0.3.0]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.2.0...0.3.0
+[0.2.0]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.1.0...0.2.0
 [0.1.0]: https://gitlab.com/smspp/binaryknapsackblock/-/tags/0.1.0
