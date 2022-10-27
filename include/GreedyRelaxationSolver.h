@@ -82,7 +82,7 @@ public:
  /// constructor
 
 GreedyRelaxationSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
-                           f_ci( 0 ) , f_ciVal( 0 ) , obj( -Inf< double >() ) 
+                           f_ci( 0 ) , f_ciVal( 0 ) , obj( -Inf< double >() )  
                            {} 
 
 /*--------------------------------------------------------------------------*/
@@ -130,10 +130,14 @@ int compute( bool changedvars = true ) override;
   
   // otherwise it is a maximization problem and the solution without the
   // critical item is a feasible solution and it provides a lower bound for
-  // the original problem... if the critical item has negative weight?
+  // the original problem
   if( f_ciVal == 1 )
    return( obj );
-    
+
+  if( v_W[ f_ci ] < 0 ) {
+   return( obj + ( 1 - f_ciVal ) * v_P[ f_ci ] ); 
+   }
+  
   return( obj - f_ciVal * v_P[ f_ci ] );
   }
 
@@ -150,11 +154,15 @@ int compute( bool changedvars = true ) override;
   
   // otherwise it is a minimization problem and the solution without the
   // critical item is a feasible solution and it provides an upper bound for
-  // the original problem... if the critical item has negative weight?
+  // the original problem
   if( f_ciVal == 1 )
    return( - obj );
-    
-  return( - obj - f_ciVal * v_P[ f_ci ] );
+  
+  if( v_W[ f_ci ] < 0 ) {
+   return( - obj - ( 1 - f_ciVal ) * v_P[ f_ci ] );
+   }
+
+  return( - obj + f_ciVal * v_P[ f_ci ] );
   }
 
 /*--------------------------------------------------------------------------*/

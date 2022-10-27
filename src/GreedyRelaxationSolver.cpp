@@ -193,19 +193,16 @@ int GreedyRelaxationSolver::compute( bool changedvars ) {
   else
    v_x[ i ] = xval; 
  
-  if( v_W[ i ] < 0 && v_P[ i ] < 0 )
+  if( v_W[ i ] < 0 && v_P[ i ] < 0 ) {
    v_x[ i ] = 1 - v_x[ i ];
+   if( i == f_ci )
+    f_ciVal = 1 - f_ciVal;
+  }
 
  }
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-/*
- std::cout << "Soluzione\n";
- for( Index i = 0 ; i < f_N ; ++i ) {
-  std::cout << v_x[ i ];
- }
- std::cout << std::endl << "critical item " << f_ci << " critical value " << f_ciVal << std::endl; 
-*/
+
  obj = tot_P;               // update objective value
  
  //std::cout << "Obj " << obj << " true lb: " << get_true_lb() << std::endl;
