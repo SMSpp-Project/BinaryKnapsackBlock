@@ -167,7 +167,8 @@ class BinaryKnapsackBlock : public Block {
   * issued. */
 
  void load( Index n , double Capacity , c_doubleVec & Weights , 
-            c_doubleVec & Profits , c_boolVec & Integrality = {} );
+            c_doubleVec & Profits , c_boolVec & Integrality = {} ,
+            const std::vector< unsigned char > fxd = {} );
 
 /*--------------------------------------------------------------------------*/
  /// loads the Binary Knapsack instance from memory, moving
@@ -187,7 +188,8 @@ class BinaryKnapsackBlock : public Block {
   * issued. */
 
  void load( Index n , double Capacity , doubleVec && Weights , 
-            doubleVec && Profits , boolVec && Integrality = {} );
+            doubleVec && Profits , boolVec && Integrality = {} ,
+            std::vector< unsigned char > && fxd = {} );
 
 /*--------------------------------------------------------------------------*/
  /// load instance from txt file  

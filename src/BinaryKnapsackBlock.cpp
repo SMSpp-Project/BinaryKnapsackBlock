@@ -114,8 +114,9 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlockSbstChange );
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
                                 const std::vector< double > & Weights , 
-                                const std::vector< double > & Profits,
-                                const std::vector< bool > & Integrality )
+                                const std::vector< double > & Profits ,
+                                const std::vector< bool > & Integrality ,
+                                const std::vector< unsigned char > fxd )
 {
  // sanity checks 
 
@@ -131,7 +132,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
  // call load( , , && , && , && ) on newly constructed copies
  load( n , Capacity , std::vector< double >( Weights ) ,
        std::vector< double >( Profits ) ,
-       std::vector< bool >( Integrality ) );
+       std::vector< bool >( Integrality ) ,
+       std::vector< unsigned char >( fxd ) );
 
  } // end( BinaryKnapsackBlock::load( memory ) )
 
@@ -140,7 +142,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
                                 std::vector< double > && Weights , 
                                 std::vector< double > && Profits ,
-                                std::vector< bool > && Integrality )
+                                std::vector< bool > && Integrality ,
+                                std::vector< unsigned char > && fxd )
 {
  // sanity checks 
 
@@ -169,8 +172,11 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
   v_I = std::move( Integrality );
 
  countCont = std::count( v_I.begin() , v_I.end() , false );
-
- v_fxd.assign( n , 0 ); // all the variables are not fixed
+ 
+ if( fxd.empty() )
+  v_fxd.assign( n , 0 ); // all the variables are not fixed
+ else
+  v_fxd = std::move( fxd );
  
  generate_abstract_variables();
 
@@ -453,7 +459,7 @@ Block * BinaryKnapsackBlock::get_R3_Block( Configuration * r3bc ,
  else
   BKB = new BinaryKnapsackBlock( father );
 
- BKB->load( get_NItems() , f_C , v_W , v_P );
+ BKB->load( get_NItems() , f_C , v_W , v_P , v_I , v_fxd );
  BKB->set_objective_sense( f_sense );
 
  return( BKB );
