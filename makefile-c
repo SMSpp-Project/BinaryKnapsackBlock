@@ -11,8 +11,8 @@
 #                                                                            #
 #   Input:  $(CC)       = compiler command                                   #
 #           $(SW)       = compiler options                                   #
-#           $(BKBkSDR) = the directory where BinaryKnapsackBlock source is   #
-#           $(BKBkODR) = the directory where the objects have to be put      #
+#           $(BKBkSDR)  = the directory where BinaryKnapsackBlock source is  #
+#           $(BKBkODR)  = the directory where the objects have to be put     #
 #                                                                            #
 #   Output: $(BKBkOBJ) = the final object(s) / library                       #
 #           $(BKBkLIB) = external libraries + -L<libdirs>                    #
@@ -26,7 +26,7 @@
 #                          Operations Research Group                         #
 #                         Dipartimento di Informatica                        #
 #                             Universita' di Pisa                            #
-#									     #
+#									                                         #
 ##############################################################################
 
 # define & include the necessary modules- - - - - - - - - - - - - - - - - - -
