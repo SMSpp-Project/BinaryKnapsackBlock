@@ -1,9 +1,9 @@
 ##############################################################################
-################################ makefile-c ##################################
+################################ makefile-s ##################################
 ##############################################################################
 #                                                                            #
 #   makefile of BinaryKnapsackBlock and its dependencies, excluding SMS++    #
-#									     #
+#                                                                            #
 #   The makefile defines internally all external libraries required by       #
 #   BinaryKnapsackBlock, exluding the SMS++ core ones whose symbols are      #
 #   assumed to have been defined already (typically by including             #
@@ -30,7 +30,7 @@
 #                          Operations Research Group                         #
 #                         Dipartimento di Informatica                        #
 #                             Universita' di Pisa                            #
-#									     #
+#                                                                            #
 ##############################################################################
 
 # define & include the necessary modules- - - - - - - - - - - - - - - - - - -
