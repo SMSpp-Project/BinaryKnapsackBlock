@@ -724,7 +724,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
 
  // TODO: use a GroupModification
  for( i = rng.first ; i < rng.second ; i++ ) {
-  double val = *( value++ ); // new value
+  double val = *(value++); // new value
 
   if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 )  ){
     if( not_dry_run( issueAMod ) ){
@@ -777,7 +777,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
 
  // TODO: use a GroupModification
  for( auto i : nms ) {
-  double val = *( value++ ); // new value
+  double val = *(value++); // new value
 
   if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ){
     if( not_dry_run( issueAMod ) ){
@@ -1643,7 +1643,7 @@ void BinaryKnapsackSolution::read( const Block * const block )
  auto vxi = v_x.begin();
 
  for( auto & xi : BKB->v_x ) 
-  *( vxi++ ) = static_cast< double >( xi.get_value() ); 
+  *(vxi++) = static_cast< double >( xi.get_value() );
  }
 
 /*--------------------------------------------------------------------------*/
@@ -1660,7 +1660,7 @@ void BinaryKnapsackSolution::write( Block * const block )
 
   auto vxi = v_x.begin();
   for( auto & xi : BKB->v_x )
-   xi.set_value( *( vxi++ ) );
+   xi.set_value( *(vxi++) );
   }
  }
 
