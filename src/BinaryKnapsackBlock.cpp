@@ -1502,7 +1502,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
 
  // RowConstraintMod - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  if( auto tmod = dynamic_cast< const RowConstraintMod * >( mod ) ) {
-  if( !( AR & HasCns ) )
+  if( ! ( AR & HasCns ) )
    throw( std::invalid_argument( "Modification to non-constructed constraint "
          ) );
  
