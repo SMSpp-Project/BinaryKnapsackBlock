@@ -334,7 +334,7 @@ void BinaryKnapsackBlock::generate_abstract_constraints(Configuration * stcc)
 
  f_cnst.set_function( new LinearFunction( std::move( w ) , 0 ) , eNoBlck );
  f_cnst.set_rhs( f_C );
- f_cnst.set_lhs( - Inf< double >() );
+ f_cnst.set_lhs( -Inf< double >() );
  
  add_static_constraint( f_cnst );
 

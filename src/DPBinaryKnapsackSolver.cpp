@@ -388,7 +388,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
  // check if compute has been called before
- if( start_item != + Inf< int >() )
+ if( start_item != Inf< int >() )
   throw( std::invalid_argument( "compute() must be called first" ) );
 
  // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - -
@@ -812,7 +812,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
  int k = std::floor( reopt * std::log2( f_N ) );
  int step = std::floor( f_N / std::exp2( k ) );
 
- if( start_item != + Inf< int >() ) {
+ if( start_item != Inf< int >() ) {
   
   start_item = ( start_item / step ) * step;
   
