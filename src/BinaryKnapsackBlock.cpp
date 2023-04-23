@@ -681,8 +681,8 @@ void BinaryKnapsackBlock::fix_x( bool value , Index i ,
   return;                                               
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  if( not_dry_run( issueAMod ) ) {
   v_x[ i ].set_value( value ); 
@@ -719,8 +719,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
   return;
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // TODO: use a GroupModification
  for( i = rng.first ; i < rng.second ; i++ ) {
@@ -772,8 +772,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
   return;
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // TODO: use a GroupModification
  for( auto i : nms ) {
@@ -813,8 +813,8 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod ,
   return;                                                // nothing to do
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
  
  if( not_dry_run( issueAMod ) ) {
   v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) );
@@ -850,8 +850,8 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
   return;
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // TODO: use a GroupModification
  if( not_dry_run( issueAMod ) )
@@ -899,8 +899,8 @@ void BinaryKnapsackBlock::unfix_x( Subset && nms , bool ordered ,
   return;
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // TODO: use a GroupModification
  if( not_dry_run( issueAMod ) ) {

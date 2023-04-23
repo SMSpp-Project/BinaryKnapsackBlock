@@ -91,7 +91,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
 
  // check if the problem is empty (iff residual capacity < 0)
  if( C < 0 ) {
-  obj = - Inf< double >();
+  obj = -Inf< double >();
   unlock();
   return( kInfeasible );
   }
@@ -305,9 +305,9 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
                           // 0 <= boundX <=1
 
  double contProfit = 0;   // cumulative profits of the continuous solution 
- double contWeight = 0;   // cumulative wieghts of the continuous solution
+ double contWeight = 0;   // cumulative weights of the continuous solution
  
- obj = - Inf< double >(); // initialize objective with -INF
+ obj = -Inf< double >(); // initialize objective with -INF
 
  // start from the highest height, that has lower residual capacity
  for( int i = maxh ; i >= 0 ; --i ) {
