@@ -780,7 +780,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
   double val = *(value++); // new value
 
   if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ){
-    if( not_dry_run( issueAMod ) ){
+    if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
      v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
      v_fxd[ i ] = val ? 2 : 1;
