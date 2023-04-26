@@ -182,7 +182,7 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
  // check if some item has a weight > C (check only for integer items)
  for( Index i = 0 ; i < f_N ; ++i ) {
   
-  if( skip[ i ] || ! v_I[ i ] )
+  if( skip[ i ] || ( ! v_I[ i ] ) )
    continue;
 
   if( v_W[ i ] > C ) {
@@ -220,7 +220,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   if( i % step == 0  )          // reoptimization: save currlab in lab[ i ]
    lab[ i ] = currlab;             
 
-  if( skip[ i ] || ! v_I[ i ] ) // skip preprocessed and continuous variables   
+  if( skip[ i ] || ( ! v_I[ i ] ) ) // skip preprocessed and continuous variables
    continue;                               
 
   double p = v_P[ i ];          // profit of the current item
@@ -404,7 +404,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
  
  for( int i = f_N - 1 ; i >= 0 ; i-- ) {
   
-  if( skip[ i ] || ! v_I[ i ] )  // skip preprocessed and continuous variables
+  if( skip[ i ] || ( ! v_I[ i ] ) )  // skip preprocessed and continuous variables
    continue;
 
   int w = v_W[ i ];                    // weight of the current item
