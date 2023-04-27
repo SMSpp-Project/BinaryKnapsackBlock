@@ -280,7 +280,7 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
 
  // sort continuous variable in order of profits/weights
  sort( idxCont.begin() , idxCont.end() , [ & ]( auto a , auto b ) { 
-       return ( v_P[ a ] / v_W[ a ] > v_P[ b ] / v_W[ b ] ); 
+       return( v_P[ a ] / v_W[ a ] > v_P[ b ] / v_W[ b ] );
       } );
  
  // last vector of labels contains (partial) solutions of the integer part
