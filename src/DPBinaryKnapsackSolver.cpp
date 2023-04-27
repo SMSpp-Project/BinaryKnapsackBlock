@@ -122,7 +122,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  
  return( kOK );
 
- }  // end( DPBinaryKnapsackSolver::compute() )
+ }  // end( DPBinaryKnapsackSolver::compute )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// perform the preprocessing and return residual Capacity and Profit
@@ -205,7 +205,7 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
 
  return { C , P };
 
- } // end( preprocessing() )
+ } // end( DPBinaryKnapsackSolver::preprocessing )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming
@@ -476,7 +476,7 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod & mod ) {
  // release lock
  f_mod_lock.clear( std::memory_order_release );  
 
- }  // end( add_Modification() )
+ }  // end( DPBinaryKnapsackSolver::add_Modification )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE METHODS ------------------------------*/
@@ -575,7 +575,7 @@ void DPBinaryKnapsackSolver::load( void ) {
  // Initialize solution 
  v_x.resize( f_N );                          
 
- } // end( DPBinaryKnapsackSolver::load() )
+ } // end( DPBinaryKnapsackSolver::load )
 
 /*--------------------------------------------------------------------------*/
 
@@ -647,7 +647,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
   else
    mod = v_mod_tmp.erase( mod );   // it is not a physical modification
  
-  } // end( while() )
+  } // end( while )
 
  for( auto mod : v_mod_tmp ) {
   
@@ -823,7 +823,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
    }
   }
 
- }  // end( process_outstanding_Modification() )
+ }  // end( DPBinaryKnapsackSolver::process_outstanding_Modification )
 
 /*--------------------------------------------------------------------------*/
 /*----------------- End File DPBinaryKnapsackSolver.cpp --------------------*/
