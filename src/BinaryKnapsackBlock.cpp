@@ -57,8 +57,8 @@ using c_Subset = Block::c_Subset;
 // vector and a subset of indices
 
 template< typename T >
-static bool is_equal( std::vector<T> & vec , c_Subset & nms ,
-                      typename std::vector<T>::const_iterator cmp ,
+static bool is_equal( std::vector< T > & vec , c_Subset & nms ,
+                      typename std::vector< T >::const_iterator cmp ,
                       Index n_max )
 {
  for( auto nm : nms ) {
@@ -75,8 +75,8 @@ static bool is_equal( std::vector<T> & vec , c_Subset & nms ,
 // copys one vector to a given subset of another
 
 template< typename T >
-static void copyidx( std::vector<T> & vec , c_Subset & nms ,
-                     typename std::vector<T>::const_iterator cpy )
+static void copyidx( std::vector< T > & vec , c_Subset & nms ,
+                     typename std::vector< T >::const_iterator cpy )
 {
  for( auto nm : nms )
   vec[ nm ] = *(cpy++);
@@ -1287,7 +1287,7 @@ void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality,
   copyidx( v_I , nms , NIntegrality );
   
  // abstract representation
-  for(Index i=0;i<nms.size();i++){
+  for(Index i = 0 ; i < nms.size() ; i++ ) {
    if( NIntegrality[ i ] ) {
     if( v_x[ nms[ i ] ].get_type() == ColVariable::kPosUnitary ) {
      v_x[ nms[ i ] ].set_type( ColVariable::kBinary ,
