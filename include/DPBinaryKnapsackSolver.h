@@ -21,8 +21,8 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * Copyright &copy by Federica Di Pasquale, Francesco Demelas,
- *                    Antonio Frangioni
+ * \copyright &copy; by Federica Di Pasquale, Francesco Demelas,
+ *                      Antonio Frangioni
  */
 /*--------------------------------------------------------------------------*/
 /*----------------------------- DEFINITIONS --------------------------------*/
