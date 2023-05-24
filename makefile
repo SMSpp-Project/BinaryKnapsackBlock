@@ -26,7 +26,7 @@
 ##############################################################################
 
 
-# macroes to be exported- - - - - - - - - - - - - - - - - - - - - - - - - - -
+# macros to be exported - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 BKBkOBJ = $(BKBkSDR)obj/BinaryKnapsackBlock.o \
           $(BKBkSDR)obj/DPBinaryKnapsackSolver.o  
