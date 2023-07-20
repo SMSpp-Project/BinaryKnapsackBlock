@@ -303,7 +303,7 @@ void BinaryKnapsackBlock::generate_abstract_variables( Configuration * stvv )
 
  v_x.resize( get_NItems() );
  
- for( Index i = 0 ; i < get_NItems() ; ++i ){
+ for( Index i = 0 ; i < get_NItems() ; ++i ) {
   if( v_I[ i ] )
    v_x[ i ].set_type( ColVariable::kBinary , eNoBlck );
   else
@@ -327,7 +327,7 @@ void BinaryKnapsackBlock::generate_abstract_constraints(Configuration * stcc)
   return;
 
  LinearFunction::v_coeff_pair w( get_NItems() );
- for( Index i = 0 ; i < get_NItems() ; i++ ){
+ for( Index i = 0 ; i < get_NItems() ; i++ ) {
   w[ i ].first = &v_x[ i ];
   w[ i ].second = v_W[ i ];
   }
@@ -353,7 +353,7 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc )
   return;
 
  LinearFunction::v_coeff_pair p( get_NItems() );
- for( Index i = 0 ; i < get_NItems() ; i++ ){
+ for( Index i = 0 ; i < get_NItems() ; i++ ) {
   p[ i ].first = &v_x[ i ];
   p[ i ].second = v_P[ i ];
   }
@@ -537,7 +537,7 @@ void BinaryKnapsackBlock::get_x( dblVec_it xSol , Range rng ) const
 
 void BinaryKnapsackBlock::get_x( dblVec_it xSol , c_Subset & nms ) const
 { 
- for( auto i : nms ){
+ for( auto i : nms ) {
   if( i >= v_x.size() )
    throw( std::invalid_argument( "BinaryKnapsackBlock::get_x: invalid item"
          ) );
@@ -569,7 +569,7 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , Range rng )
 
 void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 { 
- for( auto i : nms ){
+ for( auto i : nms ) {
   if( i >= v_x.size() )
    throw( std::invalid_argument( "BinaryKnapsackBlock::set_x: invalid item"
          ) );
@@ -712,7 +712,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
 
  Index i = rng.first;
  for(  ; i < rng.second ; ++i )
-  if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) )
+  if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) )
    break;      
 
  if( i == rng.second )  // all fixed already
@@ -726,8 +726,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
  for( i = rng.first ; i < rng.second ; i++ ) {
   double val = *(value++); // new value
 
-  if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 )  ){
-    if( not_dry_run( issueAMod ) ){
+  if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
+    if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
      v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
      v_fxd[ i ] = val ? 2 : 1;
@@ -763,7 +763,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
         ) );
  bool done = true;
  for( auto i : nms )
-  if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
+  if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
    done = false;
    break;      
    }
@@ -779,7 +779,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
  for( auto i : nms ) {
   double val = *(value++); // new value
 
-  if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ){
+  if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
     if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
      v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
@@ -809,8 +809,8 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod ,
   throw( std::invalid_argument( "BinaryKnapsackBlock::unfix_x: invalid item"
         ) );
 
- if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) )   // already unfixed
-  return;                                                // nothing to do
+ if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) )   // already unfixed
+  return;                                                 // nothing to do
 
  // reset conditional bounds
  f_cond_lower = -Inf< double >();
@@ -1103,7 +1103,7 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng ,
  f_cond_upper = +Inf< double >();
 
  // change both physical and abstract representation (if it exists)
- if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
+ if( not_dry_run( issueAMod ) && ( AR & HasObj ) ) {
   
   // physical representation
   std::copy( NProfit , NProfit + ( rng.second - rng.first ) ,

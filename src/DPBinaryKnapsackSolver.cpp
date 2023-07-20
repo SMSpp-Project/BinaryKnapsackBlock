@@ -345,7 +345,7 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
    }
 
   // check if it is the best solution and update obj 
-  if( lastlab[ i ] + contProfit > obj ){
+  if( lastlab[ i ] + contProfit > obj ) {
    obj = lastlab[ i ] + contProfit;
    besth = i;
    lastVar = 1 - boundX;  
@@ -529,7 +529,7 @@ void DPBinaryKnapsackSolver::load( void ) {
  const auto & I = BKB->get_Integrality();
 
  // read and store the data of each item
- for( Index i = 0 ; i < f_N ; ++i ){
+ for( Index i = 0 ; i < f_N ; ++i ) {
 
   // Profits: if the sense is minimization change the sign of each profit
   v_P[ i ] = f_sense ? P[ i ] : - P[ i ];
@@ -608,8 +608,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
  while( mod != v_mod_tmp.end() ) {
   
   // BinaryKnapsackBlockMod - - - - - - - - - - - - - - - - - - - - - - - - -
-  if( const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod->get()
-								  ) ){ 
+  if( const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod->get() ) ) {
    switch( tmod->type() ) {
     // Change Capacity- - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // If the new capacity is smaller than the previous one, restart the DP
@@ -798,7 +797,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
  // store again indices of continuous variables
  idxCont.clear();
  for( Index i = 0 ; i < f_N ; ++i ) {
-  if( !v_I[ i ] ) {
+  if( ! v_I[ i ] ) {
    idxCont.push_back( i );
    } 
   }
