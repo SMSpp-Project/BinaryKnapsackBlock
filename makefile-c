@@ -6,8 +6,8 @@
 #                                                                            #
 #   The makefile defines internally all external libraries (comprised the    #
 #   SMS++ one) required by BinaryKnapsackBlock. Accordingly, all necessary   #
-#   OBJ, H,  # -I directives, external libraries + -L<libdirs> are added to  #
-#   the corresponding BKBk* macros.                                          #
+#   OBJ, H,  # -I directives, external libraries + -L< libdirs > are added   #
+#   to the corresponding BKBk* macros.                                       #
 #                                                                            #
 #   Input:  $(CC)       = compiler command                                   #
 #           $(SW)       = compiler options                                   #
@@ -15,7 +15,7 @@
 #           $(BKBkODR)  = the directory where the objects have to be put     #
 #                                                                            #
 #   Output: $(BKBkOBJ) = the final object(s) / library                       #
-#           $(BKBkLIB) = external libraries + -L<libdirs>                    #
+#           $(BKBkLIB) = external libraries + -L< libdirs >                  #
 #           $(BKBkH)   = the .h files to include for BinaryKnapsackBlock     #
 #           $(BKBkINC) = the -I$( BinaryKnapsackBlock directory )            #
 #                                                                            #
@@ -34,8 +34,8 @@
 # *INC is the -I<include directories>
 
 # define input macros for SMS++ complete makefile, then include it
-SMS++SDR = $(BKBkSDR)../SMS++/
-include $(SMS++SDR)lib/makefile-c
+SMS++SDR = $(BKBkSDR)/../SMS++
+include $(SMS++SDR)/lib/makefile-c
 
 # include the makefile requiring all external modules in input
 include $(BKBkSDR)/makefile
@@ -47,7 +47,7 @@ include $(BKBkSDR)/makefile
 BKBkOBJ := $(BKBkOBJ) $(SMS++OBJ)
 BKBkINC := $(BKBkINC) $(SMS++INC) 
 
-# external libreries for BKBlock
+# external libraries for BKBlock
 BKBkLIB = $(SMS++LIB)
 
 ############################ End of makefile #################################

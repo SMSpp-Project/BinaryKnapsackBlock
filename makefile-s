@@ -8,7 +8,7 @@
 #   BinaryKnapsackBlock, exluding the SMS++ core ones whose symbols are      #
 #   assumed to have been defined already (typically by including             #
 #   SMS++/lib/makefile). Accordingly, all necessary OBJ, H, -I directives,   #
-#   external libraries + -L<libdirs> are added to the corresponding BKBk*    #
+#   external libraries + -L< libdirs > are added to the corresponding BKBk*  #
 #   macros.                                                                  #
 #                                                                            #
 #   Input:  $(CC)       = compiler command                                   #
@@ -18,10 +18,10 @@
 #           $(BKBkSDR)  = the directory where BinaryKnapsackBlock source is  #
 #           $(BKBkODR)  = the directory where the objects have to be put     #
 #                                                                            #
-#   Output: $(BKBkOBJ) = the final object(s) / library                       #
-#           $(BKBkLIB) = external libraries + -L<libdirs>                    #
-#           $(BKBkH)   = the .h files to include for BinaryKnapsackBlock     #
-#           $(BKBkINC) = the -I$( BinaryKnapsackBlock directory )            #
+#   Output: $(BKBkOBJ)  = the final object(s) / library                      #
+#           $(BKBkLIB)  = external libraries + -L< libdirs >                 #
+#           $(BKBkH)    = the .h files to include for BinaryKnapsackBlock    #
+#           $(BKBkINC)  = the -I$( BinaryKnapsackBlock directory )           #
 #                                                                            #
 #                              Antonio Frangioni                             #
 #                         Dipartimento di Informatica                        #
@@ -35,7 +35,7 @@
 # each module outputs some macros to be used here:
 # *OBJ is the final object/library
 # *H   is the list of all include files
-# *INC is the -I<include directories>
+# *INC is the -I< include directories >
 
 # include the makefile requiring all external modules in input
 include $(BKBkSDR)/makefile
@@ -47,7 +47,7 @@ include $(BKBkSDR)/makefile
 BKBkOBJ := $(BKBkOBJ)
 BKBkINC := $(BKBkINC)
 
-# external libreries for BKBlock
+# external libraries for BKBlock
 BKBkLIB =
 
 ############################ End of makefile #################################
