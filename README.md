@@ -59,8 +59,9 @@ a new module, as opposed to the compile-and-forget usage envisioned by CMake.
 
 Each executable using `BinaryKnapsackBlock` and `DPBinaryKnapsackSolver`,
 such as the [tester for `BinaryKnapsackBlock` and `DPBinaryKnapsackSolver`
-comparing it with `MILPSolver`](../tests/BinaryKnapsackBlock/main.cpp), has
-to include a "main makefile" of the module, which typically is either
+comparing it with
+`MILPSolver`](https://gitlab.com/smspp/tests/-/blob/develop/BinaryKnapsackBlock/test.cpp?ref_type=heads),
+has to include a "main makefile" of the module, which typically is either
 [makefile-c](makefile-c) including all necessary libraries comprised the
 "core SMS++" one, or [makefile-s](makefile-s) including all necessary
 libraries but not the "core SMS++" one (for the common case in which this is
