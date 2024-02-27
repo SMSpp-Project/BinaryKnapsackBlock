@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - makefiles and Cmake files updated to new global SMS++ scheme
 
+- documentation updated accordingly
+
 ### Changed
 
 ## [0.3.1] - 2022-08-25
