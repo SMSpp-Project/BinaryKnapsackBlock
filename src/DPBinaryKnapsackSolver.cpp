@@ -21,8 +21,8 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * Copyright &copy by Federica Di Pasquale, Francesco Demelas,
- *                    Antonio Frangioni
+ * \copyright &copy; by Federica Di Pasquale, Francesco Demelas,
+ *                      Antonio Frangioni
  */ 
 /*--------------------------------------------------------------------------*/
 /*----------------------------- IMPLEMENTATION -----------------------------*/
@@ -91,7 +91,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
 
  // check if the problem is empty (iff residual capacity < 0)
  if( C < 0 ) {
-  obj = - Inf< double >();
+  obj = -Inf< double >();
   unlock();
   return( kInfeasible );
   }
@@ -122,7 +122,7 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  
  return( kOK );
 
- }  // end( DPBinaryKnapsackSolver::compute() )
+ }  // end( DPBinaryKnapsackSolver::compute )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// perform the preprocessing and return residual Capacity and Profit
@@ -182,7 +182,7 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
  // check if some item has a weight > C (check only for integer items)
  for( Index i = 0 ; i < f_N ; ++i ) {
   
-  if( skip[ i ] || ! v_I[ i ] )
+  if( skip[ i ] || ( ! v_I[ i ] ) )
    continue;
 
   if( v_W[ i ] > C ) {
@@ -205,7 +205,7 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
 
  return { C , P };
 
- } // end( preprocessing() )
+ } // end( DPBinaryKnapsackSolver::preprocessing )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming
@@ -220,7 +220,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   if( i % step == 0  )          // reoptimization: save currlab in lab[ i ]
    lab[ i ] = currlab;             
 
-  if( skip[ i ] || ! v_I[ i ] ) // skip preprocessed and continuous variables   
+  if( skip[ i ] || ( ! v_I[ i ] ) ) // skip preprocessed and continuous variables
    continue;                               
 
   double p = v_P[ i ];          // profit of the current item
@@ -280,7 +280,7 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
 
  // sort continuous variable in order of profits/weights
  sort( idxCont.begin() , idxCont.end() , [ & ]( auto a , auto b ) { 
-       return ( v_P[ a ] / v_W[ a ] > v_P[ b ] / v_W[ b ] ); 
+       return( v_P[ a ] / v_W[ a ] > v_P[ b ] / v_W[ b ] );
       } );
  
  // last vector of labels contains (partial) solutions of the integer part
@@ -305,9 +305,9 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
                           // 0 <= boundX <=1
 
  double contProfit = 0;   // cumulative profits of the continuous solution 
- double contWeight = 0;   // cumulative wieghts of the continuous solution
+ double contWeight = 0;   // cumulative weights of the continuous solution
  
- obj = - Inf< double >(); // initialize objective with -INF
+ obj = -Inf< double >(); // initialize objective with -INF
 
  // start from the highest height, that has lower residual capacity
  for( int i = maxh ; i >= 0 ; --i ) {
@@ -345,7 +345,7 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
    }
 
   // check if it is the best solution and update obj 
-  if( lastlab[ i ] + contProfit > obj ){
+  if( lastlab[ i ] + contProfit > obj ) {
    obj = lastlab[ i ] + contProfit;
    besth = i;
    lastVar = 1 - boundX;  
@@ -388,7 +388,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
 
  // check if compute has been called before
- if( start_item != + Inf< int >() )
+ if( start_item != Inf< int >() )
   throw( std::invalid_argument( "compute() must be called first" ) );
 
  // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - -
@@ -404,7 +404,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
  
  for( int i = f_N - 1 ; i >= 0 ; i-- ) {
   
-  if( skip[ i ] || ! v_I[ i ] )  // skip preprocessed and continuous variables
+  if( skip[ i ] || ( ! v_I[ i ] ) )  // skip preprocessed and continuous variables
    continue;
 
   int w = v_W[ i ];                    // weight of the current item
@@ -476,7 +476,7 @@ void DPBinaryKnapsackSolver::add_Modification( sp_Mod & mod ) {
  // release lock
  f_mod_lock.clear( std::memory_order_release );  
 
- }  // end( add_Modification() )
+ }  // end( DPBinaryKnapsackSolver::add_Modification )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE METHODS ------------------------------*/
@@ -529,7 +529,7 @@ void DPBinaryKnapsackSolver::load( void ) {
  const auto & I = BKB->get_Integrality();
 
  // read and store the data of each item
- for( Index i = 0 ; i < f_N ; ++i ){
+ for( Index i = 0 ; i < f_N ; ++i ) {
 
   // Profits: if the sense is minimization change the sign of each profit
   v_P[ i ] = f_sense ? P[ i ] : - P[ i ];
@@ -575,7 +575,7 @@ void DPBinaryKnapsackSolver::load( void ) {
  // Initialize solution 
  v_x.resize( f_N );                          
 
- } // end( DPBinaryKnapsackSolver::load() )
+ } // end( DPBinaryKnapsackSolver::load )
 
 /*--------------------------------------------------------------------------*/
 
@@ -608,8 +608,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
  while( mod != v_mod_tmp.end() ) {
   
   // BinaryKnapsackBlockMod - - - - - - - - - - - - - - - - - - - - - - - - -
-  if( const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod->get()
-								  ) ){ 
+  if( const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod->get() ) ) {
    switch( tmod->type() ) {
     // Change Capacity- - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // If the new capacity is smaller than the previous one, restart the DP
@@ -647,7 +646,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
   else
    mod = v_mod_tmp.erase( mod );   // it is not a physical modification
  
-  } // end( while() )
+  } // end( while )
 
  for( auto mod : v_mod_tmp ) {
   
@@ -798,7 +797,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
  // store again indices of continuous variables
  idxCont.clear();
  for( Index i = 0 ; i < f_N ; ++i ) {
-  if( !v_I[ i ] ) {
+  if( ! v_I[ i ] ) {
    idxCont.push_back( i );
    } 
   }
@@ -812,7 +811,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
  int k = std::floor( reopt * std::log2( f_N ) );
  int step = std::floor( f_N / std::exp2( k ) );
 
- if( start_item != + Inf< int >() ) {
+ if( start_item != Inf< int >() ) {
   
   start_item = ( start_item / step ) * step;
   
@@ -823,7 +822,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
    }
   }
 
- }  // end( process_outstanding_Modification() )
+ }  // end( DPBinaryKnapsackSolver::process_outstanding_Modification )
 
 /*--------------------------------------------------------------------------*/
 /*----------------- End File DPBinaryKnapsackSolver.cpp --------------------*/

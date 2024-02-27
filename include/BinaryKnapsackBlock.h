@@ -18,8 +18,8 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * Copyright &copy by Federica Di Pasquale, Antonio Frangioni,
- *                    Francesco Demelas
+ * \copyright &copy; by Federica Di Pasquale, Antonio Frangioni,
+ *                      Francesco Demelas
  */
 /*--------------------------------------------------------------------------*/
 /*---------------------------- DEFINITIONS ---------------------------------*/
@@ -310,8 +310,8 @@ class BinaryKnapsackBlock : public Block {
  double get_valid_upper_bound( bool conditional = false ) 
   override final {
   if( ! f_sense  )  // if the sense is minimization
-   if( ( ! conditional ) && ( is_empty() ) )
-    return( +Inf< double >() );
+   if( ( ! conditional ) && is_empty() )
+    return( Inf< double >() );
 
   if( std::isinf( f_cond_upper ) )
    compute_conditional_bounds();
@@ -346,7 +346,7 @@ class BinaryKnapsackBlock : public Block {
  double get_valid_lower_bound( bool conditional = false ) 
   override final {
   if( f_sense )  // if the sense is maximization
-  if( ( ! conditional ) && ( is_empty() ) )
+  if( ( ! conditional ) && is_empty() )
    return( -Inf< double >() );
 
   if( std::isinf( f_cond_lower ) )
