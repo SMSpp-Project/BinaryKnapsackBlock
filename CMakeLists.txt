@@ -22,7 +22,7 @@
 cmake_minimum_required(VERSION 3.19)
 cmake_policy(VERSION 3.12)
 project(BinaryKnapsackBlock
-        VERSION 0.2.0
+        VERSION 0.3.2
         DESCRIPTION "SMS++ BinaryKnapsackBlock module"
         HOMEPAGE_URL https://gitlab.com/smspp/binaryknapsackblock
         LANGUAGES C CXX)
