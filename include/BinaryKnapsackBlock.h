@@ -1122,7 +1122,7 @@ class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod {
 
  ///< constructor: takes the BinaryKnapsackBlock, the type, and the subset
  /**< Constructor: takes the BinaryKnapsackBlock, the type, and the subset. 
-  * As the the && tells, nms is "consumed" by the constructor and its resources 
+  * As the && tells, nms is "consumed" by the constructor and its resources
   * become property of the BinaryKnapsackBlockSbstMod object. */
 
  BinaryKnapsackBlockSbstMod( BinaryKnapsackBlock * const fblock , 

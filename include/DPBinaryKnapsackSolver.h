@@ -218,7 +218,7 @@ void set_Block( Block * block ) override;
 * 
 * Eventually the last set of labels lab[ N ] contains the optimal values of 
 * the problems containing all the items. The optimal value of the Binary 
-* Knapsack problem is the the best value among those in lab[ N ][ j ] with j 
+* Knapsack problem is the best value among those in lab[ N ][ j ] with j
 * less or equal then the Capacity of the Knapsack, and the optimal solution 
 * can be reconstructed from the vectors of predecessors.
 *
@@ -326,7 +326,7 @@ void get_var_solution( Configuration * solc = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/
 /// return the value of the (current) solution
-/** Return the the value of the current solution. 
+/** Return the value of the current solution.
  * Since the implemented DP algorithm always solves the maximization problem,
  * the sign of the value of the solution must change according to the real 
  * sense (f_sense) of the problem encoded in the BinaryKnapsackBlock. */
