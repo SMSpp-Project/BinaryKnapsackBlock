@@ -396,7 +396,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Weights( dblVec_it weights , Subset && nms ) const { 
   
-  for( Index i : nms ){
+  for( Index i : nms ) {
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) ); 
    *(weights++) = v_W[ i ];
@@ -435,7 +435,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Integrality( boolVec_it integrality , Subset && nms ) const { 
 
-  for( Index i : nms ){
+  for( Index i : nms ) {
    
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) );
@@ -475,7 +475,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Profits( dblVec_it profits , Subset && nms ) const { 
 
-  for( Index i : nms ){
+  for( Index i : nms ) {
    
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) );
