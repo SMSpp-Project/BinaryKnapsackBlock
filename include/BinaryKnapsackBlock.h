@@ -1186,7 +1186,8 @@ class BinaryKnapsackSolution : public Solution {
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
- ~BinaryKnapsackSolution() = default;  ///< destructor
+ ~BinaryKnapsackSolution() override = default;
+ ///< destructor: it is virtual, and empty
 
 /*------ METHODS DESCRIBING THE BEHAVIOR OF A BinaryKnapsackSolution ------*/
 
