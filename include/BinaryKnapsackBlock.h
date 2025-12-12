@@ -396,7 +396,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Weights( dblVec_it weights , Subset && nms ) const { 
   
-  for( Index i : nms ){
+  for( Index i : nms ) {
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) ); 
    *(weights++) = v_W[ i ];
@@ -435,7 +435,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Integrality( boolVec_it integrality , Subset && nms ) const { 
 
-  for( Index i : nms ){
+  for( Index i : nms ) {
    
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) );
@@ -475,7 +475,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Profits( dblVec_it profits , Subset && nms ) const { 
 
-  for( Index i : nms ){
+  for( Index i : nms ) {
    
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) );
@@ -1122,7 +1122,7 @@ class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod {
 
  ///< constructor: takes the BinaryKnapsackBlock, the type, and the subset
  /**< Constructor: takes the BinaryKnapsackBlock, the type, and the subset. 
-  * As the the && tells, nms is "consumed" by the constructor and its resources 
+  * As the && tells, nms is "consumed" by the constructor and its resources
   * become property of the BinaryKnapsackBlockSbstMod object. */
 
  BinaryKnapsackBlockSbstMod( BinaryKnapsackBlock * const fblock , 
@@ -1186,7 +1186,8 @@ class BinaryKnapsackSolution : public Solution {
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
- ~BinaryKnapsackSolution() = default;  ///< destructor
+ ~BinaryKnapsackSolution() override = default;
+ ///< destructor: it is virtual, and empty
 
 /*------ METHODS DESCRIBING THE BEHAVIOR OF A BinaryKnapsackSolution ------*/
 
@@ -1578,7 +1579,7 @@ private:
 
 /*--------------------------------------------------------------------------*/
 
-#endif /* BinaryKnapsackBlock.h included */
+#endif /* __BinaryKnapsackBlock */
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- End File BinaryKnapsackBlock.h ---------------------*/

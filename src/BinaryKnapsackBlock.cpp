@@ -358,7 +358,7 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc )
   p[ i ].second = v_P[ i ];
   }
 
- LinearFunction * obj = new LinearFunction( std::move( p ) , 0  );
+ LinearFunction * obj = new LinearFunction( std::move( p ) , 0 );
  f_obj.set_function( obj , eNoMod );
  f_obj.set_sense( f_sense ? Objective::eMax : Objective::eMin , eNoMod );
  set_objective( & f_obj , eNoMod );
