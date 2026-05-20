@@ -888,6 +888,22 @@ class BinaryKnapsackBlock : public Block {
                                 ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the capacity of the Knapsack
+ /** Curious Range version of chg_capacity(), that takes the first element
+  * pointed by \p NC as the new capacity (unless \p rng is empty, in which
+  * case it does nothing. Only exists in order to be able to put it in the
+  * methods factory with the standard Range signature. */
+
+ void chg_capacity( c_dblVec_it NC , Range rng = INFRange ,
+		    ModParam issueMod = eNoBlck ,
+		    ModParam issueAMod = eNoBlck ) {
+  if( rng.second <= rng.first )  // the Range is empty
+   return;                       // silently return
+
+  chg_capacity( *NC , issueMod , issueAMod );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the sense of the objective function
 
  void set_objective_sense( bool sense , ModParam issueMod = eNoBlck ,
@@ -961,6 +977,69 @@ class BinaryKnapsackBlock : public Block {
   return( std::distance( v_x.data() ,
        static_cast< const ColVariable * >( var ) ) ); 
   }
+
+/*--------------------------------------------------------------------------*/
+/// register MCFBlock methods into the method factories
+/** Although in general private methods should not be commented, this one is
+ * because it does the registration of the following MCFBlock methods:
+ *
+ * - chg_costs() (both range and subset version)
+ *
+ * - chg_ucaps() (both range and subset version)
+ *
+ * - chg_dfcts() (both range and subset version)
+ *
+ * - close_arcs() (both range and subset version)
+ *
+ * - open_arcs() (both range and subset version)
+ *
+ * into the corresponding method factories. */
+
+ static void static_initialization( void )
+ {
+  /*!! does not work: TODO,
+       - implement fix_it() meaning "at the current value"
+       - extend the methods factory for bool input
+       - provide a passthrough version taking double iterators and
+         converting them to bool
+
+  register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::fix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::fix_x" , & BinaryKnapsackBlock::fix_x );
+
+ register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::unfix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::unfix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::chg_integrality" ,
+   & BinaryKnapsackBlock::chg_integrality );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_integrality" ,
+   & BinaryKnapsackBlock::chg_integrality );
+   !!*/
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_capacity" , & BinaryKnapsackBlock::chg_capacity );
+
+  }  // end( static_initialization )
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PRIVATE FIELDS ------------------------------*/
