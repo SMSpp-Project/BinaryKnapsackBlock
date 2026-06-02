@@ -18,8 +18,8 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * Copyright &copy by Federica Di Pasquale, Antonio Frangioni,
- *                    Francesco Demelas
+ * \copyright &copy; by Federica Di Pasquale, Antonio Frangioni,
+ *                      Francesco Demelas
  */
 /*--------------------------------------------------------------------------*/
 /*---------------------------- DEFINITIONS ---------------------------------*/
@@ -310,8 +310,8 @@ class BinaryKnapsackBlock : public Block {
  double get_valid_upper_bound( bool conditional = false ) 
   override final {
   if( ! f_sense  )  // if the sense is minimization
-   if( ( ! conditional ) && ( is_empty() ) )
-    return( +Inf< double >() );
+   if( ( ! conditional ) && is_empty() )
+    return( Inf< double >() );
 
   if( std::isinf( f_cond_upper ) )
    compute_conditional_bounds();
@@ -346,7 +346,7 @@ class BinaryKnapsackBlock : public Block {
  double get_valid_lower_bound( bool conditional = false ) 
   override final {
   if( f_sense )  // if the sense is maximization
-  if( ( ! conditional ) && ( is_empty() ) )
+  if( ( ! conditional ) && is_empty() )
    return( -Inf< double >() );
 
   if( std::isinf( f_cond_lower ) )
@@ -396,7 +396,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Weights( dblVec_it weights , Subset && nms ) const { 
   
-  for( Index i : nms ){
+  for( Index i : nms ) {
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) ); 
    *(weights++) = v_W[ i ];
@@ -435,7 +435,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Integrality( boolVec_it integrality , Subset && nms ) const { 
 
-  for( Index i : nms ){
+  for( Index i : nms ) {
    
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) );
@@ -475,7 +475,7 @@ class BinaryKnapsackBlock : public Block {
 
  void get_Profits( dblVec_it profits , Subset && nms ) const { 
 
-  for( Index i : nms ){
+  for( Index i : nms ) {
    
    if( i >= get_NItems() )
     throw( std::invalid_argument( "Invalid index in nms" ) );
@@ -621,6 +621,15 @@ class BinaryKnapsackBlock : public Block {
   * if all the variables are continuous. */
 
  double get_dual( void ) const { return( f_cnst.get_dual() ); }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// set the dual value of the knapsack constraint
+ /** Set the dual value of the knapsack constraint; this only makes sense
+  * if all the variables are continuous. */
+
+ void set_dual( RowConstraint::c_RHSValue d_value ) {  
+  f_cnst.set_dual( d_value );
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index, set the solution of the corresponding item
@@ -879,6 +888,22 @@ class BinaryKnapsackBlock : public Block {
                                 ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the capacity of the Knapsack
+ /** Curious Range version of chg_capacity(), that takes the first element
+  * pointed by \p NC as the new capacity (unless \p rng is empty, in which
+  * case it does nothing. Only exists in order to be able to put it in the
+  * methods factory with the standard Range signature. */
+
+ void chg_capacity( c_dblVec_it NC , Range rng = INFRange ,
+		    ModParam issueMod = eNoBlck ,
+		    ModParam issueAMod = eNoBlck ) {
+  if( rng.second <= rng.first )  // the Range is empty
+   return;                       // silently return
+
+  chg_capacity( *NC , issueMod , issueAMod );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the sense of the objective function
 
  void set_objective_sense( bool sense , ModParam issueMod = eNoBlck ,
@@ -952,6 +977,69 @@ class BinaryKnapsackBlock : public Block {
   return( std::distance( v_x.data() ,
        static_cast< const ColVariable * >( var ) ) ); 
   }
+
+/*--------------------------------------------------------------------------*/
+/// register MCFBlock methods into the method factories
+/** Although in general private methods should not be commented, this one is
+ * because it does the registration of the following MCFBlock methods:
+ *
+ * - chg_costs() (both range and subset version)
+ *
+ * - chg_ucaps() (both range and subset version)
+ *
+ * - chg_dfcts() (both range and subset version)
+ *
+ * - close_arcs() (both range and subset version)
+ *
+ * - open_arcs() (both range and subset version)
+ *
+ * into the corresponding method factories. */
+
+ static void static_initialization( void )
+ {
+  /*!! does not work: TODO,
+       - implement fix_it() meaning "at the current value"
+       - extend the methods factory for bool input
+       - provide a passthrough version taking double iterators and
+         converting them to bool
+
+  register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::fix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::fix_x" , & BinaryKnapsackBlock::fix_x );
+
+ register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::unfix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::unfix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::chg_integrality" ,
+   & BinaryKnapsackBlock::chg_integrality );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_integrality" ,
+   & BinaryKnapsackBlock::chg_integrality );
+   !!*/
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_capacity" , & BinaryKnapsackBlock::chg_capacity );
+
+  }  // end( static_initialization )
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PRIVATE FIELDS ------------------------------*/
@@ -1113,7 +1201,7 @@ class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod {
 
  ///< constructor: takes the BinaryKnapsackBlock, the type, and the subset
  /**< Constructor: takes the BinaryKnapsackBlock, the type, and the subset. 
-  * As the the && tells, nms is "consumed" by the constructor and its resources 
+  * As the && tells, nms is "consumed" by the constructor and its resources
   * become property of the BinaryKnapsackBlockSbstMod object. */
 
  BinaryKnapsackBlockSbstMod( BinaryKnapsackBlock * const fblock , 
@@ -1177,7 +1265,8 @@ class BinaryKnapsackSolution : public Solution {
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
- ~BinaryKnapsackSolution() = default;  ///< destructor
+ ~BinaryKnapsackSolution() override = default;
+ ///< destructor: it is virtual, and empty
 
 /*------ METHODS DESCRIBING THE BEHAVIOR OF A BinaryKnapsackSolution ------*/
 
@@ -1569,7 +1658,7 @@ private:
 
 /*--------------------------------------------------------------------------*/
 
-#endif /* BinaryKnapsackBlock.h included */
+#endif /* __BinaryKnapsackBlock */
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- End File BinaryKnapsackBlock.h ---------------------*/

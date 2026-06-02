@@ -6,7 +6,7 @@
 #                                                                            #
 #   Note that $(SMS++INC) is assumed to include any -I directive             #
 #   corresponding to external libraries needed by SMS++, at least to the     #
-#   extent in which they are needed by the parts of SMS++ used by BKBkBlock. #
+#   extent in which they are needed by the parts of SMS++ used by BKBkBlock  #
 #                                                                            #
 #   Input:  $(CC)       = compiler command                                   #
 #           $(SW)       = compiler options                                   #
@@ -25,8 +25,10 @@
 #                                                                            #
 ##############################################################################
 
+# macros to be exported - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# macroes to be exported- - - - - - - - - - - - - - - - - - - - - - - - - - -
+BKBkOBJ = $(BKBkSDR)/obj/BinaryKnapsackBlock.o \
+          $(BKBkSDR)/obj/DPBinaryKnapsackSolver.o  
 
 BKBkOBJ = $(BKBkSDR)obj/BinaryKnapsackBlock.o \
           $(BKBkSDR)obj/DPBinaryKnapsackSolver.o \
@@ -43,18 +45,18 @@ BKBkH   = $(BKBkSDR)include/BinaryKnapsackBlock.h \
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 clean::
-	rm -f $(BKBkOBJ) $(BKBkSDR)*~
+	rm -f $(BKBkOBJ) $(BKBkSDR)/*~
 
 # dependencies: every .o from its .cpp + every recursively included .h- - - -
 
-$(BKBkSDR)obj/BinaryKnapsackBlock.o: $(BKBkSDR)src/BinaryKnapsackBlock.cpp \
-	$(BKBkSDR)include/BinaryKnapsackBlock.h $(SMS++H) $(SMS++OBJ)
-	$(CC) -c $(BKBkSDR)src/BinaryKnapsackBlock.cpp -o $@ \
+$(BKBkSDR)/obj/BinaryKnapsackBlock.o: $(BKBkSDR)/src/BinaryKnapsackBlock.cpp \
+	$(BKBkSDR)/include/BinaryKnapsackBlock.h $(SMS++H) $(SMS++OBJ)
+	$(CC) -c $(BKBkSDR)/src/BinaryKnapsackBlock.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
-$(BKBkSDR)obj/DPBinaryKnapsackSolver.o:\
- $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp $(BKBkH) $(SMS++OBJ)  
-	$(CC) -c $(BKBkSDR)src/DPBinaryKnapsackSolver.cpp -o $@ \
+$(BKBkSDR)/obj/DPBinaryKnapsackSolver.o: \
+	$(BKBkSDR)/src/DPBinaryKnapsackSolver.cpp $(BKBkH) $(SMS++OBJ)  
+	$(CC) -c $(BKBkSDR)/src/DPBinaryKnapsackSolver.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
 $(BKBkSDR)obj/GreedyRelaxationSolver.o:\

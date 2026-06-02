@@ -18,8 +18,8 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * Copyright &copy by Federica Di Pasquale, Antonio Frangioni,
- *                    Francesco Demelas
+ * \copyright &copy; by Federica Di Pasquale, Antonio Frangioni,
+ *                      Francesco Demelas
  */
 /*--------------------------------------------------------------------------*/
 /*---------------------------- IMPLEMENTATION ------------------------------*/
@@ -57,8 +57,8 @@ using c_Subset = Block::c_Subset;
 // vector and a subset of indices
 
 template< typename T >
-static bool is_equal( std::vector<T> & vec , c_Subset & nms ,
-                      typename std::vector<T>::const_iterator cmp ,
+static bool is_equal( std::vector< T > & vec , c_Subset & nms ,
+                      typename std::vector< T >::const_iterator cmp ,
                       Index n_max )
 {
  for( auto nm : nms ) {
@@ -75,8 +75,8 @@ static bool is_equal( std::vector<T> & vec , c_Subset & nms ,
 // copys one vector to a given subset of another
 
 template< typename T >
-static void copyidx( std::vector<T> & vec , c_Subset & nms ,
-                     typename std::vector<T>::const_iterator cpy )
+static void copyidx( std::vector< T > & vec , c_Subset & nms ,
+                     typename std::vector< T >::const_iterator cpy )
 {
  for( auto nm : nms )
   vec[ nm ] = *(cpy++);
@@ -303,7 +303,7 @@ void BinaryKnapsackBlock::generate_abstract_variables( Configuration * stvv )
 
  v_x.resize( get_NItems() );
  
- for( Index i = 0 ; i < get_NItems() ; ++i ){
+ for( Index i = 0 ; i < get_NItems() ; ++i ) {
   if( v_I[ i ] )
    v_x[ i ].set_type( ColVariable::kBinary , eNoBlck );
   else
@@ -327,14 +327,14 @@ void BinaryKnapsackBlock::generate_abstract_constraints(Configuration * stcc)
   return;
 
  LinearFunction::v_coeff_pair w( get_NItems() );
- for( Index i = 0 ; i < get_NItems() ; i++ ){
+ for( Index i = 0 ; i < get_NItems() ; i++ ) {
   w[ i ].first = &v_x[ i ];
   w[ i ].second = v_W[ i ];
   }
 
  f_cnst.set_function( new LinearFunction( std::move( w ) , 0 ) , eNoBlck );
  f_cnst.set_rhs( f_C );
- f_cnst.set_lhs( - Inf< double >() );
+ f_cnst.set_lhs( -Inf< double >() );
  
  add_static_constraint( f_cnst );
 
@@ -353,12 +353,12 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc )
   return;
 
  LinearFunction::v_coeff_pair p( get_NItems() );
- for( Index i = 0 ; i < get_NItems() ; i++ ){
+ for( Index i = 0 ; i < get_NItems() ; i++ ) {
   p[ i ].first = &v_x[ i ];
   p[ i ].second = v_P[ i ];
   }
 
- LinearFunction * obj = new LinearFunction( std::move( p ) , 0  );
+ LinearFunction * obj = new LinearFunction( std::move( p ) , 0 );
  f_obj.set_function( obj , eNoMod );
  f_obj.set_sense( f_sense ? Objective::eMax : Objective::eMin , eNoMod );
  set_objective( & f_obj , eNoMod );
@@ -537,7 +537,7 @@ void BinaryKnapsackBlock::get_x( dblVec_it xSol , Range rng ) const
 
 void BinaryKnapsackBlock::get_x( dblVec_it xSol , c_Subset & nms ) const
 { 
- for( auto i : nms ){
+ for( auto i : nms ) {
   if( i >= v_x.size() )
    throw( std::invalid_argument( "BinaryKnapsackBlock::get_x: invalid item"
          ) );
@@ -569,7 +569,7 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , Range rng )
 
 void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 { 
- for( auto i : nms ){
+ for( auto i : nms ) {
   if( i >= v_x.size() )
    throw( std::invalid_argument( "BinaryKnapsackBlock::set_x: invalid item"
          ) );
@@ -681,8 +681,8 @@ void BinaryKnapsackBlock::fix_x( bool value , Index i ,
   return;                                               
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  if( not_dry_run( issueAMod ) ) {
   v_x[ i ].set_value( value ); 
@@ -712,22 +712,22 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
 
  Index i = rng.first;
  for(  ; i < rng.second ; ++i )
-  if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) )
+  if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) )
    break;      
 
  if( i == rng.second )  // all fixed already
   return;
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // TODO: use a GroupModification
  for( i = rng.first ; i < rng.second ; i++ ) {
-  double val = *( value++ ); // new value
+  double val = *(value++); // new value
 
-  if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 )  ){
-    if( not_dry_run( issueAMod ) ){
+  if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
+    if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
      v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
      v_fxd[ i ] = val ? 2 : 1;
@@ -763,7 +763,7 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
         ) );
  bool done = true;
  for( auto i : nms )
-  if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
+  if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
    done = false;
    break;      
    }
@@ -772,15 +772,15 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
   return;
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // TODO: use a GroupModification
  for( auto i : nms ) {
-  double val = *( value++ ); // new value
+  double val = *(value++); // new value
 
-  if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ){
-    if( not_dry_run( issueAMod ) ){
+  if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
+    if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
      v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
      v_fxd[ i ] = val ? 2 : 1;
@@ -809,12 +809,12 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod ,
   throw( std::invalid_argument( "BinaryKnapsackBlock::unfix_x: invalid item"
         ) );
 
- if( ( !v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) )   // already unfixed
-  return;                                                // nothing to do
+ if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) )   // already unfixed
+  return;                                                 // nothing to do
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
  
  if( not_dry_run( issueAMod ) ) {
   v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) );
@@ -850,8 +850,8 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
   return;
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // TODO: use a GroupModification
  if( not_dry_run( issueAMod ) )
@@ -899,8 +899,8 @@ void BinaryKnapsackBlock::unfix_x( Subset && nms , bool ordered ,
   return;
 
  // reset conditional bounds
- f_cond_lower = -Inf<double>();
- f_cond_upper = Inf<double>();
+ f_cond_lower = -Inf< double >();
+ f_cond_upper = Inf< double >();
 
  // TODO: use a GroupModification
  if( not_dry_run( issueAMod ) ) {
@@ -1103,7 +1103,7 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng ,
  f_cond_upper = +Inf< double >();
 
  // change both physical and abstract representation (if it exists)
- if( not_dry_run( issueAMod ) && ( AR & HasObj ) ){
+ if( not_dry_run( issueAMod ) && ( AR & HasObj ) ) {
   
   // physical representation
   std::copy( NProfit , NProfit + ( rng.second - rng.first ) ,
@@ -1287,7 +1287,7 @@ void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality,
   copyidx( v_I , nms , NIntegrality );
   
  // abstract representation
-  for(Index i=0;i<nms.size();i++){
+  for(Index i = 0 ; i < nms.size() ; i++ ) {
    if( NIntegrality[ i ] ) {
     if( v_x[ nms[ i ] ].get_type() == ColVariable::kPosUnitary ) {
      v_x[ nms[ i ] ].set_type( ColVariable::kBinary ,
@@ -1502,7 +1502,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
 
  // RowConstraintMod - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  if( auto tmod = dynamic_cast< const RowConstraintMod * >( mod ) ) {
-  if( !( AR & HasCns ) )
+  if( ! ( AR & HasCns ) )
    throw( std::invalid_argument( "Modification to non-constructed constraint "
          ) );
  
@@ -1643,7 +1643,7 @@ void BinaryKnapsackSolution::read( const Block * const block )
  auto vxi = v_x.begin();
 
  for( auto & xi : BKB->v_x ) 
-  *( vxi++ ) = static_cast< double >( xi.get_value() ); 
+  *(vxi++) = static_cast< double >( xi.get_value() );
  }
 
 /*--------------------------------------------------------------------------*/
@@ -1660,7 +1660,7 @@ void BinaryKnapsackSolution::write( Block * const block )
 
   auto vxi = v_x.begin();
   for( auto & xi : BKB->v_x )
-   xi.set_value( *( vxi++ ) );
+   xi.set_value( *(vxi++) );
   }
  }
 

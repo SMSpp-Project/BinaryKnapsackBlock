@@ -11,17 +11,14 @@
 #                                                                             #
 #        $ cmake --build <build-path> --target install                        #
 #                                                                             #
-#    Note: this file tries to respect the principles of Modern CMake,         #
-#          keep it in mind when editing it.                                   #
-#                                                                             #
-#                              Niccolo' Iardella                              #
+#                                Donato Meoli                                 #
 #                         Dipartimento di Informatica                         #
 #                             Universita' di Pisa                             #
 # --------------------------------------------------------------------------- #
-cmake_minimum_required(VERSION 3.12)
-cmake_policy(VERSION 3.12)
+cmake_minimum_required(VERSION 3.21)
+cmake_policy(VERSION 3.15)
 project(BinaryKnapsackBlock
-        VERSION 0.2.0
+        VERSION 0.3.2
         DESCRIPTION "SMS++ BinaryKnapsackBlock module"
         HOMEPAGE_URL https://gitlab.com/smspp/binaryknapsackblock
         LANGUAGES C CXX)
@@ -64,6 +61,10 @@ configure_file(cmake/${modName}Config.h.in ${modName}Config.h)
 add_library(${modName})
 target_compile_features(${modName} PUBLIC cxx_std_17)
 
+if (MSVC AND BUILD_SHARED_LIBS)
+    target_link_options(${modName} INTERFACE "/INCLUDE:SMSpp_force_load_${modName}")
+endif ()
+
 # When adding source files with target_sources(), PRIVATE means that the files
 # should only be added to this library, whereas PUBLIC means they should be
 # added to this library and to any target that links to it.
@@ -71,8 +72,8 @@ target_compile_features(${modName} PUBLIC cxx_std_17)
 # but should be added to anything that links to it.
 # Note: do not GLOB files here.
 target_sources(${modName} PRIVATE
-               src/BinaryKnapsackBlock.cpp
-               src/DPBinaryKnapsackSolver.cpp)
+        src/BinaryKnapsackBlock.cpp
+        src/DPBinaryKnapsackSolver.cpp)
 
 # When using target_include_directories(), PUBLIC means that any targets
 # that link to this target also need that include directory.
@@ -100,13 +101,6 @@ target_link_libraries(${modName} PUBLIC ${modNamespace}::SMS++)
 # the library with this notation.
 add_library(${modNamespace}::${modName} ALIAS ${modName})
 
-# ----- Subdirectories ------------------------------------------------------ #
-#add_subdirectory(tools)
-
-if (BUILD_TESTING)
-#    add_subdirectory(test)
-endif ()
-
 # ----- Install instructions ------------------------------------------------ #
 # The following commands are used when installing the library
 # and its CMake configuration files on the system.
@@ -117,8 +111,9 @@ include(GNUInstallDirs)
 # Install the library
 install(TARGETS ${modName}
         EXPORT ${modName}Targets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} # .dll
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so .dylib
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}) # .lib
 
 # Install the headers
 install(DIRECTORY include/
@@ -166,8 +161,8 @@ install(FILES
 # dynamic loading will look into it.
 if (hasParent)
     set(SMSPP_BUILD_RPATH
-        "${SMSPP_BUILD_RPATH};${CMAKE_CURRENT_BINARY_DIR}"
-        PARENT_SCOPE)
+            "${SMSPP_BUILD_RPATH};${CMAKE_CURRENT_BINARY_DIR}"
+            PARENT_SCOPE)
 endif ()
 
 # ----- Packaging support --------------------------------------------------- #
@@ -177,14 +172,14 @@ endif ()
 # Using this with the umbrella project is too messy.
 if (NOT hasParent)
     set(CPACK_PACKAGE_VENDOR "SMS++ Team")
-    set(CPACK_PACKAGE_CONTACT "Niccolò Iardella")
+    set(CPACK_PACKAGE_CONTACT "Donato Meoli")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${PROJECT_DESCRIPTION})
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_LIST_DIR}/LICENSE")
     set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_LIST_DIR}/README.md")
     set(CPACK_SOURCE_IGNORE_FILES
-        \\\\.git/
-        \\\\.gitignore$
-        \\\\.gitattributes$)
+            \\\\.git/
+            \\\\.gitignore$
+            \\\\.gitattributes$)
     include(CPack)
 endif ()
 
