@@ -45,11 +45,9 @@ include $(BKBkSDR)/makefile
 # append external -I directives to BKBkINC, BKBkOBJ and BKBkH as defined
 # by the makefile, thus the := assignment has to be used (use GNU make)
 BKBkOBJ := $(BKBkOBJ) $(SMS++OBJ)
-BKBkINC := $(BKBkINC) $(SMS++INC) $(libFastFlowINC)
+BKBkINC := $(BKBkINC) $(SMS++INC)
 
 # external libraries for BKBlock
 BKBkLIB = $(SMS++LIB)
-
-BKBkLIB = $(SMS++LIB) $(libOpenMPLIB)
 
 ############################ End of makefile #################################

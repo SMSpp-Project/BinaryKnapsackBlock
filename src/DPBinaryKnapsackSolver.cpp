@@ -105,18 +105,8 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
 
  if( k == 0 )
   step = f_N;
- else  
-  step = std::floor( f_N / std::exp2( k ) ); 
-
- // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
- // compute step for reoptimization
- Index k = std::floor( reopt * std::log2( f_N ) );
-
- if( k == 0 )
-  step = f_N;
- else  
-  step = std::floor( f_N / std::exp2( k ) ); 
+ else
+  step = std::floor( f_N / std::exp2( k ) );
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
