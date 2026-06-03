@@ -8,7 +8,11 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * Copyright &copy by Federica Di Pasquale
+ * \author Donato Meoli \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
+ *
+ * Copyright &copy by Federica Di Pasquale, Donato Meoli
  */ 
 /*--------------------------------------------------------------------------*/
 /*----------------------------- IMPLEMENTATION -----------------------------*/
@@ -18,16 +22,17 @@
 
 #include "ParallelDPBinaryKnapsackSolver.h"
 
-/*--------------------------------------------------------------------------*/
-/*-------------------------------- MACROS ----------------------------------*/
-/*--------------------------------------------------------------------------*/
+#include <thread>
+
+#if PDPBKS_PARALLEL
+ #include <ff/parallel_for.hpp>
+#endif
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- NAMESPACE AND USING --------------------------*/
 /*--------------------------------------------------------------------------*/
 
 using namespace SMSpp_di_unipi_it;
-using namespace ff;
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------------- FUNCTIONS -------------------------------*/
@@ -37,7 +42,7 @@ using namespace ff;
 /*----------------------------- STATIC MEMBERS -----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-// register DPBinaryKnapsackSolver to the factory
+// register ParallelDPBinaryKnapsackSolver to the factory
 
 SMSpp_insert_in_factory_cpp_1( ParallelDPBinaryKnapsackSolver );
 
@@ -45,9 +50,41 @@ SMSpp_insert_in_factory_cpp_1( ParallelDPBinaryKnapsackSolver );
 /*-------------- METHODS OF ParallelDPBinaryKnapsackSolver -----------------*/
 /*--------------------------------------------------------------------------*/
 
+// defined here (not defaulted in the header) so that the destructor of the
+// pimpl'd ff::ParallelFor is instantiated where the type is complete
+
+ParallelDPBinaryKnapsackSolver::~ParallelDPBinaryKnapsackSolver() = default;
+
+/*--------------------------------------------------------------------------*/
+
 void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
- std::vector< double > currlab = lab[ start_item ]; // set of current labels 
+#if PDPBKS_PARALLEL
+ // an explicit f_which_parallel ( >= 0 ) selects a parallel engine; the auto
+ // mode ( < 0, the default ) runs the serial base, because parallelising the
+ // inner (capacity) loop does not pay off here: the loop is memory-bandwidth
+ // bound and each of the N items incurs a fork-join barrier, so adding workers
+ // only adds overhead (see the scaling benchmark tests/.../batch-par). The
+ // parallel engines below are kept opt-in for benchmarking and future use.
+ const int which = f_which_parallel;
+ if( which < 0 ) {
+  DPBinaryKnapsackSolver::dynamic_programming( C );
+  return;
+  }
+
+ // resolve the number of workers: 0 = all the available cores, 1 = serial
+ Index nthreads = f_max_thread ? Index( f_max_thread )
+                               : Index( std::thread::hardware_concurrency() );
+ if( nthreads == 0 )            // hardware_concurrency() may return 0
+  nthreads = 1;
+
+ // the ParallelFor (hence its worker threads) is created once per solver
+ // instance and reused across re-solves; blocking workers (default) sleep idle
+ if( ( which == 1 ) && ( ! f_pf ) )
+  f_pf = std::make_unique< ff::ParallelFor >(
+          std::max< Index >( 1 , std::thread::hardware_concurrency() ) );
+
+ std::vector< double > currlab = lab[ start_item ]; // set of current labels
  std::vector< double > nextlab;                     // set of next labels  
 
  for( Index i = start_item ; i < f_N ; ++i ) {      // for each item
@@ -94,23 +131,13 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
    }; // end lambda function  
 
   // compute nextlab in parallel
-  switch( WhichParallel ) {
+  switch( which ) {
 
-   // seq - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-   case( -1 ): {
-    
-    for( Index j = 0 ; j < nextlab.size() ; ++j )
-     f( j );
-
-    break;
-   } 
-   
    case( 0 ): {
    
    // OpenMP- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    
-    #pragma omp parallel for num_threads( MaxThread )
+    #pragma omp parallel for num_threads( nthreads )
     for( Index j = 0 ; j < nextlab.size() ; ++j )
      f( j ); 
     
@@ -119,47 +146,43 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
    
    case( 1 ): {
     
-    // FastFlow - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-    
-    // Run the parallel for
-    pf.parallel_for( 0 , nextlab.size() , 1 , 0 , f , MaxThread );
+    // FastFlow - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    // run the parallel for on the persistent worker pool
+    f_pf->parallel_for( 0 , nextlab.size() , 1 , 0 , f , nthreads );
     
     break;
     }
 
    case( 2 ): {
-    
-    // Thread - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    
-    // define the lambda function to be executed in parallel
+
+    // std::thread - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    // run f() over a contiguous chunk of the slice
     auto g = [ & ]( Index start , Index stop ) {
      for( Index j = start ; j < stop ; ++j )
       f( j );
      };
 
-    Index n_threads = MaxThread;
-    if( nextlab.size() < n_threads )
-     n_threads = nextlab.size();
+    Index n_threads = std::min< Index >( nthreads , nextlab.size() );
+    if( n_threads < 1 )
+     n_threads = 1;
 
-    Index chunksize = nextlab.size() / n_threads;
-    Index last_chunksize = chunksize + nextlab.size() % n_threads;
+    const Index chunksize = nextlab.size() / n_threads;
 
-    // define the vector of threads
-    std::vector< std::thread * > VecThreads;
+    // spawn n_threads - 1 helpers (threads owned by value, joined and
+    // destroyed below: no manual new/delete) and run the last, possibly
+    // larger, chunk on the current thread
+    std::vector< std::thread > threads;
+    threads.reserve( n_threads - 1 );
 
-    for( Index t = 0 ; t < n_threads - 1 ; ++t ) {
-     VecThreads.push_back( new std::thread( g , t * chunksize , 
-                                          ( t + 1 ) * chunksize ) );
-     }
+    for( Index t = 0 ; t < n_threads - 1 ; ++t )
+     threads.emplace_back( g , t * chunksize , ( t + 1 ) * chunksize );
 
-    // last thread
-    VecThreads.push_back( new std::thread( g , 
-                        ( n_threads - 1 ) * chunksize ,
-                        ( n_threads - 1 ) * chunksize + last_chunksize ) );
+    g( ( n_threads - 1 ) * chunksize , nextlab.size() );
 
-    // join all threads 
-    for( auto th : VecThreads )
-     th->join(); 
+    for( auto & th : threads )
+     th.join();
 
     break;
     }
@@ -171,7 +194,7 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     // initialize nextlab
     nextlab.assign( maxnextlab , - Inf< double >() );
     
-    #pragma omp parallel for num_threads( MaxThread )
+    #pragma omp parallel for num_threads( nthreads )
     for( Index j = 0 ; j < currlab.size() ; ++j ) {
    
      if( currlab[ j ] == -Inf< double >() )   // skip node with label = -inf 
@@ -186,7 +209,7 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
     Index h = w > maxnextlab ? 0 : maxnextlab - w;
         
-    #pragma omp parallel for num_threads( MaxThread )
+    #pragma omp parallel for num_threads( nthreads )
     for( Index j = 0 ; j < h ; ++j ) {
 
      if( currlab[ j ] == -Inf< double >() )
@@ -239,9 +262,9 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     }
    
    default:
-    throw( std::invalid_argument( " " ) );
-    break;
-   
+    throw( std::invalid_argument( "ParallelDPBinaryKnapsackSolver::"
+                       "dynamic_programming: invalid parallel engine" ) );
+
    } // end( switch )
 
   std::swap( currlab , nextlab );
@@ -250,6 +273,11 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
  // always save last vector of labels (instead of copying just swap)
  std::swap( lab.back() , currlab );
+
+#else
+ // FastFlow not available at build time: fall back to the serial base
+ DPBinaryKnapsackSolver::dynamic_programming( C );
+#endif
 
  }
 

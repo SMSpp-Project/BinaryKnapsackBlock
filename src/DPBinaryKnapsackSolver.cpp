@@ -21,8 +21,12 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
+ * \author Donato Meoli \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
+ *
  * \copyright &copy; by Federica Di Pasquale, Francesco Demelas,
- *                      Antonio Frangioni
+ *                      Antonio Frangioni, Donato Meoli
  */ 
 /*--------------------------------------------------------------------------*/
 /*----------------------------- IMPLEMENTATION -----------------------------*/
