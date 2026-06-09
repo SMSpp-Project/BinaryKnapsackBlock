@@ -28,12 +28,14 @@
 # macros to be exported - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 BKBkOBJ = $(BKBkSDR)/obj/BinaryKnapsackBlock.o \
-          $(BKBkSDR)/obj/DPBinaryKnapsackSolver.o  
+          $(BKBkSDR)/obj/DPBinaryKnapsackSolver.o \
+          $(BKBkSDR)/obj/ParallelDPBinaryKnapsackSolver.o
 
 BKBkINC = -I$(BKBkSDR)/include
 
 BKBkH   = $(BKBkSDR)/include/BinaryKnapsackBlock.h \
-          $(BKBkSDR)/include/DPBinaryKnapsackSolver.h 
+          $(BKBkSDR)/include/DPBinaryKnapsackSolver.h \
+          $(BKBkSDR)/include/ParallelDPBinaryKnapsackSolver.h
 
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -50,6 +52,11 @@ $(BKBkSDR)/obj/BinaryKnapsackBlock.o: $(BKBkSDR)/src/BinaryKnapsackBlock.cpp \
 $(BKBkSDR)/obj/DPBinaryKnapsackSolver.o: \
 	$(BKBkSDR)/src/DPBinaryKnapsackSolver.cpp $(BKBkH) $(SMS++OBJ)  
 	$(CC) -c $(BKBkSDR)/src/DPBinaryKnapsackSolver.cpp -o $@ \
+	$(BKBkINC) $(SMS++INC) $(SW)
+
+$(BKBkSDR)/obj/ParallelDPBinaryKnapsackSolver.o: \
+	$(BKBkSDR)/src/ParallelDPBinaryKnapsackSolver.cpp $(BKBkH) $(SMS++OBJ)
+	$(CC) -c $(BKBkSDR)/src/ParallelDPBinaryKnapsackSolver.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
 ########################## End of makefile ###################################

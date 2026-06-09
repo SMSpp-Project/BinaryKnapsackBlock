@@ -51,6 +51,8 @@ if (NOT hasParent)
     find_package(SMS++ REQUIRED)
 endif ()
 
+find_package(OpenMP)
+
 # ----- Configuration header ------------------------------------------------ #
 # This will generate a *Config.h header in the build directory.
 configure_file(cmake/${modName}Config.h.in ${modName}Config.h)
@@ -73,7 +75,8 @@ endif ()
 # Note: do not GLOB files here.
 target_sources(${modName} PRIVATE
         src/BinaryKnapsackBlock.cpp
-        src/DPBinaryKnapsackSolver.cpp)
+        src/DPBinaryKnapsackSolver.cpp
+        src/ParallelDPBinaryKnapsackSolver.cpp)
 
 # When using target_include_directories(), PUBLIC means that any targets
 # that link to this target also need that include directory.
@@ -96,6 +99,11 @@ target_include_directories(
 # library, INTERFACE means they will be linked only to the targets that depend
 # on this library.
 target_link_libraries(${modName} PUBLIC ${modNamespace}::SMS++)
+
+if (OpenMP_CXX_FOUND)
+    message(STATUS "${modName}: OpenMP found. Using OpenMP.")
+    target_link_libraries(${modName} PUBLIC OpenMP::OpenMP_CXX)
+endif ()
 
 # This alias is defined so that executables in this same project can use
 # the library with this notation.
