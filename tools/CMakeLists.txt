@@ -24,13 +24,13 @@ else ()
     endif ()
 endif ()
 
-# ----- knap2nc4 ------------------------------------------------------------- #
-add_executable(knap2nc4 knap2nc4.cpp)
-target_link_libraries(knap2nc4 PRIVATE SMS++::BinaryKnapsackBlock)
+# ----- bk2nc4 ------------------------------------------------------------- #
+add_executable(bk2nc4 bk2nc4.cpp)
+target_link_libraries(bk2nc4 PRIVATE SMS++::BinaryKnapsackBlock)
 
 # ----- Install instructions ------------------------------------------------ #
 include(GNUInstallDirs)
-install(TARGETS knap2nc4
+install(TARGETS bk2nc4
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # --------------------------------------------------------------------------- #

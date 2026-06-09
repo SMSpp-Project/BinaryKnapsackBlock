@@ -2,7 +2,7 @@
 ################################ makefile ####################################
 ##############################################################################
 #                                                                            #
-#   makefile of knap2nc4                                                      #
+#   makefile of bk2nc4                                                      #
 #                                                                            #
 #                              Antonio Frangioni                             #
 #                          Dipartimento di Informatica                       #
@@ -11,7 +11,7 @@
 ##############################################################################
 
 # module name
-NAME = knap2nc4
+NAME = bk2nc4
 
 # basic directory
 DIR = .
