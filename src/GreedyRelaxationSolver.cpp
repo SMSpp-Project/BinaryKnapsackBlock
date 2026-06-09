@@ -207,12 +207,8 @@ int GreedyRelaxationSolver::compute( bool changedvars ) {
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
  obj = tot_P;               // update objective value
- 
- //std::cout << "Obj " << obj << " true lb: " << get_true_lb() << std::endl;
 
- Return_OK:
- 
- unlock();                  // unlock the mutex  
+ unlock();                  // unlock the mutex
  
  return( kOK );
 
@@ -245,12 +241,6 @@ std::vector< Change * > GreedyRelaxationSolver::branch() {
 
 Change * GreedyRelaxationSolver::apply( Change * chg , bool doUndo ) 
 {
- /*
- auto CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
-
- if( ! CHG )
-  throw(std::invalid_argument("Change must be a BinaryKnapsackBlockChange"));*/
- 
  return chg->apply( f_Block , doUndo );
 
  }

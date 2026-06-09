@@ -120,7 +120,6 @@ int compute( bool changedvars = true ) override;
 
 /*--------------------------------------------------------------------------*/
  /// return a valid lower bound on the optimal objective function value
- /** TODO */
 
  OFValue get_true_lb( void ) {
   
@@ -168,10 +167,10 @@ int compute( bool changedvars = true ) override;
 
 /*--------------------------------------------------------------------------*/
  /// tells whether a true solution (a solution of the true original problem
- /// and not of the relaxed one solved by RelaxationSolver) is available
- /** Called after compute() this method has to return true if a true solution 
-  * of the original problem (not the relaxed one solved by RelaxationSolver)
-  * is available to be read with get_true_var_solution(). 
+ /// and not of the relaxed one solved by this Solver) is available
+ /** Called after compute() this method has to return true if a true solution
+  * of the original problem (not the relaxed one solved by this Solver)
+  * is available to be read with get_true_var_solution().
   *
   * Once "the first" solution (if ever) has been read, new ones may be
   * produced, if the Solver allows it, by means of new_true_var_solution().*/

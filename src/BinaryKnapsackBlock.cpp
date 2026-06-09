@@ -201,31 +201,54 @@ void BinaryKnapsackBlock::load( std::istream & input , char frmt )
  // read problem data
  Index n;
  if( ! ( input >> eatcomments >> n ) )
-  throw( std::invalid_argument( "error reading number of items" ) );
-
- if( ! ( input >> eatcomments >> f_C ) )
-  throw( std::invalid_argument( "error reading Capacity" ) );
+  throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading number of items" ) );
 
  v_W.resize( n );
  v_P.resize( n );
  v_I.assign( n , true );
- v_fxd.assign( n , 0 ); // all the variables are not fixed         
+ v_fxd.assign( n , 0 ); // all the variables are not fixed
 
- for( Index i = 0 ; i < get_NItems() ; ++i )
-  if( ! ( input >> eatcomments >> v_W[ i ] ) )
-   throw( std::invalid_argument( "error reading Weights" ) );
-
- for( Index i = 0 ; i < get_NItems() ; ++i )
-  if( ! ( input >> eatcomments >> v_P[ i ] ) )
-   throw( std::invalid_argument( "error reading Profits" ) );
-
- input >> eatcomments;
- if( ! input.eof() )
-  for( Index i = 0 ; i < get_NItems() ; ++i ) {
-   input >> eatcomments;
-   if( ! ( ( bool ) input >> v_I[ i ] ) )
-    throw( std::invalid_argument( "error reading Integrality Constraints" ) );
+ if( frmt == 'P' ) {
+  // Pisinger/Jooken knapsack benchmark format: after n, one line per item
+  //  "<index> <profit> <weight>", and the Capacity on the last line
+  for( Index i = 0 ; i < n ; ++i ) {
+   Index idx;
+   if( ! ( input >> eatcomments >> idx >> v_P[ i ] >> v_W[ i ] ) )
+    throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading item" ) );
    }
+
+  if( ! ( input >> eatcomments >> f_C ) )
+   throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading Capacity" ) );
+  }
+ else {
+  // native format: Capacity, then all Weights, then all Profits, then the
+  // optional Integrality
+  if( ! ( input >> eatcomments >> f_C ) )
+   throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading Capacity" ) );
+
+  for( Index i = 0 ; i < n ; ++i )
+   if( ! ( input >> eatcomments >> v_W[ i ] ) )
+    throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading Weights" ) );
+
+  for( Index i = 0 ; i < n ; ++i )
+   if( ! ( input >> eatcomments >> v_P[ i ] ) )
+    throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading Profits" ) );
+
+  input >> eatcomments;
+  if( ! input.eof() )
+   for( Index i = 0 ; i < n ; ++i ) {
+    input >> eatcomments;
+    if( ! ( ( bool ) input >> v_I[ i ] ) )
+     throw( std::invalid_argument(
+          "BinaryKnapsackBlock::load: error reading Integrality Constraints" ) );
+    }
+  }
 
  generate_abstract_variables();
 
@@ -603,11 +626,28 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 
 void BinaryKnapsackBlock::add_Modification( sp_Mod mod , ChnlName chnl )
 {
- if( mod->concerns_Block() ) {
-  mod->concerns_Block( false );
-  guts_of_add_Modification( mod.get() , chnl );
- }
+ // A Block must keep its OWN registered Solvers (here the DP solver, via the
+ // cached v_P / v_W that it updates from the eChgProfit / eChgWeight issued by
+ // chg_profits() / chg_weights() inside guts_of_add_Modification()) in sync
+ // with its data on EVERY change of that data, irrespective of concerns_Block.
+ //
+ // concerns_Block only tells *enclosing* observers (e.g. a nested LagBFunction
+ // that shares this sub-Block's Objective) whether to treat the change as
+ // structural; it must NOT gate the local translation. In particular a
+ // LagBFunction pushing the Lagrangian costs c^y = c + yA into this Block's
+ // Objective does so with concerns_Block == false (so the enclosing
+ // LagBFunction filters it), yet the DP solver of *this* Block still needs the
+ // updated profits/weights, or it keeps solving the original knapsack.
+ //
+ // Hence the translation is attempted unconditionally. guts_of_add_Modification
+ // is a no-op on Modification types it does not recognise (so this does not
+ // start throwing on the mods that the previous concerns_Block == false branch
+ // used to skip), and the eChgProfit / eChgWeight it issues already carry
+ // concerns_Block == false (via the eNoBlck in chg_profits / chg_weights), so
+ // enclosing / nested LagBFunctions keep filtering them.
+ guts_of_add_Modification( mod.get() , chnl );
 
+ mod->concerns_Block( false );
  Block::add_Modification( mod , chnl );
  }
 
@@ -1574,8 +1614,11 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
   throw( std::invalid_argument( "Modification to the wrong objective" ) );
   }
 
- throw( std::invalid_argument( 
-                        "Unsupported Modification to BinaryKnapsackBlock" ) );
+ // any other Modification type does not affect the DP-relevant data
+ // (profits / weights / capacity / sense / variable state): nothing to
+ // translate, so just return. This must NOT throw, because now
+ // guts_of_add_Modification() is called for every Modification (see
+ // add_Modification()), including those it does not recognise.
 
 }  // end( BinaryKnapsackBlock::guts_of_add_Modification )
 

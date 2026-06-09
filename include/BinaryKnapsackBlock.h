@@ -192,27 +192,32 @@ class BinaryKnapsackBlock : public Block {
             std::vector< unsigned char > && fxd = {} );
 
 /*--------------------------------------------------------------------------*/
- /// load instance from txt file  
- /** Loads a BinaryKnapsackBlock out of std::istream. The format is the
-  * following, with each element being separated by whitespaces and possibly
-  * comments:
+ /// load instance from txt file
+ /** Loads a BinaryKnapsackBlock out of std::istream, with each element being
+  * separated by whitespaces and possibly comments. Two input formats are
+  * supported, selected by \p frmt:
   *
-  * - number of items
+  * - frmt == 0 [default]: the native format
   *
-  * - capacity of the knapsack
+  *   - number of items
+  *   - capacity of the knapsack
+  *   - for i = 1 to n: weight of item i
+  *   - for i = 1 to n: profit of item i
   *
-  * - for i = 1 to n: weight of item i
+  *   If the stream (after having extracted whitespaces and comments) does
+  *   not eof() here, then
   *
-  * - for i = 1 to n: profit of item i
+  *   - for i = 1 to n: integrality of item i (true if integral, false if not)
   *
-  * If the stream (after having extracted whitespaces and comments) does not
-  * eof() here, then
+  *   If integrality is not specified, true is assumed for all objects.
   *
-  * - for i = 1 to n: integrality of item i (true if integral, false if not)
+  * - frmt == 'P': the Pisinger/Jooken knapsack benchmark format
   *
-  * If integrality is not specified, true is assumed for all objects.
+  *   - number of items
+  *   - for i = 1 to n: "<index> <profit> <weight>" (one item per line)
+  *   - capacity of the knapsack
   *
-  * Since there is only one supported input format, \p frmt is ignored.
+  *   the index column is ignored and all items are assumed integral.
   *
   * Like load( memory ), if there is any Solver attached to this 
   * BinaryKnapsackBlock then a NBModification (the "nuclear option") is 

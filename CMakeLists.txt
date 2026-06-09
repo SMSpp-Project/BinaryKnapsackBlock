@@ -110,6 +110,9 @@ endif ()
 # the library with this notation.
 add_library(${modNamespace}::${modName} ALIAS ${modName})
 
+# ----- Subdirectories ------------------------------------------------------ #
+add_subdirectory(tools)
+
 # ----- Install instructions ------------------------------------------------ #
 # The following commands are used when installing the library
 # and its CMake configuration files on the system.
