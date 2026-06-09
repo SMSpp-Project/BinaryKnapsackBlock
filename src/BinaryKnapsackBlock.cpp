@@ -114,8 +114,9 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlockSbstChange );
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
                                 const std::vector< double > & Weights , 
-                                const std::vector< double > & Profits,
-                                const std::vector< bool > & Integrality )
+                                const std::vector< double > & Profits ,
+                                const std::vector< bool > & Integrality ,
+                                const std::vector< unsigned char > fxd )
 {
  // sanity checks 
 
@@ -131,7 +132,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
  // call load( , , && , && , && ) on newly constructed copies
  load( n , Capacity , std::vector< double >( Weights ) ,
        std::vector< double >( Profits ) ,
-       std::vector< bool >( Integrality ) );
+       std::vector< bool >( Integrality ) ,
+       std::vector< unsigned char >( fxd ) );
 
  } // end( BinaryKnapsackBlock::load( memory ) )
 
@@ -140,7 +142,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
                                 std::vector< double > && Weights , 
                                 std::vector< double > && Profits ,
-                                std::vector< bool > && Integrality )
+                                std::vector< bool > && Integrality ,
+                                std::vector< unsigned char > && fxd )
 {
  // sanity checks 
 
@@ -169,8 +172,11 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
   v_I = std::move( Integrality );
 
  countCont = std::count( v_I.begin() , v_I.end() , false );
-
- v_fxd.assign( n , 0 ); // all the variables are not fixed
+ 
+ if( fxd.empty() )
+  v_fxd.assign( n , 0 ); // all the variables are not fixed
+ else
+  v_fxd = std::move( fxd );
  
  generate_abstract_variables();
 
@@ -453,7 +459,7 @@ Block * BinaryKnapsackBlock::get_R3_Block( Configuration * r3bc ,
  else
   BKB = new BinaryKnapsackBlock( father );
 
- BKB->load( get_NItems() , f_C , v_W , v_P );
+ BKB->load( get_NItems() , f_C , v_W , v_P , v_I , v_fxd );
  BKB->set_objective_sense( f_sense );
 
  return( BKB );
@@ -1757,9 +1763,10 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    bool old_sense = ( BKB->get_objective_sense() ==  Objective::eMax );
+    std::vector< double > old_sense = { 
+                 double( BKB->get_objective_sense() ==  Objective::eMax ) };
     undoChg = new BinaryKnapsackBlockChange( eChgSense , 
-                                            { double( old_sense ) } ); 
+                               std::move( old_sense ) ); 
     }
    
    // get new objective sense
@@ -1776,8 +1783,9 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    double old_C = BKB->get_Capacity();
-    undoChg = new BinaryKnapsackBlockChange( eChgCapacity , { old_C } );
+    std::vector< double > old_C = { BKB->get_Capacity() };
+    undoChg = new BinaryKnapsackBlockChange( eChgCapacity , 
+                                             std::move( old_C ) );
    }
 
    double new_C = v_data[ 0 ];
@@ -1889,13 +1897,16 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
    for( Index i = f_rng.first ; i < f_rng.second ; ++i ) {
     if( BKB->is_fixed( i ) )
      throw( std::invalid_argument( "variable " + std::to_string( i ) + 
-                                   "already fixed" ) ); 
+                                   " already fixed" ) ); 
     }
 
    Change * undoChg = nullptr;
 
-   if( doUndo )
-    undoChg = new BinaryKnapsackBlockRngdChange( eUnfixX , {} , f_rng );
+   if( doUndo ){
+    std::vector< double > old_data;
+    undoChg = new BinaryKnapsackBlockRngdChange( eUnfixX , 
+                                          std::move( old_data ) , f_rng );
+    }
    
    // Change data
    std::vector< bool > new_x( v_data.begin() , v_data.end() ); 
@@ -1923,7 +1934,6 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
                                                  std::move( old_data ) ,
                                                  f_rng );
     }
-
 
    // Change data
    BKB->unfix_x( f_rng );
@@ -2042,14 +2052,17 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
    for( Index i : v_nms ) {
     if( BKB->is_fixed( i ) )
      throw( std::invalid_argument( "variable " + std::to_string( i ) + 
-                                   "already fixed" ) ); 
+                                   " already fixed" ) ); 
     }
 
    Change * undoChg = nullptr;
 
-   if( doUndo )
-    undoChg = new BinaryKnapsackBlockSbstChange( eUnfixX , {} , 
+   if( doUndo ){
+    std::vector< double > old_data;
+    undoChg = new BinaryKnapsackBlockSbstChange( eUnfixX , 
+                                                 std::move( old_data ) , 
                                                  Subset( v_nms ) );
+    }
    
    // Change data
    std::vector< bool > new_x( v_data.begin() , v_data.end() ); 
