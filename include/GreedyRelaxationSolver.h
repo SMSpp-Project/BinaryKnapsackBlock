@@ -3,19 +3,22 @@
 /*--------------------------------------------------------------------------*/
 /** @file
  * Header file for the *concrete* class GreedyRelaxationSolver, which
- * implements the RelaxationSolver concept [see RelaxationSolver.h] and the
- * Solver concept [see Solver.h] for solving the continuous relaxation of a  
- * Knapsack problem represented by a BinaryKnapsackBlock.
- *
- * \author Federica Di Pasquale \n
- *         Dipartimento di Informatica \n
- *         Universita' di Pisa \n
+ * implements the Solver concept [see Solver.h] for solving the continuous
+ * relaxation of a Knapsack problem represented by a BinaryKnapsackBlock.
  *
  * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * Copyright &copy by Federica Di Pasquale, Antonio Frangioni
+ * \author Federica Di Pasquale \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
+ *
+ * \author Donato Meoli \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
+ *
+ * Copyright &copy by Antonio Frangioni, Federica Di Pasquale, Donato Meoli
  */
 /*--------------------------------------------------------------------------*/
 /*----------------------------- DEFINITIONS --------------------------------*/
@@ -30,8 +33,6 @@
 /*--------------------------------------------------------------------------*/
 
 #include "BinaryKnapsackBlock.h"
-
-#include "RelaxationSolver.h"
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
@@ -54,7 +55,7 @@ namespace SMSpp_di_unipi_it
 /**   */                       
 
 
-class GreedyRelaxationSolver : public Solver , public RelaxationSolver {  
+class GreedyRelaxationSolver : public Solver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
@@ -121,7 +122,7 @@ int compute( bool changedvars = true ) override;
  /// return a valid lower bound on the optimal objective function value
  /** TODO */
 
- OFValue get_true_lb( void ) override {
+ OFValue get_true_lb( void ) {
   
   // if it is a minimization problem, the optimal value is a lower bound
   // for the original problem  
@@ -145,7 +146,7 @@ int compute( bool changedvars = true ) override;
  /// return a valid upper bound on the optimal objective function value
  /** */
 
- OFValue get_true_ub( void ) override {
+ OFValue get_true_ub( void ) {
   
   // if it is a maximization problem, the optimal value is un upper bound
   // for the original problem  
@@ -175,17 +176,17 @@ int compute( bool changedvars = true ) override;
   * Once "the first" solution (if ever) has been read, new ones may be
   * produced, if the Solver allows it, by means of new_true_var_solution().*/
 
-bool has_true_var_solution( void ) override;
+bool has_true_var_solution( void );
 
 /*--------------------------------------------------------------------------*/
 /// write the current true solution in the variables of the Block
 
-void get_true_var_solution( Configuration * solc = nullptr ) override {}
+void get_true_var_solution( Configuration * solc = nullptr ) {}
 
 /*--------------------------------------------------------------------------*/
 /// write the current true solution in the variables of the Block
 
-bool new_true_var_solution( void ) override { return false; }
+bool new_true_var_solution( void ) { return false; }
 
 /*--------------------------------------------------------------------------*/
 /// write the current solution in the variables of the BinaryKnapsackBlock
@@ -213,11 +214,11 @@ void add_Modification( sp_Mod &mod ) override;
 
 /*--------------------------------------------------------------------------*/
 
-std::vector< Change * > branch() override;
+std::vector< Change * > branch();
 
 /*--------------------------------------------------------------------------*/
 
-Change * apply( Change * , bool doUndo = false ) override;
+Change * apply( Change * , bool doUndo = false );
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
