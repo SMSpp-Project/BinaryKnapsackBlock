@@ -56,7 +56,7 @@ if [ "$want_pisinger" = 1 ]; then
             echo "downloading $tgz ..."
             curl -fL -o "$tgz" "$PIS_URL/$tgz"
         fi
-        if [ ! -d "$fam" ]; then
+        if [ -z "$(ls -A "$fam" 2>/dev/null)" ]; then
             echo "extracting $fam ..."
             mkdir -p "$fam"
             tar xzf "$tgz" -C "$fam"
@@ -65,7 +65,7 @@ if [ "$want_pisinger" = 1 ]; then
     cd ../..
 fi
 
-if [ "$want_jooken" = 1 ] && [ ! -d benchmarks/jooken ]; then
+if [ "$want_jooken" = 1 ] && [ -z "$(ls -A benchmarks/jooken 2>/dev/null)" ]; then
     echo "cloning jooken instances (~100 MB) ..."
     git clone --depth 1 "$JOOKEN_URL" benchmarks/jooken
     rm -rf benchmarks/jooken/.git
