@@ -108,14 +108,14 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
-DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
-                           besth( 0 ) , obj( - Inf< double >() ) , 
-                           start_item( 0 ) , reopt( 0 ) , step( 1 ) {}
+ DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
+                            besth( 0 ) , obj( - Inf< double >() ) ,
+                            start_item( 0 ) , reopt( 0 ) , step( 1 ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
 
-~DPBinaryKnapsackSolver() override = default;
+ ~DPBinaryKnapsackSolver() override = default;
 
 
 /** @} ---------------------------------------------------------------------*/
@@ -124,9 +124,9 @@ DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
 /** @name Other initializations @{ */
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// set the (pointer to the) Block that the Solver has to solve
+ /// set the (pointer to the) Block that the Solver has to solve
 
-void set_Block( Block * block ) override;
+ void set_Block( Block * block ) override;
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
@@ -297,7 +297,7 @@ void set_Block( Block * block ) override;
 /*-------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------*/
 
-int compute( bool changedvars = true ) override;
+ int compute( bool changedvars = true ) override;
 
 /** @} ---------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
@@ -306,23 +306,23 @@ int compute( bool changedvars = true ) override;
  *  @{ */
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// return a valid lower bound on the optimal objective function value
-/** Return a valid lower bound on the optimal objective function value.
-* get_lb() must be called after compute() has been called. */
+ /// return a valid lower bound on the optimal objective function value
+ /** Return a valid lower bound on the optimal objective function value.
+  * get_lb() must be called after compute() has been called. */
 
-OFValue get_lb( void ) override { return get_var_value(); }
+ OFValue get_lb( void ) override { return get_var_value(); }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// return a valid upper bound on the optimal objective function value
-/** Return a valid upper bound on the optimal objective function value.
-* get_ub() must be called after compute() has been called. */
+ /// return a valid upper bound on the optimal objective function value
+ /** Return a valid upper bound on the optimal objective function value.
+  * get_ub() must be called after compute() has been called. */
 
-OFValue get_ub( void ) override { return get_var_value(); }
+ OFValue get_ub( void ) override { return get_var_value(); }
 
 /*--------------------------------------------------------------------------*/
-/// write the current solution in the variables of the BinaryKnapsackBlock
+ /// write the current solution in the variables of the BinaryKnapsackBlock
 
-void get_var_solution( Configuration * solc = nullptr ) override;
+ void get_var_solution( Configuration * solc = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/
 /// return the value of the (current) solution
@@ -331,7 +331,7 @@ void get_var_solution( Configuration * solc = nullptr ) override;
  * the sign of the value of the solution must change according to the real 
  * sense (f_sense) of the problem encoded in the BinaryKnapsackBlock. */
 
-OFValue get_var_value() override { return f_sense ? obj : - obj; }
+ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 
 /** @} ---------------------------------------------------------------------*/
 /*-------------- METHODS FOR READING THE DATA OF THE Solver ----------------*/
@@ -390,32 +390,31 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
  *                   labels are stored in lab[ i ]               
  *                                                                         */
 
-void set_par( idx_type par , double value ) override;
+ void set_par( idx_type par , double value ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
-idx_type get_num_dbl_par( void ) const override {
- return( idx_type( dblLastDPBKSlvPar ) );
- }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
- 
-double get_dbl_par( const idx_type par ) const override {
-  
- if( par == dblReopt )
-  return( reopt );
-
- return( Solver::get_dflt_dbl_par( par ) );
- }
+ idx_type get_num_dbl_par( void ) const override {
+  return( idx_type( dblLastDPBKSlvPar ) );
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
-idx_type dbl_par_str2idx( const std::string & name ) const override {
- if( name == "dblReopt" )
-  return( dblReopt );
- 
- return( Solver::dbl_par_str2idx( name ) );
- }
+ double get_dbl_par( const idx_type par ) const override {
+  if( par == dblReopt )
+   return( reopt );
+
+  return( Solver::get_dflt_dbl_par( par ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ idx_type dbl_par_str2idx( const std::string & name ) const override {
+  if( name == "dblReopt" )
+   return( dblReopt );
+
+  return( Solver::dbl_par_str2idx( name ) );
+  }
 
 /** @} ---------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
@@ -427,7 +426,7 @@ idx_type dbl_par_str2idx( const std::string & name ) const override {
  * to NBModification, i.e. the Binary Knapsack instance must be reloaded and
  * the list of modification must be cleared. */
  
-virtual void add_Modification( sp_Mod &mod ) override;
+ virtual void add_Modification( sp_Mod &mod ) override;
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
@@ -435,10 +434,10 @@ virtual void add_Modification( sp_Mod &mod ) override;
 
 protected:
 
- /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Dynamic Programming to solve the integer knapsack
 
- virtual void dynamic_programming( Index C ); 
+ virtual void dynamic_programming( Index C );
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PROTECTED FIELDS ----------------------------*/
@@ -476,15 +475,15 @@ protected:
  std::vector< std::vector< char > > pred;   ///< predecessors 
  Index start_item;                          ///< index of the starting item
 
- /* preprocessing - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/* preprocessing- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  std::vector< bool > skip;     ///< preprocessed variables to skip
 
- /* algorithmic parameters- - - - - - - - - - - - - - - - - - - - - - - - - */
- 
+/* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
+
  double reopt;                          ///< reoptimization parameter
- Index step;                            ///< step for reoptimization 
- 
+ Index step;                            ///< step for reoptimization
+
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -505,10 +504,10 @@ private:
 
  std::tuple< double , double > preprocessing();
 
- /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// Greedy algorithm to solve the continuous knapsack
 
- void greedy_algorithm( double C ); 
+ void greedy_algorithm( double C );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// process all the pending modifications and compute start_item 

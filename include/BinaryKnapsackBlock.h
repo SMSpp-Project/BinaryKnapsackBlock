@@ -556,7 +556,7 @@ class BinaryKnapsackBlock : public Block {
  Block * get_R3_Block( Configuration *r3bc = nullptr , Block * base = nullptr , 
                        Block * father = nullptr ) override;
 
- /*--------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
  /// maps back the solution from a copy BinaryKnapsackBlock to the current one
  /** Maps back the solution from a copy BinaryKnapsackBlock to the current one
   */
@@ -564,7 +564,7 @@ class BinaryKnapsackBlock : public Block {
  void map_back_solution( Block *R3B , Configuration *r3bc = nullptr ,
                          Configuration *solc = nullptr ) override;
 
- /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// maps the solution of the current BinaryKnapsackBlock to a copy.
  /** Maps the solution of the current BinaryKnapsackBlock to a copy. */
 
@@ -902,8 +902,8 @@ class BinaryKnapsackBlock : public Block {
   * methods factory with the standard Range signature. */
 
  void chg_capacity( c_dblVec_it NC , Range rng = INFRange ,
-		    ModParam issueMod = eNoBlck ,
-		    ModParam issueAMod = eNoBlck ) {
+                    ModParam issueMod = eNoBlck ,
+                    ModParam issueAMod = eNoBlck ) {
   if( rng.second <= rng.first )  // the Range is empty
    return;                       // silently return
 

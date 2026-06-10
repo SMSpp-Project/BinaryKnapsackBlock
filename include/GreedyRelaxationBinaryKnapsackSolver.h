@@ -1,10 +1,11 @@
 /*--------------------------------------------------------------------------*/
-/*---------------------- File GreedyRelaxationSolver.h ---------------------*/
+/*-------------- File GreedyRelaxationBinaryKnapsackSolver.h ---------------*/
 /*--------------------------------------------------------------------------*/
 /** @file
- * Header file for the *concrete* class GreedyRelaxationSolver, which
- * implements the Solver concept [see Solver.h] for solving the continuous
- * relaxation of a Knapsack problem represented by a BinaryKnapsackBlock.
+ * Header file for the *concrete* class
+ * GreedyRelaxationBinaryKnapsackSolver, which implements the Solver concept
+ * [see Solver.h] for solving the continuous relaxation of a Knapsack problem
+ * represented by a BinaryKnapsackBlock.
  *
  * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
@@ -24,15 +25,15 @@
 /*----------------------------- DEFINITIONS --------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-#ifndef __GreedyRelaxationSolver
- #define __GreedyRelaxationSolver  
+#ifndef __GreedyRelaxationBinaryKnapsackSolver
+ #define __GreedyRelaxationBinaryKnapsackSolver
                       /* self-identification: #endif at the end of the file */
 
 /*--------------------------------------------------------------------------*/
 /*------------------------------ INCLUDES ----------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-#include "BinaryKnapsackBlock.h"
+#include "BinaryKnapsackSolver.h"
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
@@ -41,35 +42,31 @@
 /// namespace for the Structured Modeling System++ (SMS++)
 namespace SMSpp_di_unipi_it
 {
- 
+
 /*--------------------------------------------------------------------------*/
 /*------------------------------- CLASSES ----------------------------------*/
 /*--------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------*/
-/*---------------------- CLASS GreedyRelaxationSolver ----------------------*/
+/*--------------- CLASS GreedyRelaxationBinaryKnapsackSolver ---------------*/
 /*--------------------------------------------------------------------------*/
 /*--------------------------- GENERAL NOTES --------------------------------*/
 /*--------------------------------------------------------------------------*/
-/// 
-/**   */                       
+/// Solver of the continuous (Dantzig) relaxation of a BinaryKnapsackBlock
+/** Thin wrapper around the machinery of BinaryKnapsackSolver: compute()
+ * normalizes the instance and solves its continuous relaxation by the greedy
+ * fractional fill, which also identifies the *critical* (fractional) item -
+ * the natural branching candidate, see branch(). Besides the relaxation
+ * value, valid true lower / upper bounds on the original mixed-binary
+ * problem are available [see get_true_lb() / get_true_ub()]. */
 
-
-class GreedyRelaxationSolver : public Solver {
+class GreedyRelaxationBinaryKnapsackSolver : public BinaryKnapsackSolver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
 /*--------------------------------------------------------------------------*/
 
 public:
-
-/*--------------------------------------------------------------------------*/
-/*---------------------------- PUBLIC TYPES --------------------------------*/
-/*--------------------------------------------------------------------------*/
-/** @name Public types
- @{ */
-
- using Index = Block::Index;
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
@@ -82,35 +79,26 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
-GreedyRelaxationSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
-                           f_ci( 0 ) , f_ciVal( 0 ) , obj( -Inf< double >() )  
-                           {} 
+ GreedyRelaxationBinaryKnapsackSolver() : BinaryKnapsackSolver() ,
+                                          f_ci( 0 ) ,
+                                          obj( - Inf< double >() ) {
+  f_fi = FracInfo{ -1 , 1 , false , 0 , 0 };
+  }
 
 /*--------------------------------------------------------------------------*/
  /// destructor
 
-~GreedyRelaxationSolver() override = default;
-
-/** @} ---------------------------------------------------------------------*/
-/*-------------------------- OTHER INITIALIZATIONS -------------------------*/
-/*--------------------------------------------------------------------------*/
-/** @name Other initializations @{ */
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/// set the (pointer to the) Block that the Solver has to solve
-
-void set_Block( Block * block ) override;
+ ~GreedyRelaxationBinaryKnapsackSolver() override = default;
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
-/** @name Solving a relaxation of the Binary Knapsack encoded by the current 
+/** @name Solving a relaxation of the Binary Knapsack encoded by the current
  * BinaryKnapsackBlock @{ */
 
-/// 
-/**  */
+ /// solve the continuous relaxation of the BinaryKnapsackBlock
 
-int compute( bool changedvars = true ) override;
+ int compute( bool changedvars = true ) override;
 
 /** @} ---------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
@@ -120,49 +108,25 @@ int compute( bool changedvars = true ) override;
 
 /*--------------------------------------------------------------------------*/
  /// return a valid lower bound on the optimal objective function value
+ /** For a minimisation problem the relaxation optimum itself is a valid
+  * lower bound. For a maximisation problem the bound is the value of a
+  * feasible solution of the original problem: the greedy one without the
+  * fractional part \f$ \phi \, p_c \f$ of the critical item \f$ c \f$ - or
+  * the greedy solution itself when there is no critical item or it is a
+  * continuous variable (the solution is then feasible as it is). */
 
  OFValue get_true_lb( void ) {
-  
-  // if it is a minimization problem, the optimal value is a lower bound
-  // for the original problem  
-  if( ! f_sense )
-   return( - obj );
-  
-  // otherwise it is a maximization problem and the solution without the
-  // critical item is a feasible solution and it provides a lower bound for
-  // the original problem
-  if( f_ciVal == 1 )
-   return( obj );
-
-  if( v_W[ f_ci ] < 0 ) {
-   return( obj + ( 1 - f_ciVal ) * v_P[ f_ci ] ); 
-   }
-  
-  return( obj - f_ciVal * v_P[ f_ci ] );
+  return( f_sense ? true_feasible_value() : - obj );
   }
 
 /*--------------------------------------------------------------------------*/
  /// return a valid upper bound on the optimal objective function value
- /** */
+ /** Symmetric to get_true_lb(): the relaxation optimum for a maximisation
+  * problem, (minus) the value of the feasible greedy solution without the
+  * critical fraction for a minimisation one. */
 
  OFValue get_true_ub( void ) {
-  
-  // if it is a maximization problem, the optimal value is un upper bound
-  // for the original problem  
-  if( f_sense )
-   return( obj );
-  
-  // otherwise it is a minimization problem and the solution without the
-  // critical item is a feasible solution and it provides an upper bound for
-  // the original problem
-  if( f_ciVal == 1 )
-   return( - obj );
-  
-  if( v_W[ f_ci ] < 0 ) {
-   return( - obj - ( 1 - f_ciVal ) * v_P[ f_ci ] );
-   }
-
-  return( - obj + f_ciVal * v_P[ f_ci ] );
+  return( f_sense ? obj : - true_feasible_value() );
   }
 
 /*--------------------------------------------------------------------------*/
@@ -175,29 +139,29 @@ int compute( bool changedvars = true ) override;
   * Once "the first" solution (if ever) has been read, new ones may be
   * produced, if the Solver allows it, by means of new_true_var_solution().*/
 
-bool has_true_var_solution( void );
+ bool has_true_var_solution( void );
 
 /*--------------------------------------------------------------------------*/
-/// write the current true solution in the variables of the Block
+ /// write the current true solution in the variables of the Block
 
-void get_true_var_solution( Configuration * solc = nullptr ) {}
-
-/*--------------------------------------------------------------------------*/
-/// write the current true solution in the variables of the Block
-
-bool new_true_var_solution( void ) { return false; }
+ void get_true_var_solution( Configuration * solc = nullptr ) {}
 
 /*--------------------------------------------------------------------------*/
-/// write the current solution in the variables of the BinaryKnapsackBlock
+ /// write the current true solution in the variables of the Block
 
-void get_var_solution( Configuration * solc = nullptr ) override;
+ bool new_true_var_solution( void ) { return false; }
 
 /*--------------------------------------------------------------------------*/
-/// return the value of the (current) solution
-/** Return the the value of the current solution. Change the sign according
- * to the sense of the problem (f_sense). */
+ /// write the current solution in the variables of the BinaryKnapsackBlock
 
-OFValue get_var_value() override { return f_sense ? obj : - obj; }
+ void get_var_solution( Configuration * solc = nullptr ) override;
+
+/*--------------------------------------------------------------------------*/
+ /// return the value of the (current) solution
+ /** Return the the value of the current solution. Change the sign according
+  * to the sense of the problem (f_sense). */
+
+ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 
 /** @} ---------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
@@ -205,19 +169,13 @@ OFValue get_var_value() override { return f_sense ? obj : - obj; }
 /** @name Changing the data of the model
  *  @{ */
 
-/** GreedyRelaxationSolver::add_Modification() is defined to properly react
- * to NBModification, i.e. the Binary Knapsack instance must be reloaded and
- * the list of modification must be cleared. */
- 
-void add_Modification( sp_Mod &mod ) override;
+ /// branch on the critical item: the two Change fix it to 0 and to 1
+
+ std::vector< Change * > branch();
 
 /*--------------------------------------------------------------------------*/
 
-std::vector< Change * > branch();
-
-/*--------------------------------------------------------------------------*/
-
-Change * apply( Change * , bool doUndo = false );
+ Change * apply( Change * , bool doUndo = false );
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
@@ -225,29 +183,27 @@ Change * apply( Change * , bool doUndo = false );
 
 protected:
 
-/* data of the Binary Knapsack instance - - - - - - - - - - - - - - - - - - */
+/*--------------------------------------------------------------------------*/
+/*--------------------------- PROTECTED METHODS ----------------------------*/
+/*--------------------------------------------------------------------------*/
 
- Index f_N;                           ///< the number of Items 
- double f_C;                          ///< the Capacity of the Knapsack
- std::vector< double > v_W;           ///< vector of Weights          
- std::vector< double > v_P;           ///< vector of Profits
- std::vector< unsigned char > v_fxd;  ///< vector saying how the x are fixed
-                                      /* < v_fxd[ i ] indicates if x_i is
-                                       * fixed, with the following encoding:
-                                       * 0 = not fixed , 
-                                       * 1 = fixed to 0 , 
-                                       * 2 = fixed to 1                     */
- bool f_sense;                        ///< the sense of the objective
- 
- Index f_ci;                          ///< Index of the critical item
- double f_ciVal;                      ///< Variable value of the critical  
- double obj;                          ///< the value of the objective
- std::vector< double > v_x;           ///< vector of variables
+ /// the value (in the maximisation sense) of the greedy solution made
+ /// feasible for the TRUE problem by dropping the critical fraction
+
+ double true_feasible_value( void ) const {
+  if( ( f_fi.orig < 0 ) || f_fi.cont )   // feasible as it is
+   return( obj );
+  return( obj - f_fi.cfrac * f_fi.cp );
+  }
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PROTECTED FIELDS ----------------------------*/
 /*--------------------------------------------------------------------------*/
- 
+
+ Index f_ci;        ///< index (in the Block) of the critical item
+ FracInfo f_fi;     ///< the critical item of the last compute()
+ double obj;        ///< the value of the relaxation (maximisation sense)
+
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -255,38 +211,24 @@ protected:
 private:
 
 /*--------------------------------------------------------------------------*/
-/*--------------------------- PRIVATE METHODS ------------------------------*/
-/*--------------------------------------------------------------------------*/
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// load the Binary Knapsack instance 
-
- void load();
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// process all the pending modifications 
-
- void process_outstanding_Modification();
-
-/*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
 /*--------------------------------------------------------------------------*/
 
- SMSpp_insert_in_factory_h;  // insert GreedyRelaxationSolver in the factory
+ SMSpp_insert_in_factory_h;
+ // insert GreedyRelaxationBinaryKnapsackSolver in the factory
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 
- }; // end( class( GreedyRelaxationSolver ) )
+ }; // end( class( GreedyRelaxationBinaryKnapsackSolver ) )
 
 }  // end( namespace SMSpp_di_unipi_it )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-#endif  /* GreedyRelaxationSolver.h included */
+#endif  /* GreedyRelaxationBinaryKnapsackSolver.h included */
 
 /*--------------------------------------------------------------------------*/
-/*-------------------- End File GreedyRelaxationSolver.h -------------------*/
+/*------------ End File GreedyRelaxationBinaryKnapsackSolver.h -------------*/
 /*--------------------------------------------------------------------------*/
-

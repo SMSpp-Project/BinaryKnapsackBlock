@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# usage: fetch-txt [ <local archive.tgz> ]
+#
+# Populate ../data/txt with the curated Pisinger knapsack instance classes,
+# one text file per instance in the BinaryKnapsackBlock 'P' load format:
+#   n                          (number of items)
+#   <index> <profit> <weight>  (one line per item, n lines)
+#   C                          (capacity, last line)
+#
+# The source is David Pisinger's small-coefficient benchmark
+# (smallcoeff_pisinger.tgz, see https://hjemmesider.diku.dk/~pisinger/codes.html),
+# whose .csv files pack 100 instances each with header lines (n/c/z/time) and
+# CSV item rows "index,profit,weight,xstar"; we strip those down to the bare
+# 'P' format read by BinaryKnapsackBlock::load( istream , 'P' ).
+#
+# Pass a path to an already-downloaded smallcoeff_pisinger.tgz to skip the
+# (large) download. After running, regenerate the .nc4 with tools/batch, then
+# ./compress and ./upload-txt to publish txt.tgz to the Package Registry.
+
+set -euo pipefail
+
+cd "$(dirname "$0")"   # run from data/
+
+URL="https://hjemmesider.diku.dk/~pisinger/smallcoeff_pisinger.tgz"
+
+# curated subset (Pisinger naming knapPI_<type>_<n>_<R>):
+#   type 1 = uncorrelated, type 6 = subset-sum; n = 50, R = 1000
+CLASSES=("knapPI_1_50_1000" "knapPI_6_50_1000")
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+arch=${1:-}
+if [ -z "$arch" ]; then
+  arch="$tmp/smallcoeff_pisinger.tgz"
+  echo "Downloading $URL ..."
+  curl -fsSL -o "$arch" "$URL"
+fi
+
+rm -rf txt
+for cls in "${CLASSES[@]}"; do
+  tar xzf "$arch" -C "$tmp" "$cls.csv"
+  mkdir -p "txt/$cls"
+  awk -v dir="txt/$cls" '
+    { sub(/\r$/, "") }                        # tolerate CRLF
+    /^knapPI_/ { name = $0; next }            # instance name
+    /^n /      { n = $2; next }               # number of items
+    /^c /      { c = $2; next }               # capacity (emitted last)
+    /^z /      { next }                       # optimum (unused)
+    /^time/    { out = dir "/" name ".txt"; print n > out; next }
+    /^-----/   { print c >> out; close( out ); next }  # end of instance
+    /,/        { split( $0 , a , "," ); print a[1], a[2], a[3] >> out }
+  ' "$tmp/$cls.csv"
+  echo "  $cls: $(ls "txt/$cls" | wc -l) instances"
+done
+
+# the end - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

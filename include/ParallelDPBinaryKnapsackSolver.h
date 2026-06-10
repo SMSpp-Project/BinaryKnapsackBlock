@@ -107,11 +107,11 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
-ParallelDPBinaryKnapsackSolver( Index maxthread = 0 ,
-                                int whichparallel = -1 ) :
-                                DPBinaryKnapsackSolver() ,
-                                f_max_thread( maxthread ) ,
-                                f_which_parallel( whichparallel ) {}
+ ParallelDPBinaryKnapsackSolver( Index maxthread = 0 ,
+                                 int whichparallel = -1 ) :
+                                 DPBinaryKnapsackSolver() ,
+                                 f_max_thread( maxthread ) ,
+                                 f_which_parallel( whichparallel ) {}
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -119,7 +119,7 @@ ParallelDPBinaryKnapsackSolver( Index maxthread = 0 ,
  // defined in the .cpp (not defaulted here) so that the destructor of the
  // pimpl'd ff::ParallelFor is instantiated where the type is complete
 
-~ParallelDPBinaryKnapsackSolver() override;
+ ~ParallelDPBinaryKnapsackSolver() override;
 
 /*@} -----------------------------------------------------------------------*/
 /*-------------------------- OTHER INITIALIZATIONS -------------------------*/

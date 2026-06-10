@@ -35,8 +35,12 @@ data/txt.tgz
 data/.extracted
 data/nc4/.generated
 
-# --- Converter tool binary ----------------------------------
+# --- Benchmark payload (fetched by data/fetch-benchmarks) ----
+data/benchmarks/
+
+# --- Tool binaries ------------------------------------------
 tools/bk2nc4
+tools/bkbench
 
 # --- CMake --------------------------------------------------
 build/

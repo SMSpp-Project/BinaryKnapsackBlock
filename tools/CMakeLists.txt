@@ -28,9 +28,14 @@ endif ()
 add_executable(bk2nc4 bk2nc4.cpp)
 target_link_libraries(bk2nc4 PRIVATE SMS++::BinaryKnapsackBlock)
 
+# ----- bkbench ------------------------------------------------------------ #
+# in-process CoreDPBinaryKnapsackSolver benchmark over a Pisinger .csv file
+add_executable(bkbench bkbench.cpp)
+target_link_libraries(bkbench PRIVATE SMS++::BinaryKnapsackBlock)
+
 # ----- Install instructions ------------------------------------------------ #
 include(GNUInstallDirs)
-install(TARGETS bk2nc4
+install(TARGETS bk2nc4 bkbench
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # --------------------------------------------------------------------------- #

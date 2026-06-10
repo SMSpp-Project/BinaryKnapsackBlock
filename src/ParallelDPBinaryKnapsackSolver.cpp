@@ -134,13 +134,13 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   switch( which ) {
 
    case( 0 ): {
-   
-   // OpenMP- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   
+
+    // OpenMP - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
     #pragma omp parallel for num_threads( nthreads )
     for( Index j = 0 ; j < nextlab.size() ; ++j )
-     f( j ); 
-    
+     f( j );
+
     break;
     }
    

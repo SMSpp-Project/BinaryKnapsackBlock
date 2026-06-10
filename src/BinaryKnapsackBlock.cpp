@@ -202,7 +202,7 @@ void BinaryKnapsackBlock::load( std::istream & input , char frmt )
  Index n;
  if( ! ( input >> eatcomments >> n ) )
   throw( std::invalid_argument(
-                   "BinaryKnapsackBlock::load: error reading number of items" ) );
+          "BinaryKnapsackBlock::load: error reading number of items" ) );
 
  v_W.resize( n );
  v_P.resize( n );
@@ -246,7 +246,7 @@ void BinaryKnapsackBlock::load( std::istream & input , char frmt )
     input >> eatcomments;
     if( ! ( ( bool ) input >> v_I[ i ] ) )
      throw( std::invalid_argument(
-          "BinaryKnapsackBlock::load: error reading Integrality Constraints" ) );
+      "BinaryKnapsackBlock::load: error reading Integrality Constraints" ) );
     }
   }
 

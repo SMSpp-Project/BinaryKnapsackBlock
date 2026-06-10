@@ -3,16 +3,43 @@
 This project covers two conceptually different things (which may one day be
 split to two different projects):
 
-- `BinaryKnapsackBlock`, a SMS++ :Block for the Binary Knapsack Problem
+- `BinaryKnapsackBlock`, a SMS++ :Block for the (Mixed) Binary Knapsack
+  Problem
 
-- `DPBinaryKnapsackSolver`, a SMS++ :Solver for BinaryKnapsackBlock based on
-  a trivial implementation of the standard Dynamic Programming approach
+- a family of SMS++ :Solver for BinaryKnapsackBlock:
+
+  - `DPBinaryKnapsackSolver`, the standard full-table Dynamic Programming
+    approach, with reoptimization support;
+
+  - `ParallelDPBinaryKnapsackSolver`, a DPBinaryKnapsackSolver whose inner
+    (capacity) loop can run on parallel engines (OpenMP / FastFlow /
+    std::thread); opt-in and serial by default, since this fine-grained
+    parallelism does not pay off in practice;
+
+  - `CoreDPBinaryKnapsackSolver`, an exact core / non-dominated-state solver
+    in the MINKNAP / COMBO / RECORD line (break-item enumeration with
+    dominance, LP / Martello-Toth / surrogate bounds, divisibility and
+    aggregation reductions, primal heuristics), orders of magnitude faster
+    than the full-table DP;
+
+  - `GreedyRelaxationBinaryKnapsackSolver`, the exact greedy (Dantzig)
+    solver of the continuous relaxation, providing true lower / upper bounds
+    on the integer optimum and branching on the critical item;
+
+  the last two share the abstract base class `BinaryKnapsackSolver` (raw
+  instance mirror with incremental Modification processing, normalized core,
+  continuous relaxation).
+
+The module also ships, under `tools/`, the `bk2nc4` converter (Pisinger-format
+text instances to SMS++ netCDF) and the `bkbench` in-process benchmark driver
+(any of the solvers over the public Pisinger / Jooken benchmark archives,
+fetched by `data/fetch-benchmarks`).
 
 
 ## Getting started
 
-These instructions will let you build `BinaryKnapsackBlock` and 
-`DPBinaryKnapsackSolver` on your system.
+These instructions will let you build the `BinaryKnapsackBlock` module on
+your system.
 
 ### Requirements
 

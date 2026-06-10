@@ -124,19 +124,17 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
 
  start_item = Inf< int >(); // to avoid solving again the same instance
 
- Return_OK:
- 
- unlock();                  // unlock the mutex     
- 
+ unlock();                  // unlock the mutex
+
  return( kOK );
 
  }  // end( DPBinaryKnapsackSolver::compute )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// perform the preprocessing and return residual Capacity and Profit
+/// perform the preprocessing and return residual Capacity and Profit
 
 std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
-  
+
  // Initialize variables to skip during the solution algorithms
  skip.assign( f_N , false );
 
@@ -216,7 +214,7 @@ std::tuple< double , double > DPBinaryKnapsackSolver::preprocessing() {
  } // end( DPBinaryKnapsackSolver::preprocessing )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// Dynamic Programming
+/// Dynamic Programming
 
 void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
@@ -372,7 +370,7 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
    continue;
 
   if( i < lastIndex )          // it is before the critical variable
-    v_x[ item ] = 1;           // we fix the variable to one
+   v_x[ item ] = 1;            // we fix the variable to one
   else
    if( i == lastIndex )        // it is exactly the critical variable
     v_x[ item ] = lastVar;     // has value lastVar
@@ -397,7 +395,9 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
 
  // check if compute has been called before
  if( start_item != Inf< int >() )
-  throw( std::invalid_argument( "compute() must be called first" ) );
+  throw( std::invalid_argument(
+   "DPBinaryKnapsackSolver::get_var_solution: compute() must be called first"
+   ) );
 
  // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - -
  // for each item check if it is fixed (because the corresponding variable is
@@ -417,7 +417,7 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
 
   int w = v_W[ i ];                    // weight of the current item
   if( v_W[ i ] < 0 && v_P[ i ] < 0 )
-    w = -w;
+   w = -w;
 
   if( pred[ i + 1 ][ h ] ) {
    v_x[ i ] = 1;
@@ -446,7 +446,9 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ) {
  if( par == dblReopt ) {
   
   if( ( value < 0 ) || ( value > 1 ) )
-   throw( std::invalid_argument("dblReopt parameter must be in [ 0 , 1 ]") );
+   throw( std::invalid_argument(
+    "DPBinaryKnapsackSolver::set_par: dblReopt parameter must be in [ 0 , 1 ]"
+    ) );
   
   // update reopt
   reopt = value;
@@ -508,12 +510,13 @@ void DPBinaryKnapsackSolver::load( void ) {
 
  auto BKB = dynamic_cast< BinaryKnapsackBlock * >( f_Block );
  if( ! BKB )
-  throw( std::invalid_argument( "Block must be a BinaryKnapsackBlock" ) );
+  throw( std::invalid_argument(
+   "DPBinaryKnapsackSolver::load: Block must be a BinaryKnapsackBlock" ) );
 
  // (try to) lock the BinaryKnapsackBlock
  bool owned = BKB->is_owned_by( f_id );
  if( ( ! owned ) && ( ! BKB->read_lock() ) )
-  throw( std::runtime_error( "Unable to lock the Block" ) );
+  throw( std::runtime_error( "DPBinaryKnapsackSolver::load: unable to lock the Block" ) );
    
  // load Binary Knapsack instance - - - - - - - - - - - - - - - - - - - - - 
  
@@ -545,7 +548,8 @@ void DPBinaryKnapsackSolver::load( void ) {
   // Weights: check if they are integers
   v_W[ i ] = std::round( W[ i ] );
   if( std::abs( v_W[ i ] - W[ i ] ) > WeightIntegrality )
-   throw( std::invalid_argument( "Weights must be integers" ) );
+   throw( std::invalid_argument(
+    "DPBinaryKnapsackSolver::load: weights must be integers" ) );
 
   // Integrality: store indices of continuous variables
   v_I[ i ] = ( bool ) I[ i ];
@@ -623,30 +627,30 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
     // algorithm from f_N, i.e. only recompute the optimal value
     // Otherwise restart from the first item   
 
-   case( BinaryKnapsackBlockMod::eChgCapacity ): {
-    double nC = BKB->get_Capacity();   // get new Capacity
+    case( BinaryKnapsackBlockMod::eChgCapacity ): {
+     double nC = BKB->get_Capacity();   // get new Capacity
 
-    start_item = nC > f_C ? 0 : std::min( f_N , start_item );
+     start_item = nC > f_C ? 0 : std::min( f_N , start_item );
 
-    f_C = nC;                          // update the Capacity
-      
-    mod = v_mod_tmp.erase( mod );
-    break;
-    }
+     f_C = nC;                          // update the Capacity
 
-   // Change Objective Sense - - - - - - - - - - - - - - - - - - - - - - - -
-   // Change the sign of all profits and restart from the first item
-   case( BinaryKnapsackBlockMod::eChgSense ):
-    f_sense = ( BKB->get_objective_sense() == Objective::eMax );
-    // update f_sense
+     mod = v_mod_tmp.erase( mod );
+     break;
+     }
 
-    for( Index i = 0 ; i < f_N ; ++i )     // change the sign of all profits
-     v_P[ i ] = - v_P[ i ];
+    // Change Objective Sense - - - - - - - - - - - - - - - - - - - - - - - -
+    // Change the sign of all profits and restart from the first item
+    case( BinaryKnapsackBlockMod::eChgSense ):
+     f_sense = ( BKB->get_objective_sense() == Objective::eMax );
+     // update f_sense
 
-    start_item = 0;                        // restart from the beginning 
-      
-    mod = v_mod_tmp.erase( mod );
-    break;
+     for( Index i = 0 ; i < f_N ; ++i )     // change the sign of all profits
+      v_P[ i ] = - v_P[ i ];
+
+     start_item = 0;                        // restart from the beginning
+
+     mod = v_mod_tmp.erase( mod );
+     break;
 
     default: mod++;
     }
@@ -660,7 +664,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
   
   // BinaryKnapsackBlockRngdMod - - - - - - - - - - - - - - - - - - - - - - -
   if( const auto tmod = dynamic_cast< BinaryKnapsackBlockRngdMod * >(
-							      mod.get() ) ) { 
+                                                              mod.get() ) ) {
    switch( tmod->type() ) {
     // change Profits - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // update modified profits according to f_sense and update start_item
@@ -705,7 +709,9 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
       double nw = std::round( BKB->get_Weight( i ) );     // new weight
  
       if( std::abs( nw - BKB->get_Weight( i ) ) > WeightIntegrality )
-       throw( std::invalid_argument( "Weights must be integers!" ) );
+       throw( std::invalid_argument(
+        "DPBinaryKnapsackSolver::process_outstanding_Modification: weights "
+        "must be integers" ) );
 
       if( nw < v_W[ i ] )                  // it is not possible 
        start_item = 0;                     // to re-optimize
@@ -731,7 +737,7 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
 
   // BinaryKnapsackBlockSbstMod - - - - - - - - - - - - - - - - - - - - - - -
   if( const auto tmod = dynamic_cast< BinaryKnapsackBlockSbstMod * >(
-							      mod.get() ) ) {
+                                                              mod.get() ) ) {
    switch( tmod->type() ) {
     // change Profits - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // update modified profits according to f_sense and update start_item 
@@ -775,7 +781,9 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
       double nw = std::round( BKB->get_Weight( i ) );     // new weight
   
       if( std::abs( nw - BKB->get_Weight( i ) ) > WeightIntegrality )
-       throw( std::invalid_argument( "Weights must be integers!" ) );
+       throw( std::invalid_argument(
+        "DPBinaryKnapsackSolver::process_outstanding_Modification: weights "
+        "must be integers" ) );
 
       if( ( nw < 0 ) && ( nw < v_W[ i ] ) )  // it is not possible 
        start_item = 0;                       // to re-optimize

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 
-cd ../..
+cd "$(dirname "$0")/../.."   # run from the umbrella root
+
 bash upload-to-package-registry BinaryKnapsackBlock/data/txt.tgz

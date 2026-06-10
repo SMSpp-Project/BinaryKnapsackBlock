@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#
+# usage: fetch-benchmarks [ pisinger | jooken ]...
+#
+# Populate ../data/benchmarks (gitignored) with the public knapsack benchmark
+# families used by tools/bkbench:
+#
+#   benchmarks/pisinger/smallcoeff/     105 .csv  (types 1-6,9; R = 1e3, 1e4)
+#   benchmarks/pisinger/largecoeff/     161 .csv  (R = 1e5, 1e6, 1e7)
+#   benchmarks/pisinger/hardinstances/   55 .csv  (types 11-16: span, mstr,
+#                                                  pceil, circle; R = 1e3)
+#   benchmarks/jooken/                 3240 instances (problemInstances/<name>/
+#                                      test.in + optima.csv; capacities to 1e10)
+#
+# Sources: David Pisinger's benchmark page
+# (https://hjemmesider.diku.dk/~pisinger/codes.html) and the Jooken-Leyman-
+# De Causmaecker instance repository
+# (https://github.com/JorikJooken/knapsackProblemInstances).
+#
+# Each Pisinger .csv packs 100 instances ("knapPI_<t>_<n>_<R>_<i>" blocks with
+# n / c / z / time headers, "idx,profit,weight,xstar" rows, '-----'
+# separators); the recorded z is the certified optimum that bkbench
+# cross-checks. Jooken's optima.csv uses -1 for the instances combo could not
+# solve within its limits; bkbench skips those.
+#
+# With no argument both families are fetched. Archives already present are
+# not downloaded again; remove benchmarks/ to force a clean fetch.
+
+set -euo pipefail
+
+cd "$(dirname "$0")"   # run from data/
+
+PIS_URL="https://hjemmesider.diku.dk/~pisinger"
+JOOKEN_URL="https://github.com/JorikJooken/knapsackProblemInstances.git"
+
+want_pisinger=1
+want_jooken=1
+if [ $# -gt 0 ]; then
+    want_pisinger=0
+    want_jooken=0
+    for a in "$@"; do
+        case "$a" in
+            pisinger) want_pisinger=1 ;;
+            jooken)   want_jooken=1 ;;
+            *) echo "unknown family '$a' (pisinger|jooken)" >&2; exit 1 ;;
+        esac
+    done
+fi
+
+if [ "$want_pisinger" = 1 ]; then
+    mkdir -p benchmarks/pisinger
+    cd benchmarks/pisinger
+    for fam in smallcoeff largecoeff hardinstances; do
+        tgz="${fam}_pisinger.tgz"
+        if [ ! -f "$tgz" ]; then
+            echo "downloading $tgz ..."
+            curl -fL -o "$tgz" "$PIS_URL/$tgz"
+        fi
+        if [ ! -d "$fam" ]; then
+            echo "extracting $fam ..."
+            mkdir -p "$fam"
+            tar xzf "$tgz" -C "$fam"
+        fi
+    done
+    cd ../..
+fi
+
+if [ "$want_jooken" = 1 ] && [ ! -d benchmarks/jooken ]; then
+    echo "cloning jooken instances (~100 MB) ..."
+    git clone --depth 1 "$JOOKEN_URL" benchmarks/jooken
+    rm -rf benchmarks/jooken/.git
+fi
+
+echo "done:"
+du -sh benchmarks/* 2>/dev/null
+
+# the end - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
