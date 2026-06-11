@@ -101,7 +101,8 @@ class BinaryKnapsackSolver : public virtual Solver {
 /*--------------------------------------------------------------------------*/
 
  BinaryKnapsackSolver() : Solver() , f_sense( true ) , f_N( 0 ) , f_Cap( 0 ) ,
-                          f_changed( true ) , f_Cd( 0 ) , f_base( 0 ) {}
+                          f_changed( true ) , f_ord_valid( false ) , f_Cd( 0 ) ,
+                          f_base( 0 ) {}
 
  ~BinaryKnapsackSolver() override = default;
 
@@ -219,6 +220,19 @@ class BinaryKnapsackSolver : public virtual Solver {
  std::vector< char >   cc_comp;       ///< 1 if the item is complemented
 
  /* solution - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ // cached efficiency order for fractional_relaxation() - - - - - - - - - -
+ // the order of the items by efficiency only depends on profits, weights
+ // and objective sense, NOT on the fixings: it is computed lazily and kept
+ // across (un)fixing changes, which is what makes re-solving the relaxation
+ // along an enumeration tree O( n ) per node rather than O( n log n )
+
+ std::vector< int >    v_ord;     ///< ALL the items by efficiency
+ bool f_ord_valid;                ///< if v_ord matches profits / weights
+ std::vector< double > n_w;       ///< normalized (complemented) weights
+ std::vector< double > n_p;       ///< normalized (complemented) profits
+ std::vector< char >   n_in;      ///< 1 if the item enters the relaxation
+ std::vector< char >   n_comp;    ///< 1 if the item is complemented
 
  std::vector< double > f_x;           ///< full solution over ALL items:
                                       ///< fixed / pre-fixed entries set by
