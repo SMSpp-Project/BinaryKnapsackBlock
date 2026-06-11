@@ -1267,6 +1267,12 @@ class BinaryKnapsackSolution : public Solution {
  explicit BinaryKnapsackSolution() {}  ///< constructor
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// constructor taking (and moving in) the values of the variables
+
+ explicit BinaryKnapsackSolution( std::vector< double > && x )
+  : v_x( std::move( x ) ) {}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
  void deserialize( const netCDF::NcGroup & group ) override final;
 
@@ -1386,6 +1392,13 @@ public:
                                  ModParam issueAMod = eNoBlck ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// get a const reference to the data of the Change
+
+ [[nodiscard]] const std::vector< double > & data( void ) const {
+  return( v_data );
+  }
 
  void load( int type , const std::vector< double > & data = {} ) {
 

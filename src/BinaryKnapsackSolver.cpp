@@ -250,7 +250,7 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
   return( pof( a ) * wof( b ) > pof( b ) * wof( a ) );
   } );
 
- fi = FracInfo{ -1 , 1 , false , 0 , 0 };
+ fi = FracInfo{ -1 , 1 , false , false , 0 , 0 };
 
  double obj = f_base;
  double rem = f_Cd;
@@ -265,7 +265,8 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
    const bool cont = ( k >= m );
    const Index orig = cont ? cc_orig[ k - m ] : c_orig[ k ];
    const char comp = cont ? cc_comp[ k - m ] : c_comp[ k ];
-   fi = FracInfo{ int( orig ) , comp ? 1 - y : y , cont , pof( k ) , y };
+   fi = FracInfo{ int( orig ) , comp ? 1 - y : y , cont , ( bool ) comp ,
+                  pof( k ) , y };
    yval = 0;
    }
 

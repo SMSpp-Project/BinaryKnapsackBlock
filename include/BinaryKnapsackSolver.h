@@ -77,9 +77,12 @@ namespace SMSpp_di_unipi_it
  * to date under Modification, derives from it the normalized (positive,
  * maximisation, free-items-only) core, and solves the continuous (Dantzig)
  * relaxation of the latter. Derived classes implement compute() on top of
- * these; see the file-level comment. */
+ * these; see the file-level comment. The inheritance from Solver is virtual
+ * so that a derived Solver can also implement other Solver-extending
+ * interfaces (e.g., the ChangeSolver / RelaxationSolver concepts of the
+ * BranchAndBoundSolver module) without duplicating the Solver sub-object. */
 
-class BinaryKnapsackSolver : public Solver {
+class BinaryKnapsackSolver : public virtual Solver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
@@ -138,6 +141,7 @@ class BinaryKnapsackSolver : public Solver {
   int    orig;     ///< original index of the critical item, -1 if none
   double xval;     ///< its value in the original space
   bool   cont;     ///< whether it is a continuous item
+  bool   comp;     ///< whether it is a complemented item
   double cp;       ///< its core profit
   double cfrac;    ///< its core fraction
   };

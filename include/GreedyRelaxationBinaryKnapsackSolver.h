@@ -82,7 +82,7 @@ public:
  GreedyRelaxationBinaryKnapsackSolver() : BinaryKnapsackSolver() ,
                                           f_ci( 0 ) ,
                                           obj( - Inf< double >() ) {
-  f_fi = FracInfo{ -1 , 1 , false , 0 , 0 };
+  f_fi = FracInfo{ -1 , 1 , false , false , 0 , 0 };
   }
 
 /*--------------------------------------------------------------------------*/
