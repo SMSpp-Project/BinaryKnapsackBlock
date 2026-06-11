@@ -35,6 +35,8 @@
 
 #include "BinaryKnapsackSolver.h"
 
+#include "ChangeSolver.h"
+
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -60,7 +62,8 @@ namespace SMSpp_di_unipi_it
  * value, valid true lower / upper bounds on the original mixed-binary
  * problem are available [see get_true_lb() / get_true_ub()]. */
 
-class GreedyRelaxationBinaryKnapsackSolver : public BinaryKnapsackSolver {
+class GreedyRelaxationBinaryKnapsackSolver : public BinaryKnapsackSolver ,
+                                             public RelaxationSolver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
@@ -115,7 +118,7 @@ public:
   * the greedy solution itself when there is no critical item or it is a
   * continuous variable (the solution is then feasible as it is). */
 
- OFValue get_true_lb( void ) {
+ OFValue get_true_lb( void ) override {
   return( f_sense ? true_feasible_value() : - obj );
   }
 
@@ -125,7 +128,7 @@ public:
   * problem, (minus) the value of the feasible greedy solution without the
   * critical fraction for a minimisation one. */
 
- OFValue get_true_ub( void ) {
+ OFValue get_true_ub( void ) override {
   return( f_sense ? obj : - true_feasible_value() );
   }
 
@@ -139,12 +142,12 @@ public:
   * Once "the first" solution (if ever) has been read, new ones may be
   * produced, if the Solver allows it, by means of new_true_var_solution().*/
 
- bool has_true_var_solution( void );
+ bool has_true_var_solution( void ) override;
 
 /*--------------------------------------------------------------------------*/
  /// write the current true (rounded greedy) solution in the Block
 
- void get_true_var_solution( Configuration * solc = nullptr ) {
+ void get_true_var_solution( Configuration * solc = nullptr ) override {
   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
   auto sol = rounded_x();
   BKB->set_x( sol.begin() );
@@ -174,7 +177,7 @@ public:
 
 /*--------------------------------------------------------------------------*/
  /// return the value of the (current) solution
- /** Return the the value of the current solution. Change the sign according
+ /** Return the value of the current solution. Change the sign according
   * to the sense of the problem (f_sense). */
 
  OFValue get_var_value() override { return f_sense ? obj : - obj; }
@@ -187,11 +190,37 @@ public:
 
  /// branch on the critical item: the two Change fix it to 0 and to 1
 
- std::vector< Change * > branch();
+ std::vector< Change * > branch() override;
 
 /*--------------------------------------------------------------------------*/
+ /// physically construct the true (rounded greedy) Solution
 
- Change * apply( Change * , bool doUndo = false );
+ Solution * get_true_solution( Configuration * solc = nullptr ) override {
+  return( new BinaryKnapsackSolution( rounded_x() ) );
+  }
+
+/*--------------------------------------------------------------------------*/
+ /// apply the Change; (un)fixing Changes are applied INTERNALLY
+ /** The (un)fixing Changes produced by branch() - and, in general, any
+  * BinaryKnapsackBlockChange of eFixX / eUnfixX type - are applied to the
+  * internal mirror of the instance [see
+  * BinaryKnapsackSolver::apply_to_mirror()], NOT to the Block: the next
+  * compute() then re-solves the relaxation under the new fixings. Any
+  * other Change is forwarded to the Block. */
+
+ Change * apply( Change * chg , bool doUndo = false ) override {
+  auto CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
+
+  if( ! CHG )
+   throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
+          "apply: the Change must be a BinaryKnapsackBlockChange" ) );
+
+  if( ( CHG->type() != BinaryKnapsackBlockChange::eFixX ) &&
+      ( CHG->type() != BinaryKnapsackBlockChange::eUnfixX ) )
+   return( CHG->apply( f_Block , doUndo ) );  // not an (un)fix: to the Block
+
+  return( apply_to_mirror( CHG , doUndo ) );
+  }
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
