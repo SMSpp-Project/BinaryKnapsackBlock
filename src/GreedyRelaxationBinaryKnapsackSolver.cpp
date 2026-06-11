@@ -105,15 +105,6 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch() {
 }
 
 /*--------------------------------------------------------------------------*/
-
-Change * GreedyRelaxationBinaryKnapsackSolver::apply( Change * chg ,
-                                                      bool doUndo )
-{
- return chg->apply( f_Block , doUndo );
-
- }
-
-/*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
 

@@ -168,7 +168,7 @@ public:
 /*--------------------------------------------------------------------------*/
  /// write the current true solution in the variables of the Block
 
- bool new_true_var_solution( void ) { return false; }
+ bool new_true_var_solution( void ) override { return false; }
 
 /*--------------------------------------------------------------------------*/
  /// write the current solution in the variables of the BinaryKnapsackBlock
