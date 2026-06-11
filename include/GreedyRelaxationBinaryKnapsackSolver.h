@@ -142,9 +142,25 @@ public:
  bool has_true_var_solution( void );
 
 /*--------------------------------------------------------------------------*/
- /// write the current true solution in the variables of the Block
+ /// write the current true (rounded greedy) solution in the Block
 
- void get_true_var_solution( Configuration * solc = nullptr ) {}
+ void get_true_var_solution( Configuration * solc = nullptr ) {
+  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+  auto sol = rounded_x();
+  BKB->set_x( sol.begin() );
+  }
+
+/*--------------------------------------------------------------------------*/
+ /// valid lower bound on the optimal value of the TRUE problem
+ /** For a maximisation problem this is the value of the rounded greedy
+  * solution [see rounded_x()], for a minimisation one the value of the
+  * relaxation. */
+
+ OFValue get_lb( void ) override { return( get_true_lb() ); }
+
+ /// valid upper bound on the optimal value of the TRUE problem (symmetric)
+
+ OFValue get_ub( void ) override { return( get_true_ub() ); }
 
 /*--------------------------------------------------------------------------*/
  /// write the current true solution in the variables of the Block
@@ -194,6 +210,19 @@ protected:
   if( ( f_fi.orig < 0 ) || f_fi.cont )   // feasible as it is
    return( obj );
   return( obj - f_fi.cfrac * f_fi.cp );
+  }
+
+/*--------------------------------------------------------------------------*/
+ /// the greedy solution rounded to a true-feasible one
+ /** Returns the greedy solution with the critical item, if any and not a
+  * continuous one, rounded away (to 0, i.e., to 1 in the original space if
+  * complemented): the solution whose value true_feasible_value() returns. */
+
+ std::vector< double > rounded_x( void ) const {
+  std::vector< double > sol( f_x );
+  if( ( f_fi.orig >= 0 ) && ( ! f_fi.cont ) )
+   sol[ f_fi.orig ] = f_fi.comp ? 1 : 0;
+  return( sol );
   }
 
 /*--------------------------------------------------------------------------*/

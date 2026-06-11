@@ -118,7 +118,8 @@ Change * GreedyRelaxationBinaryKnapsackSolver::apply( Change * chg ,
 /*--------------------------------------------------------------------------*/
 
 bool GreedyRelaxationBinaryKnapsackSolver::has_true_var_solution( void ) {
- return false;
+ // the rounded greedy solution (see rounded_x()) always exists
+ return true;
  }
 
 /*--------------------------------------------------------------------------*/

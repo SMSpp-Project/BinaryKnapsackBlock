@@ -190,6 +190,25 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  void refresh_fixings( void );
 
+/*--------------------------------------------------------------------------*/
+ /// apply an (un)fixing Change to the internal mirror of the instance
+ /** Applies an (un)fixing BinaryKnapsackBlockChange (its type() must be
+  * eFixX or eUnfixX) to the internal mirror of the instance, NOT to the
+  * Block: the next compute() of a derived Solver then works under the new
+  * fixings without any access to the Block. This is the workhorse of the
+  * ChangeSolver concept of the BranchAndXSolver module: the acted-upon
+  * items are read via the uniform polymorphic view of the Change [see
+  * BinaryKnapsackBlockChange::num_items() / item()], so the concrete
+  * (ranged / subset) type of the Change is never needed.
+  *
+  * With \p doUndo true the returned Change un-does \p chg under a LIFO
+  * (climb-the-enumeration-tree) discipline: the undo of fixing is unfixing
+  * the same items, and vice-versa with the fixed values captured at call
+  * time. */
+
+ Change * apply_to_mirror( const BinaryKnapsackBlockChange * chg ,
+                           bool doUndo = false );
+
  /// solve the continuous (Dantzig) relaxation of the normalized core
  /** Greedy fractional fill of f_Cd over the union of the integer and the
   * continuous core in non-increasing efficiency order: items before the

@@ -290,6 +290,46 @@ void BinaryKnapsackSolver::refresh_fixings( void )
 
 /*--------------------------------------------------------------------------*/
 
+Change * BinaryKnapsackSolver::apply_to_mirror(
+                        const BinaryKnapsackBlockChange * chg , bool doUndo )
+{
+ if( ( chg->type() != BinaryKnapsackBlockChange::eFixX ) &&
+     ( chg->type() != BinaryKnapsackBlockChange::eUnfixX ) )
+  throw( std::invalid_argument( "BinaryKnapsackSolver::apply_to_mirror: "
+                                "the Change must be an (un)fixing one" ) );
+
+ const bool fixing = ( chg->type() == BinaryKnapsackBlockChange::eFixX );
+ const Index n = chg->num_items();
+ const auto & data = chg->data();
+
+ Change * undo = nullptr;
+ if( doUndo ) {
+  // the undo under the LIFO discipline: un-fixing the same items, or
+  // re-fixing them to the values captured at call time
+  std::vector< double > old_data;
+  Block::Subset nms;
+  old_data.reserve( n );
+  nms.reserve( n );
+  for( Index k = 0 ; k < n ; ++k ) {
+   const Index i = chg->item( k );
+   nms.push_back( i );
+   old_data.push_back( v_fxd[ i ] == 2 ? 1 : 0 );
+   }
+  undo = new BinaryKnapsackBlockSbstChange(
+                     fixing ? BinaryKnapsackBlockChange::eUnfixX
+                            : BinaryKnapsackBlockChange::eFixX ,
+                     std::move( old_data ) , std::move( nms ) );
+  }
+
+ for( Index k = 0 ; k < n ; ++k )
+  v_fxd[ chg->item( k ) ] = fixing ? ( data[ k ] == 1 ? 2 : 1 ) : 0;
+
+ return( undo );
+
+ }  // end( BinaryKnapsackSolver::apply_to_mirror )
+
+/*--------------------------------------------------------------------------*/
+
 double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
 {
  // the relaxation makes no difference between integer and continuous items:
