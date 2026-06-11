@@ -118,6 +118,7 @@ bool BinaryKnapsackSolver::update_instance( void )
    case( BinaryKnapsackBlockMod::eChgSense ):
     f_sense = ( BKB->get_objective_sense() == Objective::eMax );
     f_ord_valid = false;
+    f_norm_valid = false;
     break;
 
    default:
@@ -128,9 +129,11 @@ bool BinaryKnapsackSolver::update_instance( void )
      for( Index i = rmod->rng().first ; i < rmod->rng().second ; ++i )
       switch( tmod->type() ) {
        case( BinaryKnapsackBlockMod::eChgProfit ):
-        v_P[ i ] = BKB->get_Profit( i ); f_ord_valid = false; break;
+        v_P[ i ] = BKB->get_Profit( i );
+        f_ord_valid = f_norm_valid = false; break;
        case( BinaryKnapsackBlockMod::eChgWeight ):
-        v_W[ i ] = BKB->get_Weight( i ); f_ord_valid = false; break;
+        v_W[ i ] = BKB->get_Weight( i );
+        f_ord_valid = f_norm_valid = false; break;
        case( BinaryKnapsackBlockMod::eChgIntegrality ):
         v_I[ i ] = BKB->get_Integrality( i ); break;
        case( BinaryKnapsackBlockMod::eFixX ):
@@ -145,9 +148,11 @@ bool BinaryKnapsackSolver::update_instance( void )
      for( auto i : smod->nms() )
       switch( tmod->type() ) {
        case( BinaryKnapsackBlockMod::eChgProfit ):
-        v_P[ i ] = BKB->get_Profit( i ); f_ord_valid = false; break;
+        v_P[ i ] = BKB->get_Profit( i );
+        f_ord_valid = f_norm_valid = false; break;
        case( BinaryKnapsackBlockMod::eChgWeight ):
-        v_W[ i ] = BKB->get_Weight( i ); f_ord_valid = false; break;
+        v_W[ i ] = BKB->get_Weight( i );
+        f_ord_valid = f_norm_valid = false; break;
        case( BinaryKnapsackBlockMod::eChgIntegrality ):
         v_I[ i ] = BKB->get_Integrality( i ); break;
        case( BinaryKnapsackBlockMod::eFixX ):
@@ -244,7 +249,44 @@ void BinaryKnapsackSolver::normalize_instance( void )
    { cc_w.push_back( w ); cc_p.push_back( p );
      cc_orig.push_back( i ); cc_comp.push_back( 0 ); }
   }
+ f_norm_valid = true;
+
  }  // end( BinaryKnapsackSolver::normalize_instance )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackSolver::refresh_fixings( void )
+{
+ f_base = 0;
+ f_Cd = f_Cap;
+
+ for( Index i = 0 ; i < f_N ; ++i ) {
+
+  const double p = f_sense ? v_P[ i ] : - v_P[ i ];
+  const double w = v_W[ i ];
+
+  // fixed variables: honour the fixing, fold into base profit / capacity
+  if( v_fxd[ i ] == 1 ) {
+   f_x[ i ] = 0; n_in[ i ] = 0;
+   continue;
+   }
+  if( v_fxd[ i ] == 2 ) {
+   f_x[ i ] = 1; f_base += p; f_Cd -= w; n_in[ i ] = 0;
+   continue;
+   }
+
+  // sign-based pre-fixing
+  if( ( w >= 0 ) && ( p <= 0 ) )                 // never profitable: drop
+   { f_x[ i ] = 0; n_in[ i ] = 0; continue; }
+  if( ( w <= 0 ) && ( p >= 0 ) )                 // always taken: enlarges C
+   { f_x[ i ] = 1; f_base += p; f_Cd -= w; n_in[ i ] = 0; continue; }
+
+  if( ( w < 0 ) && ( p < 0 ) )                   // complement: tentatively
+   { f_base += p; f_Cd -= w; }                   //  take it (see normalize)
+
+  n_in[ i ] = 1;            // in the relaxation, f_x[ i ] set by the scan
+  }
+ }  // end( BinaryKnapsackSolver::refresh_fixings )
 
 /*--------------------------------------------------------------------------*/
 
@@ -304,6 +346,7 @@ void BinaryKnapsackSolver::load( void )
 {
  f_changed = true;
  f_ord_valid = false;
+ f_norm_valid = false;
 
  if( ! f_Block ) {
   f_N = 0;

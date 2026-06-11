@@ -1400,6 +1400,22 @@ public:
   return( v_data );
   }
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// number of items the Change acts upon
+ /** Uniform polymorphic view of the set of items the Change acts upon (see
+  * also item()), so that whoever applies the Change does not need to know
+  * its concrete (ranged / subset) type; none in the base class. */
+
+ [[nodiscard]] virtual Block::Index num_items( void ) const { return( 0 ); }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// the index of the k-th item the Change acts upon (see num_items())
+
+ [[nodiscard]] virtual Block::Index item( Block::Index k ) const {
+  throw( std::logic_error( "BinaryKnapsackBlockChange::item: the Change "
+                           "acts upon no items" ) );
+  }
+
  void load( int type , const std::vector< double > & data = {} ) {
 
   if( type == eEmpty ) {
@@ -1545,6 +1561,19 @@ public:
 
  Block::Range rng( void ) const { return( f_rng ); }
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// number of items the Change acts upon (the width of the range)
+
+ [[nodiscard]] Block::Index num_items( void ) const override {
+  return( f_rng.second - f_rng.first );
+  }
+
+ /// the index of the k-th item the Change acts upon
+
+ [[nodiscard]] Block::Index item( Block::Index k ) const override {
+  return( f_rng.first + k );
+  }
+
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 
  protected:
@@ -1644,6 +1673,19 @@ public:
  /// accessor to f_nms
 
  Block::c_Subset & nms( void ) const { return( v_nms ); }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// number of items the Change acts upon (the size of the subset)
+
+ [[nodiscard]] Block::Index num_items( void ) const override {
+  return( v_nms.size() );
+  }
+
+ /// the index of the k-th item the Change acts upon
+
+ [[nodiscard]] Block::Index item( Block::Index k ) const override {
+  return( v_nms[ k ] );
+  }
 
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 

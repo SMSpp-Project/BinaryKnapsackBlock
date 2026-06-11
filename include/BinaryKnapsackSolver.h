@@ -101,7 +101,8 @@ class BinaryKnapsackSolver : public virtual Solver {
 /*--------------------------------------------------------------------------*/
 
  BinaryKnapsackSolver() : Solver() , f_sense( true ) , f_N( 0 ) , f_Cap( 0 ) ,
-                          f_changed( true ) , f_ord_valid( false ) , f_Cd( 0 ) ,
+                          f_changed( true ) , f_ord_valid( false ) ,
+                          f_norm_valid( false ) , f_Cd( 0 ) ,
                           f_base( 0 ) {}
 
  ~BinaryKnapsackSolver() override = default;
@@ -178,6 +179,17 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  void normalize_instance( void );
 
+/*--------------------------------------------------------------------------*/
+ /// refresh the normalization after (un)fixing changes only
+ /** Cheaper substitute of normalize_instance() valid while #f_norm_valid is
+  * true, i.e., when profits, weights and objective sense are unchanged
+  * since the last normalize_instance(): re-computes f_x, f_base, f_Cd and
+  * the relaxation membership (n_in) in a single pass, leaving the cores of
+  * the DP solvers untouched (stale: any solver using them must call
+  * normalize_instance() itself, as they all do). */
+
+ void refresh_fixings( void );
+
  /// solve the continuous (Dantzig) relaxation of the normalized core
  /** Greedy fractional fill of f_Cd over the union of the integer and the
   * continuous core in non-increasing efficiency order: items before the
@@ -229,6 +241,8 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  std::vector< int >    v_ord;     ///< ALL the items by efficiency
  bool f_ord_valid;                ///< if v_ord matches profits / weights
+ bool f_norm_valid;               ///< if the normalization matches the
+                                  ///< current profits / weights / sense
  std::vector< double > n_w;       ///< normalized (complemented) weights
  std::vector< double > n_p;       ///< normalized (complemented) profits
  std::vector< char >   n_in;      ///< 1 if the item enters the relaxation

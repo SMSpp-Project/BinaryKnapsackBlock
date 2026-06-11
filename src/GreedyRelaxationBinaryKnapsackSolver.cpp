@@ -59,7 +59,10 @@ int GreedyRelaxationBinaryKnapsackSolver::compute( bool changedvars ) {
 
  update_instance();          // process all the pending modifications
 
- normalize_instance();       // raw mirror -> normalized core
+ if( ! f_norm_valid )        // profits / weights / sense changed:
+  normalize_instance();      //  raw mirror -> normalized core
+ else                        // only the fixings (possibly) changed:
+  refresh_fixings();         //  cheap single-pass refresh
 
  obj = - Inf< double >();
 
