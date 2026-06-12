@@ -105,6 +105,53 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch() {
 }
 
 /*--------------------------------------------------------------------------*/
+
+std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::separate(
+                                                               double cutoff )
+{
+ if( f_fi.orig < 0 )           // integral relaxation: nothing to peg on
+  return( std::vector< Change * >() );
+
+ // the incumbent in the normalized (maximisation) sense; the conservative
+ // guard wards off cutting the optimum by a floating-point whisker
+ const double zmax = ( f_sense ? cutoff : - cutoff ) -
+                     1e-9 * ( 1 + std::abs( cutoff ) );
+
+ const Index ci = Index( f_fi.orig );
+ const double rho = n_p[ ci ] / n_w[ ci ];   // critical efficiency
+
+ // items provably stuck at their greedy value, split by value
+ Block::Subset fix0 , fix1;
+
+ for( Index j = 0 ; j < f_N ; ++j ) {
+  if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
+   continue;                   // not free, critical, or not integer
+
+  const double xj = f_x[ j ];                    // 0 or 1 (original space)
+  const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );  // core value
+  // flipping j away from its greedy core value loses its pegging margin
+  const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
+                           : rho * n_w[ j ] - n_p[ j ];
+  if( obj - margin <= zmax )   // the flip cannot improve the incumbent:
+   ( xj ? fix1 : fix0 ).push_back( j );  // peg j at its greedy value
+  }
+
+ std::vector< Change * > cuts;
+ if( ! fix0.empty() )
+  cuts.push_back( new BinaryKnapsackBlockSbstChange(
+                       BinaryKnapsackBlockChange::eFixX ,
+                       std::vector< double >( fix0.size() , 0 ) ,
+                       std::move( fix0 ) ) );
+ if( ! fix1.empty() )
+  cuts.push_back( new BinaryKnapsackBlockSbstChange(
+                       BinaryKnapsackBlockChange::eFixX ,
+                       std::vector< double >( fix1.size() , 1 ) ,
+                       std::move( fix1 ) ) );
+ return( cuts );
+
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::separate )
+
+/*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
 

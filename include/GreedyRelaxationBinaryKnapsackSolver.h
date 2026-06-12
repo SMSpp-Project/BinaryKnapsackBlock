@@ -37,6 +37,8 @@
 
 #include "ChangeSolver.h"
 
+#include "GroupChange.h"
+
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -193,6 +195,23 @@ public:
  std::vector< Change * > branch() override;
 
 /*--------------------------------------------------------------------------*/
+ /// separate by reduced-cost (Dantzig) pegging
+ /** The classic Martello-Toth pegging on the fractional relaxation: with
+  * \f$ \rho \f$ the efficiency of the critical item and \f$ U \f$ the
+  * relaxation optimum, flipping a free integer item \f$ j \f$ away from
+  * its greedy value \f$ \bar{x}_j \f$ cannot yield more than
+  * \f$ U - | p_j - \rho w_j | \f$ (in the normalized maximisation
+  * sense): whenever this does not improve upon the \p cutoff (the
+  * incumbent), \f$ x_j \f$ can be fixed at \f$ \bar{x}_j \f$ in the
+  * whole subtree. The fixings are returned as (at most two, one per
+  * value) eFixX BinaryKnapsackBlockSbstChange, which the caller applies
+  * like any other (un)fixing Change [see apply()]: the next compute()
+  * then folds the fixed items out of the core, shrinking every node
+  * below. */
+
+ [[nodiscard]] std::vector< Change * > separate( double cutoff ) override;
+
+/*--------------------------------------------------------------------------*/
  /// classify the effect of a Modification on an enumeration tree
  /** Knapsack-specific classification [see RelaxationSolver::classify()]:
   * profit changes only touch the objective, weight / capacity changes only
@@ -241,6 +260,17 @@ public:
   * other Change is forwarded to the Block. */
 
  Change * apply( Change * chg , bool doUndo = false ) override {
+  // a GroupChange (e.g., the composed undo of branching plus separation,
+  // see BranchAndXSolver) is applied by decomposing it; the sub-undos are
+  // composed back in reverse order
+  if( auto grp = dynamic_cast< GroupChange * >( chg ) ) {
+   GroupChange * undo = doUndo ? new GroupChange() : nullptr;
+   for( auto sub : grp->sub_Changes() )
+    if( auto u = apply( sub , doUndo ) ; u && undo )
+     undo->add_front( u );
+   return( undo );
+   }
+
   auto CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
 
   if( ! CHG )
