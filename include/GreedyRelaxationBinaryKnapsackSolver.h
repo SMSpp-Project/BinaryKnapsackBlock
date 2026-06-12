@@ -193,6 +193,38 @@ public:
  std::vector< Change * > branch() override;
 
 /*--------------------------------------------------------------------------*/
+ /// classify the effect of a Modification on an enumeration tree
+ /** Knapsack-specific classification [see RelaxationSolver::classify()]:
+  * profit changes only touch the objective, weight / capacity changes only
+  * touch the feasible region, (un)fixings and integrality changes touch
+  * both (they reshape the branching space and the relaxation bounds), and
+  * anything else physical (sense flips) or structural (NBModification,
+  * GroupModification, that update_instance() would not unpack either)
+  * conservatively invalidates everything. Non-physical Modification (the
+  * abstract-representation mirror of the physical ones) are classified
+  * eModNothing, consistently with update_instance() ignoring them: this
+  * Solver only listens to the physical representation. */
+
+ [[nodiscard]] int classify( const sp_Mod & mod ) override {
+  const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
+  if( ! tmod ) {
+   if( std::dynamic_pointer_cast< NBModification >( mod ) ||
+       std::dynamic_pointer_cast< GroupModification >( mod ) )
+    return( eModEverything );
+   return( eModNothing );    // abstract-representation mirror: ignored
+   }
+  switch( tmod->type() ) {
+   case( BinaryKnapsackBlockMod::eChgProfit ):
+    return( eModObjective );
+   case( BinaryKnapsackBlockMod::eChgWeight ):
+   case( BinaryKnapsackBlockMod::eChgCapacity ):
+    return( eModFeasibility );
+   default:    // incl. (un)fixings, integrality and sense changes
+    return( eModEverything );
+   }
+  }
+
+/*--------------------------------------------------------------------------*/
  /// physically construct the true (rounded greedy) Solution
 
  Solution * get_true_solution( Configuration * solc = nullptr ) override {
