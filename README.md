@@ -1,4 +1,4 @@
-# BinaryKnapsackBlock 
+# BinaryKnapsackBlock
 
 This project covers two conceptually different things (which may one day be
 split to two different projects):
@@ -29,11 +29,6 @@ split to two different projects):
   the last two share the abstract base class `BinaryKnapsackSolver` (raw
   instance mirror with incremental Modification processing, normalized core,
   continuous relaxation).
-
-The module also ships, under `tools/`, the `bk2nc4` converter (Pisinger-format
-text instances to SMS++ netCDF) and the `bkbench` in-process benchmark driver
-(any of the solvers over the public Pisinger / Jooken benchmark archives,
-fetched by `data/fetch-benchmarks`).
 
 
 ## Getting started
@@ -103,6 +98,47 @@ create the `../extlib/makefile-paths` out of the
 
 Check the [SMS++ installation wiki](https://gitlab.com/smspp/smspp-project/-/wikis/Customize-the-configuration#location-of-required-libraries)
 for further details.
+
+
+## Tools
+
+Under `tools/` the module ships two utilities:
+
+- `bk2nc4`, a converter from the Pisinger text format (in which the public
+  knapsack benchmarks are distributed) to the SMS++ netCDF format;
+
+- `bkbench`, an in-process benchmark driver that runs any of the solvers over
+  the public Pisinger / Jooken benchmark archives (see the Data section).
+
+You can run them from the `<build-dir>/tools` directory, install them with the
+library (see above), or just go in the `tools/` folder and run `make` there
+(provided makefiles are properly set, see above). Run a tool without arguments
+for info on its usage:
+
+```sh
+bk2nc4
+```
+
+
+## Data
+
+A small sample of knapsack instances ships with the repo, in both the Pisinger
+text format ([data/txt](data/txt)) and the SMS++ netCDF format
+([data/nc4](data/nc4)) produced from it by the `bk2nc4` converter.
+
+The full public benchmark archives used by `bkbench` are large and are not
+included; populate the gitignored [data/benchmarks](data/benchmarks) folder
+via
+
+```sh
+cd data
+./fetch-benchmarks pisinger jooken
+```
+
+which downloads David Pisinger's instances
+(https://hjemmesider.diku.dk/~pisinger/codes.html) and the
+Jooken-Leyman-Causmaecker instances
+(https://github.com/JorikJooken/knapsackProblemInstances).
 
 
 ## Getting help
