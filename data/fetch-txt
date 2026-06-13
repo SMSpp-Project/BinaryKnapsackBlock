@@ -47,12 +47,16 @@ for cls in "${CLASSES[@]}"; do
     /^knapPI_/ { name = $0; next }            # instance name
     /^n /      { n = $2; next }               # number of items
     /^c /      { c = $2; next }               # capacity (emitted last)
-    /^z /      { next }                       # optimum (unused)
+    /^z /      { next }                       # optimum: kept in the raw .csv
     /^time/    { out = dir "/" name ".txt"; print n > out; next }
     /^-----/   { print c >> out; close( out ); next }  # end of instance
     /,/        { split( $0 , a , "," ); print a[1], a[2], a[3] >> out }
   ' "$tmp/$cls.csv"
-  echo "  $cls: $(ls "txt/$cls" | wc -l) instances"
+  # keep the raw .csv (it carries the published optimum z and x*) next to the
+  # stripped instances, for the solver-vs-reference cross-check that reads it
+  # in a single process (see batches-data/batch-nc4-ref, which runs bkbench)
+  cp "$tmp/$cls.csv" "txt/$cls.csv"
+  echo "  $cls: $(ls "txt/$cls"/*.txt | wc -l) instances"
 done
 
 # the end - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
