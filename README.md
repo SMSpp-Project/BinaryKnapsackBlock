@@ -117,6 +117,8 @@ issue](https://gitlab.com/smspp/binaryknapsackblock/-/issues/new).
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of
 conduct, and the process for submitting merge requests to us.
 
+## Authors
+
 ### Current Lead Authors
 
 - **Federica Di Pasquale**  
@@ -126,6 +128,10 @@ conduct, and the process for submitting merge requests to us.
 - **Francesco Demelas**  
   Laboratoire d'Informatique de Paris Nord  
   Universite' Sorbonne Paris Nord
+
+- **Donato Meoli**  
+  Dipartimento di Informatica  
+  Università di Pisa
 
 ### Contributors
 
