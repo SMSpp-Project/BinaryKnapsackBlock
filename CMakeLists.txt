@@ -198,6 +198,10 @@ if (NOT hasParent)
 endif ()
 
 # ----- Custom commands and targets ----------------------------------------- #
+# Fetch the curated Pisinger data: download the txt.tgz from the GitLab Package
+# Registry and extract it. The archive carries, per instance, the raw .csv that
+# embeds the published optimum z, which the tests read directly (no further
+# conversion): the fetch_bk_data target is the test fixture's only dependency.
 # Download txt.tgz from GitLab Package Registry if it doesn't exist
 set(TXT_URL "https://gitlab.com/api/v4/projects/24425718/packages/generic/txt/latest/txt.tgz")
 set(TXT_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/data/txt.tgz)
@@ -233,41 +237,13 @@ add_custom_command(
         VERBATIM
         DEPENDS download_bk_txt)
 
-add_custom_target(extract_bk_txt
+# The raw .csv are ready as soon as the archive is extracted: this is the
+# terminal target the tests depend on (see tests/BinaryKnapsackBlock).
+add_custom_target(fetch_bk_data
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
 
-# Ensure that extract_bk_txt is executed after the download
-add_dependencies(extract_bk_txt download_bk_txt)
-
-# Custom command to run tools/batch with the bk2nc4 exe if the .generated file does not exist
-if (UNIX)
-    add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
-            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
-            COMMENT "Running bk2nc4"
-            VERBATIM
-            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
-elseif (WIN32)
-    add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            # using Git for Windows that includes Git Bash
-            COMMAND "C:/Program Files/Git/bin/bash.exe"
-            "${CMAKE_CURRENT_SOURCE_DIR}/tools/batch" "$<TARGET_FILE:bk2nc4>"
-            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
-            COMMENT "Running bk2nc4"
-            VERBATIM
-            DEPENDS $<TARGET_FILE:bk2nc4> ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
-endif ()
-
-# Create custom target to run the nc4 generation
-add_custom_target(run_bk2nc4
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated)
-
-# Ensure that run_bk2nc4 is executed after the build of bk2nc4
-add_dependencies(run_bk2nc4 bk2nc4)
+# Ensure that the extraction is executed after the download
+add_dependencies(fetch_bk_data download_bk_txt)
 
 # --------------------------------------------------------------------------- #
 # Remove from the search paths the cmake directory we added at the beginning.

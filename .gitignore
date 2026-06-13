@@ -28,18 +28,15 @@
 *.gcno
 *.gcda
 
-# --- Generated netCDF instances and txt sources -------------
-*.nc4
+# --- Curated txt/csv sources (fetched + extracted by data/fetch-txt) --------
 data/txt
 data/txt.tgz
 data/.extracted
-data/nc4/.generated
 
 # --- Benchmark payload (fetched by data/fetch-benchmarks) ----
 data/benchmarks/
 
 # --- Tool binaries ------------------------------------------
-tools/bk2nc4
 tools/bkbench
 
 # --- CMake --------------------------------------------------

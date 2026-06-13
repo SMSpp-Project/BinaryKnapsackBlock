@@ -46,8 +46,15 @@ using namespace SMSpp_di_unipi_it;
 
 using Index = BinaryKnapsackBlock::Index;
 
-// name (in the Solver factory) of the Solver to benchmark
-static std::string solver_name = "CoreDPBinaryKnapsackSolver";
+// name(s) (in the Solver factory) of the Solver to benchmark: by default just
+// the efficient core DP (the full-table DP is O(nC) in memory and impractical
+// on the large-capacity instances this standalone driver targets). Passing a
+// comma-separated list runs them all on every instance, checking they agree
+// with one another (solver-vs-solver) AND with the recorded optimum
+// (solver-vs-reference); the exhaustive all-solver cross-check, however, lives
+// in the BinaryKnapsackBlock_test batches.
+static std::vector< std::string > solver_names =
+                                  { "CoreDPBinaryKnapsackSolver" };
 
 /*--------------------------------------------------------------------------*/
 
@@ -65,20 +72,37 @@ static std::string classname( const std::string & path )
 // does not re-trigger the Solver's extraction) and return the optimum
 
 static double solve_one( Index N , double C , std::vector< double > && W ,
-                         std::vector< double > && P , double & dt )
+                         std::vector< double > && P , double & dt ,
+                         const std::string & name , bool & agree )
 {
  auto BKB = new BinaryKnapsackBlock();
  BKB->load( N , C , std::move( W ) , std::move( P ) );
- auto slv = Solver::new_Solver( solver_name );
- slv->set_Block( BKB );
 
- const auto t0 = std::chrono::steady_clock::now();
- slv->compute();
- const double val = slv->get_var_value();
- const auto t1 = std::chrono::steady_clock::now();
- dt = std::chrono::duration< double >( t1 - t0 ).count();
+ // run every Solver on the same instance, checking they all agree (the
+ // solver-vs-solver cross-check); the caller compares the value against the
+ // recorded optimum (the solver-vs-reference cross-check)
+ double val = 0;
+ bool first = true;
+ agree = true;
+ dt = 0;
+ for( const auto & sn : solver_names ) {
+  auto slv = Solver::new_Solver( sn );
+  slv->set_Block( BKB );
+  const auto t0 = std::chrono::steady_clock::now();
+  slv->compute();
+  const double v = slv->get_var_value();
+  const auto t1 = std::chrono::steady_clock::now();
+  dt += std::chrono::duration< double >( t1 - t0 ).count();
+  if( first ) { val = v; first = false; }
+  else if( std::abs( v - val ) > 1e-6 * std::max( 1.0 , std::abs( val ) ) ) {
+   agree = false;
+   std::cout << "DISAGREE " << name << " " << solver_names.front() << "="
+             << val << " " << sn << "=" << v << "\n";
+   }
+  slv->set_Block( nullptr );
+  delete slv;
+  }
 
- delete slv;
  delete BKB;
  return( val );
  }
@@ -156,15 +180,18 @@ static int run_jooken( const std::string & dir , double slow )
    continue;
    }
 
-  double dt;
-  const double val = solve_one( N , C , std::move( W ) , std::move( P ) , dt );
+  double dt; bool agree;
+  const double val = solve_one( N , C , std::move( W ) , std::move( P ) , dt ,
+                                name , agree );
 
   ++n; tot += dt;
   if( dt > mx ) { mx = dt; slowest = name; }
+  bool bad = ! agree;          // solver-vs-solver mismatch (already reported)
   if( std::abs( val - z ) > 1e-6 * std::max( 1.0 , std::abs( z ) ) ) {
-   ++mism;
+   bad = true;
    std::cout << "MISMATCH " << name << " val=" << val << " z=" << z << "\n";
    }
+  if( bad ) ++mism;
   if( dt > slow ) {
    std::cout << "SLOW " << name << " n=" << N << " t=" << dt << "s\n";
    std::cout.flush();
@@ -183,13 +210,25 @@ int main( int argc , char ** argv )
 {
  if( argc < 2 ) {
   std::cerr << "usage: " << argv[ 0 ]
-            << " <file.csv|jooken-dir> [slow_threshold_s] [solver]\n";
+            << " <file.csv|jooken-dir> [slow_threshold_s] "
+               "[solver1,solver2,...]\n";
   return( 1 );
   }
  const std::string path = argv[ 1 ];
  const double slow = ( argc > 2 ) ? std::stod( argv[ 2 ] ) : 0.5;
- if( argc > 3 )
-  solver_name = argv[ 3 ];
+ if( argc > 3 ) {
+  // comma-separated list of Solver factory names
+  solver_names.clear();
+  const std::string a = argv[ 3 ];
+  std::size_t p = 0;
+  while( p < a.size() ) {
+   auto q = a.find( ',' , p );
+   if( q == std::string::npos ) q = a.size();
+   if( q > p )
+    solver_names.push_back( a.substr( p , q - p ) );
+   p = q + 1;
+   }
+  }
 
  if( std::filesystem::is_directory( path ) ) {
   // a single Jooken instance dir (it holds test.in), with optima.csv two
@@ -213,11 +252,11 @@ int main( int argc , char ** argv )
     return( 1 );
     }
 
-   double dt;
+   double dt; bool agree;
    const double val = solve_one( N , C , std::move( W ) , std::move( P ) ,
-                                 dt );
-   const bool ok = std::abs( val - z ) <= 1e-6 * std::max( 1.0 ,
-                                                           std::abs( z ) );
+                                 dt , name , agree );
+   const bool ok = agree && ( std::abs( val - z ) <= 1e-6 * std::max( 1.0 ,
+                                                           std::abs( z ) ) );
    std::cout << name << ": " << ( ok ? "ok" : "MISMATCH" ) << " val="
              << val << " z=" << z << " t=" << dt << "s\n";
    return( ok ? 0 : 1 );
@@ -261,15 +300,18 @@ int main( int argc , char ** argv )
    }
   std::getline( in , line ); // "-----"
 
-  double dt;
-  const double val = solve_one( N , C , std::move( W ) , std::move( P ) , dt );
+  double dt; bool agree;
+  const double val = solve_one( N , C , std::move( W ) , std::move( P ) , dt ,
+                                name , agree );
 
   ++n; tot += dt;
   if( dt > mx ) { mx = dt; slowest = name; }
+  bool bad = ! agree;          // solver-vs-solver mismatch (already reported)
   if( std::abs( val - Z ) > 1e-6 * std::max( 1.0 , std::abs( Z ) ) ) {
-   ++mism;
+   bad = true;
    std::cout << "MISMATCH " << name << " val=" << val << " z=" << Z << "\n";
    }
+  if( bad ) ++mism;
   if( dt > slow ) {
    std::cout << "SLOW " << name << " n=" << N << " t=" << dt << "s\n";
    std::cout.flush();

@@ -54,7 +54,8 @@ for cls in "${CLASSES[@]}"; do
   ' "$tmp/$cls.csv"
   # keep the raw .csv (it carries the published optimum z and x*) next to the
   # stripped instances, for the solver-vs-reference cross-check that reads it
-  # in a single process (see batches-data/batch-nc4-ref, which runs bkbench)
+  # in a single process (see tests/BinaryKnapsackBlock/batches/batch-pisinger,
+  # which feeds the .csv to the test via -C)
   cp "$tmp/$cls.csv" "txt/$cls.csv"
   echo "  $cls: $(ls "txt/$cls"/*.txt | wc -l) instances"
 done

@@ -2,7 +2,7 @@
 ################################ makefile ####################################
 ##############################################################################
 #                                                                            #
-#   makefile of bk2nc4                                                      #
+#   makefile of bkbench                                                      #
 #                                                                            #
 #                              Antonio Frangioni                             #
 #                          Dipartimento di Informatica                       #
@@ -11,7 +11,7 @@
 ##############################################################################
 
 # module name
-NAME = bk2nc4
+NAME = bkbench
 
 # basic directory
 DIR = .

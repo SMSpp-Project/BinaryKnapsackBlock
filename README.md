@@ -102,29 +102,30 @@ for further details.
 
 ## Tools
 
-Under `tools/` the module ships two utilities:
+Under `tools/` the module ships `bkbench`, an in-process benchmark driver that
+runs any of the solvers over the large public Pisinger / Jooken benchmark
+archives (see the Data section), cross-checking each optimum against the
+certified one recorded in the data. It defaults to the efficient
+`CoreDPBinaryKnapsackSolver`; a comma-separated list selects / cross-checks
+other solvers.
 
-- `bk2nc4`, a converter from the Pisinger text format (in which the public
-  knapsack benchmarks are distributed) to the SMS++ netCDF format;
-
-- `bkbench`, an in-process benchmark driver that runs any of the solvers over
-  the public Pisinger / Jooken benchmark archives (see the Data section).
-
-You can run them from the `<build-dir>/tools` directory, install them with the
+You can run it from the `<build-dir>/tools` directory, install it with the
 library (see above), or just go in the `tools/` folder and run `make` there
-(provided makefiles are properly set, see above). Run a tool without arguments
-for info on its usage:
+(provided makefiles are properly set, see above). Run it without arguments for
+info on its usage:
 
 ```sh
-bk2nc4
+bkbench
 ```
 
 
 ## Data
 
-A small sample of knapsack instances ships with the repo, in both the Pisinger
-text format ([data/txt](data/txt)) and the SMS++ netCDF format
-([data/nc4](data/nc4)) produced from it by the `bk2nc4` converter.
+A small sample of knapsack instances ships with the repo, in the Pisinger text
+format ([data/txt](data/txt)); the raw `.csv` kept alongside them embed, per
+instance, the certified optimum used by the test suite for the
+solver-vs-reference cross-check (see
+`tests/BinaryKnapsackBlock/batches/batch-pisinger`).
 
 The full public benchmark archives used by `bkbench` are large and are not
 included; populate the gitignored [data/benchmarks](data/benchmarks) folder
