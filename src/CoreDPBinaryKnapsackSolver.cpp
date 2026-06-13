@@ -221,8 +221,8 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
  for( int i = 0 ; i < m ; ++i )
   byk[ i ] = i;
  std::sort( byk.begin() , byk.end() , [ & ]( int a , int b ) {
-  return ( iw[ a ] != iw[ b ] ) ? ( iw[ a ] < iw[ b ] )
-                                : ( ip[ a ] < ip[ b ] );
+  return( ( iw[ a ] != iw[ b ] ) ? ( iw[ a ] < iw[ b ] )
+                                 : ( ip[ a ] < ip[ b ] ) );
   } );
 
  struct Agg {
@@ -288,7 +288,7 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
   if( reg[ j ].d > 0 )
    regIdx.push_back( int( j ) );
  std::sort( regIdx.begin() , regIdx.end() , [ & ]( int a , int b ) {
-  return reg[ a ].p * double( reg[ b ].w ) > reg[ b ].p * double( reg[ a ].w );
+  return( reg[ a ].p * double( reg[ b ].w ) > reg[ b ].p * double( reg[ a ].w ) );
   } );
  const int mA = int( regIdx.size() );
  std::vector< long > w( mA ) , d( mA );
@@ -322,7 +322,7 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
  const std::vector< long > & wE = noagg ? w : wEb;
  const std::vector< double > & pE = noagg ? p : pEb;
  // unit -> aggregated item index
- auto uitem = [ & ]( int u ) { return noagg ? u : unit_item[ u ]; };
+ auto uitem = [ & ]( int u ) { return( noagg ? u : unit_item[ u ] ); };
 
  // integer profits enable the tighter "cannot reach z + 1" pruning margin;
  // more generally every attainable value is a multiple of g_p = gcd of the
@@ -676,7 +676,7 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
     auto & last = steps.back();
     last.erase( std::remove_if( last.begin() , last.end() ,
                                 [ & ]( const State & st ) {
-                                 return ! survives( st.wsum , st.psum );
+                                 return( ! survives( st.wsum , st.psum ) );
                                  } ) , last.end() );
     if( ! mdone ) {
      if( isRight ) { domRw = w[ it ]; domRp = p[ it ]; }
@@ -1039,7 +1039,7 @@ double CoreDPBinaryKnapsackSolver::surrogate_card_bound(
    else ord.push_back( i );
    }
   std::sort( ord.begin() , ord.end() , [ & ]( int a , int c ) {
-   return p[ a ] * double( w[ c ] + s ) > p[ c ] * double( w[ a ] + s );
+   return( p[ a ] * double( w[ c ] + s ) > p[ c ] * double( w[ a ] + s ) );
    } );
 
   // greedy fractional fill of the surrogate capacity
@@ -1252,7 +1252,7 @@ double CoreDPBinaryKnapsackSolver::solve_with_continuous(
  for( int i = 0 ; i < m ; ++i )
   ord[ i ] = i;
  std::sort( ord.begin() , ord.end() , [ & ]( int a , int b ) {
-  return v_p[ a ] * double( v_w[ b ] ) > v_p[ b ] * double( v_w[ a ] );
+  return( v_p[ a ] * double( v_w[ b ] ) > v_p[ b ] * double( v_w[ a ] ) );
   } );
  std::vector< long > w( m );
  std::vector< double > p( m );
@@ -1278,7 +1278,7 @@ double CoreDPBinaryKnapsackSolver::solve_with_continuous(
    }
   std::sort( cand.begin() , cand.end() ,
              []( const State & a , const State & b ) {
-              return a.wsum != b.wsum ? a.wsum < b.wsum : a.psum > b.psum;
+              return( a.wsum != b.wsum ? a.wsum < b.wsum : a.psum > b.psum );
               } );
   std::vector< State > cur;
   cur.reserve( cand.size() );
@@ -1295,7 +1295,7 @@ double CoreDPBinaryKnapsackSolver::solve_with_continuous(
  for( int i = 0 ; i < mc ; ++i )
   cord[ i ] = i;
  std::sort( cord.begin() , cord.end() , [ & ]( int a , int b ) {
-  return v_cp[ a ] * double( v_cw[ b ] ) > v_cp[ b ] * double( v_cw[ a ] );
+  return( v_cp[ a ] * double( v_cw[ b ] ) > v_cp[ b ] * double( v_cw[ a ] ) );
   } );
  std::vector< long > cw( mc );
  std::vector< double > cp( mc );

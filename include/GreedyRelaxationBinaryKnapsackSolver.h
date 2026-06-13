@@ -170,7 +170,7 @@ public:
 /*--------------------------------------------------------------------------*/
  /// write the current true solution in the variables of the Block
 
- bool new_true_var_solution( void ) override { return false; }
+ bool new_true_var_solution( void ) override { return( false ); }
 
 /*--------------------------------------------------------------------------*/
  /// write the current solution in the variables of the BinaryKnapsackBlock
@@ -182,7 +182,7 @@ public:
  /** Return the value of the current solution. Change the sign according
   * to the sense of the problem (f_sense). */
 
- OFValue get_var_value() override { return f_sense ? obj : - obj; }
+ OFValue get_var_value() override { return( f_sense ? obj : - obj ); }
 
 /** @} ---------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/

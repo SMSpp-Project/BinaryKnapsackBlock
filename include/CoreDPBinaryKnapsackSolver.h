@@ -118,13 +118,13 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
 
- OFValue get_lb( void ) override { return get_var_value(); }
+ OFValue get_lb( void ) override { return( get_var_value() ); }
 
- OFValue get_ub( void ) override { return get_var_value(); }
+ OFValue get_ub( void ) override { return( get_var_value() ); }
 
  /// return the value of the (current) solution, in the Block's own sense
 
- OFValue get_var_value( void ) override { return f_sense ? f_obj : - f_obj; }
+ OFValue get_var_value( void ) override { return( f_sense ? f_obj : - f_obj ); }
 
  /// write the current solution into the variables of the BinaryKnapsackBlock
 

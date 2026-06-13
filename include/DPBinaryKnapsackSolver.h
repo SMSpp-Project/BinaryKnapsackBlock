@@ -310,14 +310,14 @@ public:
  /** Return a valid lower bound on the optimal objective function value.
   * get_lb() must be called after compute() has been called. */
 
- OFValue get_lb( void ) override { return get_var_value(); }
+ OFValue get_lb( void ) override { return( get_var_value() ); }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// return a valid upper bound on the optimal objective function value
  /** Return a valid upper bound on the optimal objective function value.
   * get_ub() must be called after compute() has been called. */
 
- OFValue get_ub( void ) override { return get_var_value(); }
+ OFValue get_ub( void ) override { return( get_var_value() ); }
 
 /*--------------------------------------------------------------------------*/
  /// write the current solution in the variables of the BinaryKnapsackBlock
@@ -331,7 +331,7 @@ public:
  * the sign of the value of the solution must change according to the real 
  * sense (f_sense) of the problem encoded in the BinaryKnapsackBlock. */
 
- OFValue get_var_value() override { return f_sense ? obj : - obj; }
+ OFValue get_var_value() override { return( f_sense ? obj : - obj ); }
 
 /** @} ---------------------------------------------------------------------*/
 /*-------------- METHODS FOR READING THE DATA OF THE Solver ----------------*/

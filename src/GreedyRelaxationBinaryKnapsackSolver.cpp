@@ -101,7 +101,7 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch() {
                                    std::move( one ) ,
                                    std::make_pair( f_ci , f_ci + 1 ) );
 
- return branches;
+ return( branches );
 }
 
 /*--------------------------------------------------------------------------*/
@@ -157,7 +157,7 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::separate(
 
 bool GreedyRelaxationBinaryKnapsackSolver::has_true_var_solution( void ) {
  // the rounded greedy solution (see rounded_x()) always exists
- return true;
+ return( true );
  }
 
 /*--------------------------------------------------------------------------*/
