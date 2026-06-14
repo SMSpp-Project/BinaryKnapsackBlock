@@ -78,8 +78,7 @@ target_sources(${modName} PRIVATE
         src/BinaryKnapsackSolver.cpp
         src/DPBinaryKnapsackSolver.cpp
         src/ParallelDPBinaryKnapsackSolver.cpp
-        src/CoreDPBinaryKnapsackSolver.cpp
-        src/GreedyRelaxationBinaryKnapsackSolver.cpp)
+        src/CoreDPBinaryKnapsackSolver.cpp)
 
 # When using target_include_directories(), PUBLIC means that any targets
 # that link to this target also need that include directory.
