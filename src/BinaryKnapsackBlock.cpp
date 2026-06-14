@@ -10,7 +10,7 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Francesco Demelas \n
+ * \author Francesca Demelas \n
  *         Laboratoire d'Informatique de Paris Nord \n
  *         Universite' Sorbonne Paris Nord \n
  *
@@ -19,7 +19,7 @@
  *         Universita' di Pisa \n
  *
  * \copyright &copy; by Federica Di Pasquale, Antonio Frangioni,
- *                      Francesco Demelas
+ *                      Francesca Demelas
  */
 /*--------------------------------------------------------------------------*/
 /*---------------------------- IMPLEMENTATION ------------------------------*/
