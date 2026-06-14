@@ -22,9 +22,13 @@ split to two different projects):
     aggregation reductions, primal heuristics), orders of magnitude faster
     than the full-table DP;
 
-  `CoreDPBinaryKnapsackSolver` is built on the abstract base class
-  `BinaryKnapsackSolver` (raw instance mirror with incremental Modification
-  processing, normalized core, continuous relaxation).
+  - `GreedyRelaxationBinaryKnapsackSolver`, the exact greedy (Dantzig)
+    solver of the continuous relaxation, providing true lower / upper bounds
+    on the integer optimum and branching on the critical item;
+
+  the last two share the abstract base class `BinaryKnapsackSolver` (raw
+  instance mirror with incremental Modification processing, normalized core,
+  continuous relaxation).
 
 
 ## Getting started
