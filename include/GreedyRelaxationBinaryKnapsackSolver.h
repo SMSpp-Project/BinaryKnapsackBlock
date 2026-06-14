@@ -215,14 +215,15 @@ public:
  /// classify the effect of a Modification on an enumeration tree
  /** Knapsack-specific classification [see RelaxationSolver::classify()]:
   * profit changes only touch the objective, weight / capacity changes only
-  * touch the feasible region, (un)fixings and integrality changes touch
-  * both (they reshape the branching space and the relaxation bounds), and
-  * anything else physical (sense flips) or structural (NBModification,
-  * GroupModification, that update_instance() would not unpack either)
-  * conservatively invalidates everything. Non-physical Modification (the
-  * abstract-representation mirror of the physical ones) are classified
-  * eModNothing, consistently with update_instance() ignoring them: this
-  * Solver only listens to the physical representation. */
+  * touch the feasible region, while (un)fixings, integrality and sense
+  * changes reshape the branching space (they invalidate the enumeration
+  * tree structure, not merely its bounds) and so, together with anything
+  * structural (NBModification, GroupModification, that update_instance()
+  * would not unpack either), conservatively invalidate everything.
+  * Non-physical Modification (the abstract-representation mirror of the
+  * physical ones) are classified eModNothing, consistently with
+  * update_instance() ignoring them: this Solver only listens to the
+  * physical representation. */
 
  [[nodiscard]] int classify( const sp_Mod & mod ) override {
   const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
