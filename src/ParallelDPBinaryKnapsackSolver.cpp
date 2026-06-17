@@ -22,6 +22,8 @@
 
 #include "ParallelDPBinaryKnapsackSolver.h"
 
+#include <cstddef>
+
 #include <thread>
 
 #if PDPBKS_PARALLEL
@@ -137,13 +139,15 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
     // OpenMP - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    // MSVC's OpenMP (2.0) requires a signed loop index
+    const std::ptrdiff_t nlsize = nextlab.size();
     #pragma omp parallel for num_threads( nthreads )
-    for( Index j = 0 ; j < nextlab.size() ; ++j )
+    for( std::ptrdiff_t j = 0 ; j < nlsize ; ++j )
      f( j );
 
     break;
     }
-   
+
    case( 1 ): {
     
     // FastFlow - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -194,10 +198,11 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     // initialize nextlab
     nextlab.assign( maxnextlab , - Inf< double >() );
     
+    const std::ptrdiff_t clsize = currlab.size();
     #pragma omp parallel for num_threads( nthreads )
-    for( Index j = 0 ; j < currlab.size() ; ++j ) {
-   
-     if( currlab[ j ] == -Inf< double >() )   // skip node with label = -inf 
+    for( std::ptrdiff_t j = 0 ; j < clsize ; ++j ) {
+
+     if( currlab[ j ] == -Inf< double >() )   // skip node with label = -inf
       continue;                          
                           
      if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc 
@@ -207,10 +212,10 @@ void ParallelDPBinaryKnapsackSolver::dynamic_programming( Index C ) {
      
      }
 
-    Index h = w > maxnextlab ? 0 : maxnextlab - w;
-        
+    const std::ptrdiff_t h = w > maxnextlab ? 0 : maxnextlab - w;
+
     #pragma omp parallel for num_threads( nthreads )
-    for( Index j = 0 ; j < h ; ++j ) {
+    for( std::ptrdiff_t j = 0 ; j < h ; ++j ) {
 
      if( currlab[ j ] == -Inf< double >() )
       continue;  
