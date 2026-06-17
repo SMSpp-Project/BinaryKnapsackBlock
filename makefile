@@ -32,7 +32,8 @@ BKBkOBJ = $(BKBkSDR)/obj/BinaryKnapsackBlock.o \
           $(BKBkSDR)/obj/DPBinaryKnapsackSolver.o \
           $(BKBkSDR)/obj/ParallelDPBinaryKnapsackSolver.o \
           $(BKBkSDR)/obj/CoreDPBinaryKnapsackSolver.o \
-          $(BKBkSDR)/obj/GreedyRelaxationBinaryKnapsackSolver.o
+          $(BKBkSDR)/obj/GreedyRelaxationBinaryKnapsackSolver.o \
+          $(BKBkSDR)/obj/IncrementalGreedyRelaxationBinaryKnapsackSolver.o
 
 BKBkINC = -I$(BKBkSDR)/include
 
@@ -41,7 +42,8 @@ BKBkH   = $(BKBkSDR)/include/BinaryKnapsackBlock.h \
           $(BKBkSDR)/include/DPBinaryKnapsackSolver.h \
           $(BKBkSDR)/include/ParallelDPBinaryKnapsackSolver.h \
           $(BKBkSDR)/include/CoreDPBinaryKnapsackSolver.h \
-          $(BKBkSDR)/include/GreedyRelaxationBinaryKnapsackSolver.h
+          $(BKBkSDR)/include/GreedyRelaxationBinaryKnapsackSolver.h \
+          $(BKBkSDR)/include/IncrementalGreedyRelaxationBinaryKnapsackSolver.h
 
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -78,6 +80,13 @@ $(BKBkSDR)/obj/CoreDPBinaryKnapsackSolver.o: \
 $(BKBkSDR)/obj/GreedyRelaxationBinaryKnapsackSolver.o: \
 	$(BKBkSDR)/src/GreedyRelaxationBinaryKnapsackSolver.cpp $(BKBkH) $(SMS++OBJ)
 	$(CC) -c $(BKBkSDR)/src/GreedyRelaxationBinaryKnapsackSolver.cpp -o $@ \
+	$(BKBkINC) $(SMS++INC) $(SW)
+
+$(BKBkSDR)/obj/IncrementalGreedyRelaxationBinaryKnapsackSolver.o: \
+	$(BKBkSDR)/src/IncrementalGreedyRelaxationBinaryKnapsackSolver.cpp \
+	$(BKBkH) $(SMS++OBJ)
+	$(CC) -c \
+	$(BKBkSDR)/src/IncrementalGreedyRelaxationBinaryKnapsackSolver.cpp -o $@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
 ########################## End of makefile ###################################

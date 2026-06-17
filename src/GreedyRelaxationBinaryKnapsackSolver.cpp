@@ -85,71 +85,61 @@ int GreedyRelaxationBinaryKnapsackSolver::compute( bool changedvars ) {
 
 std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch() {
 
- // branch on the critical item
- std::vector< Change * > branches( 2 );
-
- std::vector< double > zero = { 0 };
- std::vector< double > one = { 1 };
-
- branches[ 0 ] = new BinaryKnapsackBlockRngdChange(
-                                   BinaryKnapsackBlockChange::eFixX ,
-                                   std::move( zero ) ,
-                                   std::make_pair( f_ci , f_ci + 1 ) );
-
- branches[ 1 ] = new BinaryKnapsackBlockRngdChange(
-                                   BinaryKnapsackBlockChange::eFixX ,
-                                   std::move( one ) ,
-                                   std::make_pair( f_ci , f_ci + 1 ) );
-
- return( branches );
-}
-
-/*--------------------------------------------------------------------------*/
-
-std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::separate(
-                                                               double cutoff )
-{
- if( f_fi.orig < 0 )           // integral relaxation: nothing to peg on
-  return( std::vector< Change * >() );
-
- // the incumbent in the normalized (maximisation) sense; the conservative
- // guard wards off cutting the optimum by a floating-point whisker
- const double zmax = ( f_sense ? cutoff : - cutoff ) -
-                     1e-9 * ( 1 + std::abs( cutoff ) );
-
- const Index ci = Index( f_fi.orig );
- const double rho = n_p[ ci ] / n_w[ ci ];   // critical efficiency
-
- // items provably stuck at their greedy value, split by value
- Block::Subset fix0 , fix1;
-
- for( Index j = 0 ; j < f_N ; ++j ) {
-  if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
-   continue;                   // not free, critical, or not integer
-
-  const double xj = f_x[ j ];                    // 0 or 1 (original space)
-  const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );  // core value
-  // flipping j away from its greedy core value loses its pegging margin
-  const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
-                           : rho * n_w[ j ] - n_p[ j ];
-  if( obj - margin <= zmax )   // the flip cannot improve the incumbent:
-   ( xj ? fix1 : fix0 ).push_back( j );  // peg j at its greedy value
+ // reduced-cost (Martello-Toth) pegging, when an incumbent is available: a
+ // free integer item whose flip cannot beat it is stuck at its greedy value
+ // throughout this subtree [see the branch() doc]; the pegged items are split
+ // by the value they are stuck at
+ Block::Subset peg0 , peg1;
+ if( f_global_information && f_global_information->has_incumbent() &&
+     f_global_information->local_fixing_allowed() && ( f_fi.orig >= 0 ) ) {
+  const double cutoff = f_global_information->incumbent();
+  // the incumbent in the normalized (maximisation) sense; the conservative
+  // guard wards off pegging the optimum away by a floating-point whisker
+  const double zmax = ( f_sense ? cutoff : - cutoff ) -
+                      1e-9 * ( 1 + std::abs( cutoff ) );
+  const Index ci = Index( f_fi.orig );
+  const double rho = n_p[ ci ] / n_w[ ci ];   // critical efficiency
+  for( Index j = 0 ; j < f_N ; ++j ) {
+   if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
+    continue;                  // not free, critical, or not integer
+   const double xj = f_x[ j ];                   // 0 or 1 (original space)
+   const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
+   const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
+                            : rho * n_w[ j ] - n_p[ j ];
+   if( obj - margin <= zmax )
+    ( xj ? peg1 : peg0 ).push_back( j );
+   }
   }
 
- std::vector< Change * > cuts;
- if( ! fix0.empty() )
-  cuts.push_back( new BinaryKnapsackBlockSbstChange(
+ // the two children fix the critical item to 0 and to 1; each also carries
+ // the (subtree-valid) pegged fixings, folded into a GroupChange
+ std::vector< Change * > branches( 2 );
+ for( int b = 0 ; b < 2 ; ++b ) {
+  Change * crit = new BinaryKnapsackBlockRngdChange(
                        BinaryKnapsackBlockChange::eFixX ,
-                       std::vector< double >( fix0.size() , 0 ) ,
-                       std::move( fix0 ) ) );
- if( ! fix1.empty() )
-  cuts.push_back( new BinaryKnapsackBlockSbstChange(
-                       BinaryKnapsackBlockChange::eFixX ,
-                       std::vector< double >( fix1.size() , 1 ) ,
-                       std::move( fix1 ) ) );
- return( cuts );
+                       std::vector< double >{ double( b ) } ,
+                       std::make_pair( f_ci , f_ci + 1 ) );
+  if( peg0.empty() && peg1.empty() ) {
+   branches[ b ] = crit;
+   continue;
+   }
+  auto grp = new GroupChange();
+  grp->add( crit );
+  if( ! peg0.empty() )
+   grp->add( new BinaryKnapsackBlockSbstChange(
+                  BinaryKnapsackBlockChange::eFixX ,
+                  std::vector< double >( peg0.size() , 0 ) ,
+                  Block::Subset( peg0 ) ) );
+  if( ! peg1.empty() )
+   grp->add( new BinaryKnapsackBlockSbstChange(
+                  BinaryKnapsackBlockChange::eFixX ,
+                  std::vector< double >( peg1.size() , 1 ) ,
+                  Block::Subset( peg1 ) ) );
+  branches[ b ] = grp;
+  }
 
- }  // end( GreedyRelaxationBinaryKnapsackSolver::separate )
+ return( branches );
+ }
 
 /*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/

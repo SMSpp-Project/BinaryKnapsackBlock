@@ -190,26 +190,20 @@ public:
 /** @name Changing the data of the model
  *  @{ */
 
- /// branch on the critical item: the two Change fix it to 0 and to 1
+ /// branch on the critical item, pegging by reduced cost along the way
+ /** The two children fix the critical item to 0 and to 1. Each also carries,
+  * when an incumbent is available [see set_global_information()], the
+  * reduced-cost (Martello-Toth) pegging valid in this subtree: with
+  * \f$ \rho \f$ the efficiency of the critical item and \f$ U \f$ the
+  * relaxation value, flipping a free integer item \f$ j \f$ away from its
+  * greedy value \f$ \bar{x}_j \f$ cannot yield more than
+  * \f$ U - | p_j - \rho w_j | \f$ (in the normalized maximisation sense), so
+  * whenever this does not beat the incumbent \f$ x_j \f$ is fixed at
+  * \f$ \bar{x}_j \f$ throughout the subtree. These node-local fixings travel
+  * folded into the branching Change (a GroupChange), exactly as the critical
+  * disjunction does, rather than through any external protocol. */
 
  std::vector< Change * > branch() override;
-
-/*--------------------------------------------------------------------------*/
- /// separate by reduced-cost (Dantzig) pegging
- /** The classic Martello-Toth pegging on the fractional relaxation: with
-  * \f$ \rho \f$ the efficiency of the critical item and \f$ U \f$ the
-  * relaxation optimum, flipping a free integer item \f$ j \f$ away from
-  * its greedy value \f$ \bar{x}_j \f$ cannot yield more than
-  * \f$ U - | p_j - \rho w_j | \f$ (in the normalized maximisation
-  * sense): whenever this does not improve upon the \p cutoff (the
-  * incumbent), \f$ x_j \f$ can be fixed at \f$ \bar{x}_j \f$ in the
-  * whole subtree. The fixings are returned as (at most two, one per
-  * value) eFixX BinaryKnapsackBlockSbstChange, which the caller applies
-  * like any other (un)fixing Change [see apply()]: the next compute()
-  * then folds the fixed items out of the core, shrinking every node
-  * below. */
-
- [[nodiscard]] std::vector< Change * > separate( double cutoff ) override;
 
 /*--------------------------------------------------------------------------*/
  /// classify the effect of a Modification on an enumeration tree
