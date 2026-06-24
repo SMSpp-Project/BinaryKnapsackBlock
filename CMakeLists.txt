@@ -246,6 +246,22 @@ add_custom_target(fetch_bk_data
 # Ensure that the extraction is executed after the download
 add_dependencies(fetch_bk_data download_bk_txt)
 
+# Hard-instance benchmark sources, curated on demand into data/ (gitignored).
+# data/fetch-jooken pulls a curated subset of the Jooken-Leyman-De Causmaecker
+# hard 0-1 knapsack instances (the .csv carry the published optimum z, read by
+# the test in -C mode exactly like the Pisinger ones); data/fetch-txt-large the
+# large uncorrelated / subset-sum Pisinger classes. These are the test fixtures'
+# only dependency (see tests/BinaryKnapsackBlock/batch-jooken).
+add_custom_target(fetch_jooken_data
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/data/fetch-jooken
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
+        COMMENT "Fetching curated Jooken hard knapsack instances")
+
+add_custom_target(fetch_txt_large_data
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/data/fetch-txt-large
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
+        COMMENT "Fetching large Pisinger knapsack instances")
+
 # --------------------------------------------------------------------------- #
 # Remove from the search paths the cmake directory we added at the beginning.
 list(REMOVE_AT CMAKE_MODULE_PATH -1)

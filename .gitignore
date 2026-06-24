@@ -33,6 +33,10 @@ data/txt
 data/txt.tgz
 data/.extracted
 
+# --- Curated hard-instance sources (fetched by data/fetch-jooken / -txt-large)
+data/jooken
+data/txt-large
+
 # --- Benchmark payload (fetched by data/fetch-benchmarks) ----
 data/benchmarks/
 
