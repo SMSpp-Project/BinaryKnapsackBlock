@@ -19,7 +19,6 @@
 #           $(BKBkINC)  = the -I$( source directory )                        #
 #                                                                            #
 #                              Antonio Frangioni                             #
-#                            Federica Di Pasquale                            #
 #                         Dipartimento di Informatica                        #
 #                             Universita' di Pisa                            #
 #                                                                            #
