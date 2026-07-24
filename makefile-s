@@ -37,6 +37,10 @@
 # *H   is the list of all include files
 # *INC is the -I< include directories >
 
+FF_SDR ?= $(HOME)/fastflow
+FF_INC  = -I$(FF_SDR)
+
+
 # include the makefile requiring all external modules in input
 include $(BKBkSDR)/makefile
 
@@ -45,9 +49,9 @@ include $(BKBkSDR)/makefile
 # append external -I directives to BKBkINC, BKBkOBJ and BKBkH as defined
 # by the makefile, thus the := assignment has to be used (use GNU make)
 BKBkOBJ := $(BKBkOBJ)
-BKBkINC := $(BKBkINC)
+BKBkINC := $(BKBkINC) $(FF_INC)
 
 # external libraries for BKBlock
-BKBkLIB =
+BKBkLIB = -pthread
 
 ############################ End of makefile #################################

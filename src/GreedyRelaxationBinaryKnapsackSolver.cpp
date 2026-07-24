@@ -45,7 +45,7 @@ using namespace SMSpp_di_unipi_it;
 
 // register GreedyRelaxationBinaryKnapsackSolver to the factory
 
-SMSpp_insert_in_factory_cpp_1( GreedyRelaxationBinaryKnapsackSolver );
+SMSpp_insert_in_factory_cpp_1(GreedyRelaxationBinaryKnapsackSolver);
 
 /*--------------------------------------------------------------------------*/
 /*------------ METHODS OF GreedyRelaxationBinaryKnapsackSolver -------------*/
@@ -53,113 +53,129 @@ SMSpp_insert_in_factory_cpp_1( GreedyRelaxationBinaryKnapsackSolver );
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
 
-int GreedyRelaxationBinaryKnapsackSolver::compute( bool changedvars ) {
+int GreedyRelaxationBinaryKnapsackSolver::compute(bool changedvars)
+{
 
- lock();                     // lock the mutex
+  lock(); // lock the mutex
 
- update_instance();          // process all the pending modifications
+  update_instance(); // process all the pending modifications
 
- if( ! f_norm_valid )        // profits / weights / sense changed:
-  normalize_instance();      //  raw mirror -> normalized core
- else                        // only the fixings (possibly) changed:
-  refresh_fixings();         //  cheap single-pass refresh
+  if (!f_norm_valid)      // profits / weights / sense changed:
+    normalize_instance(); //  raw mirror -> normalized core
+  else                    // only the fixings (possibly) changed:
+    refresh_fixings();    //  cheap single-pass refresh
 
- obj = - Inf< double >();
+  obj = -Inf<double>();
 
- // the problem is empty iff the residual capacity is negative
- if( f_Cd < 0 ) { unlock(); return( kInfeasible ); }
+  // the problem is empty iff the residual capacity is negative
+  if (f_Cd < 0)
+  {
+    unlock();
+    return (kInfeasible);
+  }
 
- // solve the continuous knapsack
- obj = fractional_relaxation( f_fi );
+  // solve the continuous knapsack
+  obj = fractional_relaxation(f_fi);
 
- // the critical item, for branch(); with no critical item any index will do
- f_ci = f_fi.orig >= 0 ? Index( f_fi.orig ) : ( f_N ? f_N - 1 : 0 );
+  // the critical item, for branch(); with no critical item any index will do
+  f_ci = f_fi.orig >= 0 ? Index(f_fi.orig) : (f_N ? f_N - 1 : 0);
 
- unlock();                   // unlock the mutex
+  unlock(); // unlock the mutex
 
- return( kOK );
+  return (kOK);
 
- }  // end( GreedyRelaxationBinaryKnapsackSolver::compute() )
+} // end( GreedyRelaxationBinaryKnapsackSolver::compute() )
 
 /*--------------------------------------------------------------------------*/
 
-std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch() {
+std::vector<Change *> GreedyRelaxationBinaryKnapsackSolver::branch()
+{
 
- // reduced-cost (Martello-Toth) pegging, when an incumbent is available: a
- // free integer item whose flip cannot beat it is stuck at its greedy value
- // throughout this subtree [see the branch() doc]; the pegged items are split
- // by the value they are stuck at
- Block::Subset peg0 , peg1;
- if( f_global_information && f_global_information->has_incumbent() &&
-     f_global_information->local_fixing_allowed() && ( f_fi.orig >= 0 ) ) {
-  const double cutoff = f_global_information->incumbent();
-  // the incumbent in the normalized (maximisation) sense; the conservative
-  // guard wards off pegging the optimum away by a floating-point whisker
-  const double zmax = ( f_sense ? cutoff : - cutoff ) -
-                      1e-9 * ( 1 + std::abs( cutoff ) );
-  const Index ci = Index( f_fi.orig );
-  const double rho = n_p[ ci ] / n_w[ ci ];   // critical efficiency
-  for( Index j = 0 ; j < f_N ; ++j ) {
-   if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
-    continue;                  // not free, critical, or not integer
-   const double xj = f_x[ j ];                   // 0 or 1 (original space)
-   const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
-   const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
-                            : rho * n_w[ j ] - n_p[ j ];
-   if( obj - margin <= zmax )
-    ( xj ? peg1 : peg0 ).push_back( j );
-   }
+  // reduced-cost (Martello-Toth) pegging, when an incumbent is available: a
+  // free integer item whose flip cannot beat it is stuck at its greedy value
+  // throughout this subtree [see the branch() doc]; the pegged items are split
+  // by the value they are stuck at
+  Block::Subset peg0, peg1;
+  bool hasIncumbent;
+  double cutoff;
+  if (auto universe = f_global_information->getFromUniverse<double>("DoubleProperties"))
+    if (universe)
+      hasIncumbent = universe->read("incumbent", cutoff);
+
+  if (hasIncumbent && (f_fi.orig >= 0))
+  {
+    // the incumbent in the normalized (maximisation) sense; the conservative
+    // guard wards off pegging the optimum away by a floating-point whisker
+    const double zmax = (f_sense ? cutoff : -cutoff) -
+                        1e-9 * (1 + std::abs(cutoff));
+    const Index ci = Index(f_fi.orig);
+    const double rho = n_p[ci] / n_w[ci]; // critical efficiency
+    for (Index j = 0; j < f_N; ++j)
+    {
+      if ((!n_in[j]) || (j == ci) || (!v_I[j]))
+        continue;               // not free, critical, or not integer
+      const double xj = f_x[j]; // 0 or 1 (original space)
+      const char yj = n_comp[j] ? char(1 - xj) : char(xj);
+      const double margin = yj ? n_p[j] - rho * n_w[j]
+                               : rho * n_w[j] - n_p[j];
+      if (obj - margin <= zmax)
+        (xj ? peg1 : peg0).push_back(j);
+    }
   }
 
- // the two children fix the critical item to 0 and to 1; each also carries
- // the (subtree-valid) pegged fixings, folded into a GroupChange
- std::vector< Change * > branches( 2 );
- for( int b = 0 ; b < 2 ; ++b ) {
-  Change * crit = new BinaryKnapsackBlockRngdChange(
-                       BinaryKnapsackBlockChange::eFixX ,
-                       std::vector< double >{ double( b ) } ,
-                       std::make_pair( f_ci , f_ci + 1 ) );
-  if( peg0.empty() && peg1.empty() ) {
-   branches[ b ] = crit;
-   continue;
-   }
-  auto grp = new GroupChange();
-  grp->add( crit );
-  if( ! peg0.empty() )
-   grp->add( new BinaryKnapsackBlockSbstChange(
-                  BinaryKnapsackBlockChange::eFixX ,
-                  std::vector< double >( peg0.size() , 0 ) ,
-                  Block::Subset( peg0 ) ) );
-  if( ! peg1.empty() )
-   grp->add( new BinaryKnapsackBlockSbstChange(
-                  BinaryKnapsackBlockChange::eFixX ,
-                  std::vector< double >( peg1.size() , 1 ) ,
-                  Block::Subset( peg1 ) ) );
-  branches[ b ] = grp;
+  // the two children fix the critical item to 0 and to 1; each also carries
+  // the (subtree-valid) pegged fixings, folded into a GroupChange
+  std::vector<Change *> branches(2);
+  for (int b = 0; b < 2; ++b)
+  {
+    Change *crit = new BinaryKnapsackBlockRngdChange(
+        BinaryKnapsackBlockChange::eFixX,
+        std::vector<double>{double(b)},
+        std::make_pair(f_ci, f_ci + 1));
+    if (peg0.empty() && peg1.empty())
+    {
+      branches[b] = crit;
+      continue;
+    }
+    auto grp = new GroupChange();
+    grp->add(crit);
+    if (!peg0.empty())
+      grp->add(new BinaryKnapsackBlockSbstChange(
+          BinaryKnapsackBlockChange::eFixX,
+          std::vector<double>(peg0.size(), 0),
+          Block::Subset(peg0)));
+    if (!peg1.empty())
+      grp->add(new BinaryKnapsackBlockSbstChange(
+          BinaryKnapsackBlockChange::eFixX,
+          std::vector<double>(peg1.size(), 1),
+          Block::Subset(peg1)));
+    branches[b] = grp;
   }
 
- return( branches );
- }
+  return (branches);
+}
 
 /*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
 
-bool GreedyRelaxationBinaryKnapsackSolver::has_true_var_solution( void ) {
- // the rounded greedy solution (see rounded_x()) always exists
- return( true );
- }
+bool GreedyRelaxationBinaryKnapsackSolver::has_true_var_solution(void)
+{
+  // the rounded greedy solution (see rounded_x()) always exists
+  return (true);
+}
 
 /*--------------------------------------------------------------------------*/
 
 void GreedyRelaxationBinaryKnapsackSolver::get_var_solution(
-                                             Configuration * solc ) {
+    Configuration *solc)
+{
 
- auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+  auto BKB = static_cast<BinaryKnapsackBlock *>(f_Block);
 
- BKB->set_x( f_x.begin() );  // write the solution in BinaryKnapsackBlock
+  BKB->set_x(f_x.begin()); // write the solution in BinaryKnapsackBlock
 
- }  // end( GreedyRelaxationBinaryKnapsackSolver::get_var_solution )
+} // end( GreedyRelaxationBinaryKnapsackSolver::get_var_solution )
 
 /*--------------------------------------------------------------------------*/
 /*----------- End File GreedyRelaxationBinaryKnapsackSolver.cpp ------------*/
