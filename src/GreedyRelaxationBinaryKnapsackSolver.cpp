@@ -98,7 +98,7 @@ std::vector<Change *> GreedyRelaxationBinaryKnapsackSolver::branch()
   Block::Subset peg0, peg1;
   bool hasIncumbent;
   double cutoff;
-  if (auto universe = f_global_information->getFromUniverse<double>("DoubleProperties"))
+  if (auto universe = f_global_information->get_from_Universe<double>("DoubleProperties"))
     if (universe)
       hasIncumbent = universe->read("incumbent", cutoff);
 
