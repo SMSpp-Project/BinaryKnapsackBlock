@@ -1,52 +1,55 @@
 /*--------------------------------------------------------------------------*/
-/*------ File IncrementalGreedyRelaxationBinaryKnapsackSolver.h ------------*/
+/*---------------------- File IncrementalGreedyRelaxationBinaryKnapsackSolver.h ---------------------*/
 /*--------------------------------------------------------------------------*/
-/** @file
- * Header file for the *concrete* class
- * IncrementalGreedyRelaxationBinaryKnapsackSolver, which solves the very same
- * continuous (Dantzig) relaxation as GreedyRelaxationBinaryKnapsackSolver,
- * and shares its branching, separation, bounds and Solution, but maintains
- * the relaxation *incrementally* along the enumeration tree.
+/**
+ * @file IncrementalGreedyRelaxationBinaryKnapsackSolver.h
+ * @brief Concrete implementations of incremental greedy-based solvers for the Binary Knapsack Problem.
  *
- * Where the base greedy re-scans the whole efficiency order at each node
- * (O(n) per node), this variant remembers where the critical item sat and
- * keeps the running profit and residual capacity up to that point: an
- * (un)fixing then adjusts those running quantities and rewinds the search
- * index just enough, so that the next compute() resumes the greedy fill from
- * there instead of from the top. The per-node work becomes sub-linear (the
- * root solve stays O(n log n) for the sort), which trades raw speed for the
- * finest possible node granularity: it is the configuration that stresses
- * the tree-level parallelism the most, hence the interesting end of the
- * performance range for scalability studies. It is selected, in place of the
- * base greedy, through the inner BlockSolverConfig of the BranchAndXSolver.
+ * This file defines a specialized hierarchy to solve Knapsack problems using greedy
+ * strategies. It resolves the diamond inheritance between heuristic/relaxation
+ * logic and greedy-specific behaviors.
+ *
+ * IncrementalGreedyRelaxationBinaryKnapsackSolver provides the exact solution
+ * of the continuous relaxation * of a Binary Knapsack problem, efficiently
+ * re-optimized after each Change  * to the Block (typically variable fixings),
+ *  making it suitable as the * bounding solver at the nodes of a Branch&Bound algorithm.
+ *
+ * GreedyRelaxationSolver extends it with the RelaxationSolver interface,
+ * additionally providing bounds and a solution for the original integer
+ * problem (when available), as well as the generation of the two
+ * sub-problems obtained by branching on the critical item.
+ *
+ *
+ * \author Federica Di Pasquale \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
  *
  * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
  * \author Filippo Magi \n
- *         Dipartimento di Informatica \n
- *         Universita' di Pisa \n
+ * 	   	   Dipartimento di Informatica \n
+ * 	   	   Universita' di Pisa \n
  *
- * \author Donato Meoli \n
- *         Dipartimento di Informatica \n
- *         Universita' di Pisa \n
- *
- * Copyright &copy by Antonio Frangioni, Filippo Magi, Donato Meoli
+ * Copyright &copy by Federica Di Pasquale, Antonio Frangioni, Filippo Magi
  */
 /*--------------------------------------------------------------------------*/
 /*----------------------------- DEFINITIONS --------------------------------*/
 /*--------------------------------------------------------------------------*/
 
 #ifndef __IncrementalGreedyRelaxationBinaryKnapsackSolver
- #define __IncrementalGreedyRelaxationBinaryKnapsackSolver
-                      /* self-identification: #endif at the end of the file */
+#define __IncrementalGreedyRelaxationBinaryKnapsackSolver
+/* self-identification: #endif at the end of the file */
 
 /*--------------------------------------------------------------------------*/
 /*------------------------------ INCLUDES ----------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-#include "GreedyRelaxationBinaryKnapsackSolver.h"
+#include "BinaryKnapsackBlock.h"
+
+// #include "RelaxationSolver.h"
+#include "ChangeSolver.h"
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
@@ -56,152 +59,491 @@
 namespace SMSpp_di_unipi_it
 {
 
-/*--------------------------------------------------------------------------*/
-/*------------------------------- CLASSES ----------------------------------*/
-/*--------------------------------------------------------------------------*/
+    /*--------------------------------------------------------------------------*/
+    /*------------------------------- CLASSES ----------------------------------*/
+    /*--------------------------------------------------------------------------*/
+
+    /*--------------------------------------------------------------------------*/
+    /*---------------------- CLASS GreedyRelaxationSolver ----------------------*/
+    /*--------------------------------------------------------------------------*/
+    /*--------------------------- GENERAL NOTES --------------------------------*/
+    /*--------------------------------------------------------------------------*/
+    ///
+    /**   */
+
+    class IncrementalGreedyChangeBinaryKnapsackSolver : public virtual ChangeSolver, public Solver
+    {
+
+        /*--------------------------------------------------------------------------*/
+        /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+    public:
+        /*--------------------------------------------------------------------------*/
+        /*---------------------------- PUBLIC TYPES --------------------------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Public types
+         @{ */
+
+        using Index = Block::Index;
+
+        /*--------------------------------------------------------------------------*/
+        /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+        /*--------------------------------------------------------------------------*/
+        /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Constructor and Destructor
+         *  @{ */
+
+        /*--------------------------------------------------------------------------*/
+        /// constructor
+
+        IncrementalGreedyChangeBinaryKnapsackSolver() : ChangeSolver(),
+                                                        sortedVar(),
+                                                        skip(),
+                                                        varToSorted(),
+                                                        v_x(),
+                                                        changedData(true),
+                                                        complemented(),
+                                                        startingSearchIndex(0),
+                                                        presolveCapacity(0),
+                                                        C(0),
+                                                        P(0),
+                                                        reachTheEnd(false),
+                                                        f_N(0),
+                                                        f_C(0),
+                                                        f_sense(true),
+                                                        f_ci(0),
+                                                        f_ciVal(0),
+                                                        obj(-Inf<double>()) {
+                                                        };
+
+        /*--------------------------------------------------------------------------*/
+        /// destructor
+
+        ~IncrementalGreedyChangeBinaryKnapsackSolver() override = default;
+
+        /** @} ---------------------------------------------------------------------*/
+        /*-------------------------- OTHER INITIALIZATIONS -------------------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Other initializations @{ */
+
+        /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+        /// set the (pointer to the) Block that the Solver has to solve
+
+        void set_Block(Block *block) override;
+
+        /** @} ---------------------------------------------------------------------*/
+        /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Solving a relaxation of the Binary Knapsack encoded by the current
+         * BinaryKnapsackBlock @{ */
+
+        ///
+        /**  */
+
+        int compute(bool changedvars = true) override;
+
+        /** @} ---------------------------------------------------------------------*/
+        /*---------------------- METHODS FOR READING RESULTS -----------------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Accessing the found solutions (if any)
+         *  @{ */
+
+        /*--------------------------------------------------------------------------*/
+        /// return a valid lower bound on the optimal objective function value
+        /** TODO */
+
+        OFValue get_lb(void) override
+        {
+
+            // if it is a minimization problem, the optimal value is a lower bound
+            // for the original problem
+            if (!f_sense)
+                return (-obj);
+
+            // otherwise it is a maximization problem and the solution without the
+            // critical item is a feasible solution and it provides a lower bound for
+            // the original problem
+            if (f_ciVal == 1)
+                return (obj);
+
+            /* 			if (complemented[f_ci] < 0)
+                        {
+                            return (obj + (1 - f_ciVal) * v_P[f_ci]);
+                        }
+             */
+            return (obj - f_ciVal * v_P[f_ci]);
+        }
+
+        /*--------------------------------------------------------------------------*/
+        /// return a valid upper bound on the optimal objective function value
+        /** */
+
+        OFValue get_ub(void) override
+        {
+
+            // if it is a maximization problem, the optimal value is un upper bound
+            // for the original problem
+            if (f_sense)
+                return (obj);
+
+            // otherwise it is a minimization problem and the solution without the
+            // critical item is a feasible solution and it provides an upper bound for
+            // the original problem
+            if (f_ciVal == 1)
+                return (-obj);
+
+            /* 			if (complemented[f_ci])
+                        {
+                            return (-obj - (1 - f_ciVal) * v_P[f_ci]);
+                        } */
+
+            return (-obj + f_ciVal * v_P[f_ci]);
+        }
+        /// return the value of the (current) solution
+        /** Return the the value of the current solution. Change the sign according
+         * to the sense of the problem (f_sense). */
+
+        OFValue get_var_value() override { return f_sense ? obj : -obj; }
+
+        /*--------------------------------------------------------------------------*/
+        /// tells whether a true solution (a solution of the true original problem
+        /// and not of the relaxed one solved by RelaxationSolver) is available
+        /** Called after compute() this method has to return true if a true solution
+         * of the original problem (not the relaxed one solved by RelaxationSolver)
+         * is available to be read with get_true_var_solution().
+         *
+         * Once "the first" solution (if ever) has been read, new ones may be
+         * produced, if the Solver allows it, by means of new_true_var_solution().*/
+
+        bool has_var_solution(void) override { return (/*f_ci >= 0 && */ f_ci <= f_N); }
+
+        bool is_var_feasible(void) override { return has_var_solution(); }
+
+        /*--------------------------------------------------------------------------*/
+        /// write the current true solution in the variables of the Block
+
+        void get_var_solution(Configuration *solc = nullptr) override;
+
+        Solution *get_Solution(Configuration *solc) override;
+
+        /*--------------------------------------------------------------------------*/
+        /// read the solution currently stored in the BinaryKnapsackBlock
+        void set_var_blockSolution(void)
+        {
+            auto BKB = dynamic_cast<BinaryKnapsackBlock *>(this->f_Block);
+            if (BKB == nullptr)
+                throw(std::invalid_argument("GreedyRelaxationSolver::set_var_blockSolution(): the Block associated to the Solver is not a BinaryKnapsackBlock!"));
+            BKB->get_x(v_x.begin());
+        }
+
+        /*--------------------------------------------------------------------------*/
+
+        /** @} ---------------------------------------------------------------------*/
+        /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Changing the data of the model
+         *  @{ */
+
+        /** GreedyRelaxationSolver::add_Modification() is defined to properly react
+         * to NBModification, i.e. the Binary Knapsack instance must be reloaded and
+         * the list of modification must be cleared. */
+
+        void add_Modification(sp_Mod &mod) override;
+
+        /*--------------------------------------------------------------------------*/
+
+        /// Apply the Change, in case of fixing variable it's done internally to the solver
+        Change *apply(Change *, bool doUndo = false) override;
+
+        /** @} ---------------------------------------------------------------------*/
+        /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+    protected:
+        /* data of the Binary Knapsack instance - - - - - - - - - - - - - - - - - - */
+
+        Index f_N;                        ///< the number of Items
+        double f_C;                       ///< the Capacity of the Knapsack
+        std::vector<double> v_W;          ///< vector of Weights
+        std::vector<double> v_P;          ///< vector of Profits
+        std::vector<unsigned char> v_fxd; ///< vector saying how the x are fixed
+        /* < v_fxd[ i ] indicates if x_i is
+         * fixed, with the following encoding:
+         * 0 = not fixed ,
+         * 1 = fixed to 0 ,f
+         * 2 = fixed to 1                     */
+        bool f_sense; ///< the sense of the objective
+
+        Index f_ci;              ///< Index of the critical item
+        double f_ciVal;          ///< Variable value of the critical
+        double obj;              ///< the value of the objective
+        std::vector<double> v_x; ///< vector of variables
+
+        std::vector<Index> sortedVar;   /// indices of variables sorted by profit/weight ratio,
+        std::vector<Index> varToSorted; /// < mapping from variable index to position in sortedVar
+        std::vector<bool> skip;         ///< vector to mark items to skip during compute
+        bool changedData = true;        ///< flag to signal if Data are	 changed, for modification or first load
+        std::vector<bool> complemented; /// vector saying if the variable is complemented, then we have swapped the sign for his profit and weight
+        Index startingSearchIndex;      ///< index in sortedVar from which to start the search for the critical item, used to speed up the search after branching
+        double presolveCapacity;        /// remaining maximal Capacity, consider only fixed variables, used to speed up feasibility check
+        double P;                       ///< evaluated profit of the solution without the critical item
+        double C;                       ///< evaluated weight of the solution without the critical item
+        bool reachTheEnd;               ///< evaluate if in update_v_x the last element is the critical item or not
+
+        /*--------------------------------------------------------------------------*/
+        /*---------------------------- PROTECTED FIELDS ----------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+        void update_v_x()
+        {
+            double xval = 1;
+            for (Index i : sortedVar)
+            {
+                if (skip[i])
+                {
+                    if (i == f_ci)
+                        xval = 0;
+                    continue;
+                }
+
+                if (i == f_ci)
+                {
+                    v_x[i] = complemented[i] ? 1 - f_ciVal : f_ciVal;
+                    xval = 0;
+                }
+                else
+                {
+                    v_x[i] = complemented[i] ? 1 - xval : xval;
+                }
+            }
+        }
+
+        /*--------------------------------------------------------------------------*/
+        /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+    private:
+        /*--------------------------------------------------------------------------*/
+        /*--------------------------- PRIVATE METHODS ------------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+        /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+        /// load the Binary Knapsack instance
+        void load();
+
+        /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+        /// process all the pending modifications
+
+        void process_outstanding_Modification();
+        /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+        /// initiliaze variables for the first time after loading or reloading the instance
+
+        void initializeVariables();
+
+        SMSpp_insert_in_factory_h; // insert GreedyHeuristicSolver in the factory
+
+        /*--------------------------------------------------------------------------*/
+        /*--------------------------- PRIVATE FIELDS -------------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+        /*--------------------------------------------------------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+    }; // end( class( IncrementalGreedyChangeBinaryKnapsackSolver ) )
+
+    /*--------------------------------------------------------------------------*/
+    /*----------IncrementalGreedyRelaxationBinaryKnapsackSolver-----------------*/
+    /*--------------------------------------------------------------------------*/
+
+    /*--------------------------------------------------------------------------*/
+    /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
+    /*--------------------------------------------------------------------------*/
+
+    class IncrementalGreedyRelaxationBinaryKnapsackSolver : public IncrementalGreedyChangeBinaryKnapsackSolver,
+                                                            public virtual RelaxationSolver
+    {
+
+        /*--------------------------------------------------------------------------*/
+        /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+    public:
+        /*--------------------------------------------------------------------------*/
+        /*---------------------------- PUBLIC TYPES --------------------------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Public types
+         @{ */
+
+        using Index = Block::Index;
+
+        /*--------------------------------------------------------------------------*/
+        /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+        /*--------------------------------------------------------------------------*/
+        /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Constructor and Destructor
+         *  @{ */
+
+        /*--------------------------------------------------------------------------*/
+        /// constructor
+
+        IncrementalGreedyRelaxationBinaryKnapsackSolver() : IncrementalGreedyChangeBinaryKnapsackSolver() {};
+
+        /*--------------------------------------------------------------------------*/
+        /// destructor
+
+        ~IncrementalGreedyRelaxationBinaryKnapsackSolver() override = default;
+
+        /*--------------------------------------------------------------------------*/
+
+        std::vector<Change *> branch() override;
+
+        /** @} ---------------------------------------------------------------------*/
+        /*---------------------- METHODS FOR READING RESULTS -----------------------*/
+        /*--------------------------------------------------------------------------*/
+        /** @name Accessing the found solutions (if any)
+         *  @{ */
+
+        /*--------------------------------------------------------------------------*/
+        /// return a valid lower bound on the optimal objective function value
+        /** TODO */
+        // TODO check the correctness of true bounds
+        OFValue get_true_lb(void) override
+        {
+
+            // if it is a minimization problem, the optimal value is a lower bound
+            // for the original problem
+            if (!f_sense)
+                return (-obj);
+
+            // otherwise it is a maximization problem and the solution without the
+            // critical item is a feasible solution and it provides a lower bound for
+            // the original problem
+            if (f_ciVal == 1)
+                return (obj);
+
+            /* 			if (complemented[f_ci])
+                        {
+                            return (obj + (1 - f_ciVal) * v_P[f_ci]);
+                        } */
+
+            return (obj - f_ciVal * v_P[f_ci]);
+        }
+
+        /*
+        Understand if it's needed to update correctly yhr get_ub and get_lb methods,
+        because they are already defined in the base class IncrementalGreedyChangeBinaryKnapsackSolver,
+        even if the correct version is this one since they are unfeasible
+                 OFValue get_ub(void) override
+                {
+                    return f_sense ? obj : -obj;
+                }
+
+                OFValue get_lb(void) override
+                {
+                    return !f_sense ? -obj : obj;
+                }
+        */
+
+        /*--------------------------------------------------------------------------*/
+        /// return a valid upper bound on the optimal objective function value
+        /** */
+
+        // TODO check the correctness of true bounds
+        OFValue get_true_ub(void) override
+        {
+
+            // if it is a maximization problem, the optimal value is un upper bound
+            // for the original problem
+            if (f_sense)
+                return (obj);
+
+            // otherwise it is a minimization problem and the solution without the
+            // critical item is a feasible solution and it provides an upper bound for
+            // the original problem
+            if (f_ciVal == 1)
+                return (-obj);
+
+            /* 			if (complemented[f_ci])
+                        {
+                            return (-obj - (1 - f_ciVal) * v_P[f_ci]);
+                        } */
+
+            return (-obj + f_ciVal * v_P[f_ci]);
+        }
+
+        /*--------------------------------------------------------------------------*/
+        /// tells whether a true solution (a solution of the true original problem
+        /// and not of the relaxed one solved by RelaxationSolver) is available
+        /** Called after compute() this method has to return true if a true solution
+         * of the original problem (not the relaxed one solved by RelaxationSolver)
+         * is available to be read with get_true_var_solution().
+         *
+         * Once "the first" solution (if ever) has been read, new ones may be
+         * produced, if the Solver allows it, by means of new_true_var_solution().*/
+
+        bool has_true_var_solution(void) override { return (/* f_ci >= 0 &&  */ f_ci <= f_N); }
+
+        /*--------------------------------------------------------------------------*/
+        /// write the current true solution in the variables of the Block
+
+        void get_true_var_solution(Configuration *solc = nullptr) override
+        {
+            // TODO check if it's correct
+            update_v_x();
+            BinaryKnapsackBlock *BKB = static_cast<BinaryKnapsackBlock *>(this->f_Block);
+            BKB->lock(this);
+            for (Index i = 0; i < f_N; i++)
+                if (i == f_ci)
+                    BKB->set_x(i, complemented[f_ci] ? (v_x[f_ci] == 1 ? 0 : 1) : (v_x[f_ci] == 1 ? 1 : 0));
+                else
+                    BKB->set_x(i, v_x[i]);
+            BKB->unlock(this);
+        }
+
+        /*--------------------------------------------------------------------------*/
+        /// after has_true_var_solution(), says whether a there is another true solution available
+
+        bool new_true_var_solution(void) override
+        {
+            return false;
+        }
+        Solution *get_true_solution(Configuration *solc) override
+        {
+            update_v_x();
+            std::vector<double> sol_x(v_x);
+            // TODO capire se serve complemented dato che l'ho usato anche prima
+            if (!reachTheEnd)
+                sol_x[f_ci] = (complemented[f_ci] && !skip[f_ci]) ? (sol_x[f_ci] == 1 ? 0 : 1) : (sol_x[f_ci] == 1 ? 1 : 0);
+            //  debug use only
+            //  double value = 0;
+            //  for (Index i = 0; i < f_N; ++i)
+            //	value += sol_x[i] * v_P[i];
+            return new BinaryKnapsackSolution(std::move(sol_x));
+        }
+
+        /*--------------------------------------------------------------------------*/
+
+        /** @} ---------------------------------------------------------------------*/
+        /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+        SMSpp_insert_in_factory_h; // insert GreedyRelaxationSolver in the factory
+
+        /*--------------------------------------------------------------------------*/
+        /*--------------------------------------------------------------------------*/
+
+    }; // end( class( GreedyRelaxationSolver ) )
+
+} // end( namespace SMSpp_di_unipi_it )
 
 /*--------------------------------------------------------------------------*/
-/*------- CLASS IncrementalGreedyRelaxationBinaryKnapsackSolver -------------*/
-/*--------------------------------------------------------------------------*/
-/*--------------------------- GENERAL NOTES --------------------------------*/
-/*--------------------------------------------------------------------------*/
-/// incremental variant of GreedyRelaxationBinaryKnapsackSolver
-/** Solves the continuous (Dantzig) relaxation of a BinaryKnapsackBlock
- * exactly like GreedyRelaxationBinaryKnapsackSolver, from which it inherits
- * the branching on the critical item, the reduced-cost separation, the true
- * bounds and the Solution. It only changes *how* the relaxation is kept along
- * the enumeration tree: the greedy fill is not redone from scratch at each
- * node but resumed from a saved position in the efficiency order, with the
- * profit and residual capacity accumulated up to there carried over and
- * patched by apply(). The branch Changes carry, alongside the fixed value,
- * the residual capacity and profit of the parent solution, so that a child
- * can pick up the parent state without recomputing it. */
-
-class IncrementalGreedyRelaxationBinaryKnapsackSolver
-                          : public GreedyRelaxationBinaryKnapsackSolver {
-
-/*--------------------------------------------------------------------------*/
-/*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
 /*--------------------------------------------------------------------------*/
 
-public:
+#endif /* GreedyRelaxationSolver.h included */
 
 /*--------------------------------------------------------------------------*/
-/*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
-/*--------------------------------------------------------------------------*/
-/** @name Constructor and Destructor
- *  @{ */
-
- /// constructor
-
- IncrementalGreedyRelaxationBinaryKnapsackSolver()
-  : GreedyRelaxationBinaryKnapsackSolver() , f_inited( false ) ,
-    f_can_resume( false ) , f_ssi( 0 ) , f_run_p( 0 ) , f_run_rem( 0 ) {}
-
- /// destructor
-
- ~IncrementalGreedyRelaxationBinaryKnapsackSolver() override = default;
-
-/** @} ---------------------------------------------------------------------*/
-/*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
-/*--------------------------------------------------------------------------*/
-/** @name Solving a relaxation of the Binary Knapsack
- *  @{ */
-
- /// solve the relaxation by resuming the greedy fill from the saved state
-
- int compute( bool changedvars = true ) override;
-
-/** @} ---------------------------------------------------------------------*/
-/*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
-/*--------------------------------------------------------------------------*/
-/** @name Changing the data of the model
- *  @{ */
-
- /// branch on the critical item, carrying the running state to the children
- /** Same two children as the base branch() (the critical item fixed to 0 and
-  * to 1), with the residual capacity and profit accumulated up to the
-  * critical item packed into each Change, so that apply() can resume the
-  * child relaxation from the parent state. */
-
- std::vector< Change * > branch() override;
-
-/*--------------------------------------------------------------------------*/
- /// apply the Change, patching the running state for an (un)fixing one
- /** Same contract as the base apply(): (un)fixing Changes act on the
-  * internal mirror and any other Change goes to the Block. On top of the
-  * mirror, an (un)fixing here also patches the running profit / residual
-  * capacity and the resume index, so that the next compute() needs not
-  * rescan the items already settled in the parent. */
-
- Change * apply( Change * chg , bool doUndo = false ) override;
-
-/** @} ---------------------------------------------------------------------*/
-/*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
-/*--------------------------------------------------------------------------*/
-
-protected:
-
-/*--------------------------------------------------------------------------*/
-/*--------------------------- PROTECTED METHODS ----------------------------*/
-/*--------------------------------------------------------------------------*/
-
- /// position of every item in the cached efficiency order v_ord
- /** Inverse of v_ord (the order in which the greedy fill visits the items):
-  * f_pos[ i ] is the rank of item i, needed to move the resume index to the
-  * rank of an (un)fixed item. Rebuilt together with v_ord. */
-
- void rebuild_positions( void );
-
-/*--------------------------------------------------------------------------*/
-/*---------------------------- PROTECTED FIELDS ----------------------------*/
-/*--------------------------------------------------------------------------*/
-
- bool f_inited;     ///< whether the running state matches the current core
-
- /// whether the carried state still describes the items before the resume
- /** The greedy fill can be resumed only when the solution of the items
-  * before the resume rank is still the one the running state was built on,
-  * which holds for a single descent step right after a compute(). A best-
-  * first or breadth-first move walks several nodes between two compute()s,
-  * so only the first apply() after a compute() may resume; the others
-  * restart the fill from the top, which is correct on any navigation. */
-
- bool f_can_resume;
-
- Index f_ssi;       ///< resume rank in v_ord: the greedy fill restarts here
-
- double f_run_p;    ///< core profit accumulated by the items before f_ssi
-
- double f_run_rem;  ///< residual capacity left after the items before f_ssi
-
- std::vector< Index > f_pos;  ///< rank of each item in v_ord [see f_pos]
-
-/*--------------------------------------------------------------------------*/
-/*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
-/*--------------------------------------------------------------------------*/
-
-private:
-
-/*--------------------------------------------------------------------------*/
-/*--------------------------- PRIVATE FIELDS -------------------------------*/
-/*--------------------------------------------------------------------------*/
-
- SMSpp_insert_in_factory_h;
- // insert IncrementalGreedyRelaxationBinaryKnapsackSolver in the factory
-
-/*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
-
- }; // end( class( IncrementalGreedyRelaxationBinaryKnapsackSolver ) )
-
-}  // end( namespace SMSpp_di_unipi_it )
-
-/*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
-
-#endif  /* IncrementalGreedyRelaxationBinaryKnapsackSolver.h included */
-
-/*--------------------------------------------------------------------------*/
-/*--- End File IncrementalGreedyRelaxationBinaryKnapsackSolver.h -----------*/
+/*-------------------- End File GreedyRelaxationSolver.h -------------------*/
 /*--------------------------------------------------------------------------*/

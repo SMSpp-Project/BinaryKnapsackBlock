@@ -159,6 +159,11 @@ namespace SMSpp_di_unipi_it
       BKB->set_x(sol.begin());
     }
 
+    Solution *get_Solution(Configuration *solc = nullptr) override
+    {
+      return (new BinaryKnapsackSolution(std::vector<double>(f_x)));
+    }
+
     /*--------------------------------------------------------------------------*/
     /// valid lower bound on the optimal value of the TRUE problem
     /** For a maximisation problem this is the value of the rounded greedy
