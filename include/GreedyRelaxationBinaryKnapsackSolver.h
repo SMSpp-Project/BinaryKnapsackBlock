@@ -96,6 +96,42 @@ public:
  ~GreedyRelaxationBinaryKnapsackSolver() override = default;
 
 /** @} ---------------------------------------------------------------------*/
+/*-------------------------- OTHER INITIALIZATIONS -------------------------*/
+/*--------------------------------------------------------------------------*/
+/** @name Other initializations
+ *  @{ */
+
+ /// set the Block: wire both the Solver and the trait personality
+ /** The RelaxationSolver trait keeps its own pointer to the Block [see
+  * ChangeSolver.h]: the single override forwards to both bases so the two
+  * copies stay in sync. */
+
+ void set_Block( Block * block ) override {
+  BinaryKnapsackSolver::set_Block( block );
+  ChangeSolver::set_Block( block );
+  }
+
+/*--------------------------------------------------------------------------*/
+ /// receive the global information, caching the hot cells
+ /** Besides storing the pointer, the references to the atomic incumbent
+  * and local-fixing-allowed cells are cached here once [see
+  * GlobalInformation.h] and read lock-free at every branch(). */
+
+ void set_global_information( GlobalInformation * gi ) override {
+  ChangeSolver::set_global_information( gi );
+  f_incumbent = nullptr;
+  f_lfa = nullptr;
+  if( ! gi )
+   return;
+  if( ( f_scalars = gi->get_from_Universe< std::atomic< double > >(
+			     GlobalInformation::str_AtomicScalars ) ) )
+   f_incumbent = &( ( * f_scalars )[ GlobalInformation::str_Incumbent ] );
+  if( ( f_flags = gi->get_from_Universe< std::atomic< bool > >(
+			     GlobalInformation::str_AtomicFlags ) ) )
+   f_lfa = &( ( * f_flags )[ GlobalInformation::str_LocalFixingAllowed ] );
+  }
+
+/** @} ---------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
 /** @name Solving a relaxation of the Binary Knapsack encoded by the current
@@ -318,6 +354,21 @@ protected:
  Index f_ci;        ///< index (in the Block) of the critical item
  FracInfo f_fi;     ///< the critical item of the last compute()
  double obj;        ///< the value of the relaxation (maximisation sense)
+
+ /// the collection of the hot scalars, kept alive while cached into
+ std::shared_ptr< Collection< std::atomic< double > > > f_scalars;
+
+ /// the collection of the hot flags, kept alive while cached into
+ std::shared_ptr< Collection< std::atomic< bool > > > f_flags;
+
+ /// cached reference to the atomic incumbent cell, nullptr if none
+ /** Read lock-free (relaxed) at every branch(): a stale value only makes
+  * the pegging marginally less aggressive, never wrong; not finite means
+  * no incumbent yet [see GlobalInformation::str_Incumbent]. */
+ std::atomic< double > * f_incumbent = nullptr;
+
+ /// cached reference to the local-fixing-allowed flag, nullptr if none
+ std::atomic< bool > * f_lfa = nullptr;
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/

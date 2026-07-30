@@ -90,9 +90,15 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch() {
  // throughout this subtree [see the branch() doc]; the pegged items are split
  // by the value they are stuck at
  Block::Subset peg0 , peg1;
- if( f_global_information && f_global_information->has_incumbent() &&
-     f_global_information->local_fixing_allowed() && ( f_fi.orig >= 0 ) ) {
-  const double cutoff = f_global_information->incumbent();
+ // the incumbent and the local-fixing permission are read lock-free from
+ // the cached atomic cells [see set_global_information()]: a not-finite
+ // incumbent means none has been found yet
+ const double cutoff = f_incumbent ?
+  f_incumbent->load( std::memory_order_relaxed ) :
+  std::numeric_limits< double >::quiet_NaN();
+ if( std::isfinite( cutoff ) &&
+     ( ( ! f_lfa ) || f_lfa->load( std::memory_order_relaxed ) ) &&
+     ( f_fi.orig >= 0 ) ) {
   // the incumbent in the normalized (maximisation) sense; the conservative
   // guard wards off pegging the optimum away by a floating-point whisker
   const double zmax = ( f_sense ? cutoff : - cutoff ) -
