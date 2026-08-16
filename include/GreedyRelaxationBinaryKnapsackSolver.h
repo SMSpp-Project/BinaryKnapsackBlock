@@ -101,17 +101,6 @@ public:
 /** @name Other initializations
  *  @{ */
 
- /// set the Block: wire both the Solver and the trait personality
- /** The RelaxationSolver trait keeps its own pointer to the Block [see
-  * ChangeSolver.h]: the single override forwards to both bases so the two
-  * copies stay in sync. */
-
- void set_Block( Block * block ) override {
-  BinaryKnapsackSolver::set_Block( block );
-  ChangeSolver::set_Block( block );
-  }
-
-/*--------------------------------------------------------------------------*/
  /// receive the global information, caching the hot cells
  /** Besides storing the pointer, the references to the atomic incumbent
   * and local-fixing-allowed cells are cached here once [see
