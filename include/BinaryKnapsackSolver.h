@@ -191,6 +191,18 @@ class BinaryKnapsackSolver : public virtual Solver {
  void refresh_fixings( void );
 
 /*--------------------------------------------------------------------------*/
+ /// (re)build the cached efficiency order of the items
+ /** Fills #v_ord with the items sorted by non-increasing efficiency
+  * \f$ p_i / w_i \f$ of the normalized instance [see
+  * normalize_instance()], which is the order the greedy fill of the
+  * continuous relaxation follows. The order only depends on the profits,
+  * the weights and the sense of the Objective, NOT on the fixings, hence it
+  * survives a re-solve under different fixings and is only rebuilt when
+  * #f_ord_valid says so. */
+
+ void build_efficiency_order( void );
+
+/*--------------------------------------------------------------------------*/
  /// apply an (un)fixing Change to the internal mirror of the instance
  /** Applies an (un)fixing BinaryKnapsackBlockChange (its type() must be
   * eFixX or eUnfixX) to the internal mirror of the instance, NOT to the

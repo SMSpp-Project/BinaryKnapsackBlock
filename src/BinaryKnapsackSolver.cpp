@@ -330,6 +330,34 @@ Change * BinaryKnapsackSolver::apply_to_mirror(
 
 /*--------------------------------------------------------------------------*/
 
+void BinaryKnapsackSolver::build_efficiency_order( void )
+{
+ v_ord.resize( f_N );
+ std::iota( v_ord.begin() , v_ord.end() , 0 );
+
+ // the efficiency order is that of p / w, compared by cross-multiplication
+ // to avoid the divisions; this compares the ratios only if both weights are
+ // positive, which is why the items that can never enter the relaxation (the
+ // ones the signs alone fix, whose normalized weight is <= 0, see
+ // normalize_instance()) are kept apart in index order rather than being
+ // compared: with a negative weight the cross-multiplication flips, the
+ // comparator stops being a strict weak ordering, and std::sort then has
+ // undefined behaviour - which scrambles the order of the good items as well
+ std::sort( v_ord.begin() , v_ord.end() , [ & ]( int a , int b ) {
+  const bool ain = ( n_w[ a ] > 0 ) , bin = ( n_w[ b ] > 0 );
+  if( ain != bin )
+   return( ain );
+  if( ! ain )
+   return( a < b );
+  return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
+  } );
+
+ f_ord_valid = true;
+
+ }  // end( BinaryKnapsackSolver::build_efficiency_order )
+
+/*--------------------------------------------------------------------------*/
+
 double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
 {
  // the relaxation makes no difference between integer and continuous items:
@@ -337,14 +365,8 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
  // cached efficiency order, which only has to be (re)computed when profits,
  // weights or the objective sense change (see update_instance() / load()),
  // NOT when the fixings do: re-solves under different fixings are O( n )
- if( ! f_ord_valid ) {
-  v_ord.resize( f_N );
-  std::iota( v_ord.begin() , v_ord.end() , 0 );
-  std::sort( v_ord.begin() , v_ord.end() , [ & ]( int a , int b ) {
-   return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
-   } );
-  f_ord_valid = true;
-  }
+ if( ! f_ord_valid )
+  build_efficiency_order();
 
  fi = FracInfo{ -1 , 1 , false , false , 0 , 0 };
 

@@ -82,14 +82,8 @@ int IncrementalGreedyRelaxationBinaryKnapsackSolver::compute(
  if( update_instance() || ( ! f_inited ) ) {
   normalize_instance();
 
-  if( ! f_ord_valid ) {      // (re)build the cached efficiency order
-   v_ord.resize( f_N );
-   std::iota( v_ord.begin() , v_ord.end() , 0 );
-   std::sort( v_ord.begin() , v_ord.end() , [ & ]( int a , int b ) {
-    return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
-    } );
-   f_ord_valid = true;
-   }
+  if( ! f_ord_valid )        // (re)build the cached efficiency order
+   build_efficiency_order();
   rebuild_positions();
 
   f_ssi = 0;  f_run_p = 0;  f_run_rem = f_Cd;
