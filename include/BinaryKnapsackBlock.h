@@ -1297,6 +1297,24 @@ class BinaryKnapsackSolution : public Solution {
 
  void sum( const Solution * solution , double multiplier ) override final;
 
+/*----------- METHODS FOR READING AND WRITING THE SOLUTION -----------------*/
+ /// returns the values of the variables saved in this BinaryKnapsackSolution
+
+ [[nodiscard]] const std::vector< double > & get_x( void ) const {
+  return( v_x );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// sets the values of the variables saved in this BinaryKnapsackSolution
+ /** Sets the values of the variables saved in this BinaryKnapsackSolution.
+  * This is what a Solver fills the Solution with directly out of its own
+  * data structures, rather than writing the solution in the Variable of the
+  * BinaryKnapsackBlock and having it read back from there, which requires
+  * the Variable to exist at all [see BinaryKnapsackSolver::get_Solution()].
+  */
+
+ void set_x( std::vector< double > && x ) { v_x = std::move( x ); }
+
  BinaryKnapsackSolution * clone( bool empty = false ) const override final;
 
 /*---------------------- PRIVATE PART OF THE CLASS -------------------------*/

@@ -116,6 +116,31 @@ class BinaryKnapsackSolver : public virtual Solver {
  void set_Block( Block * block ) override;
 
 /*--------------------------------------------------------------------------*/
+/*--------------------- METHODS FOR READING THE SOLUTION -------------------*/
+/*--------------------------------------------------------------------------*/
+
+ /// returns the current solution as a BinaryKnapsackSolution
+ /** Returns the current solution as a BinaryKnapsackSolution [see
+  * BinaryKnapsackBlock.h], built out of the data structures of the Solver
+  * rather than by writing it in the Variable of the BinaryKnapsackBlock and
+  * having it read back from there: no abstract representation is therefore
+  * required to exist, and the BinaryKnapsackBlock is not written into at
+  * all, hence it is not lock()-ed and any number of Solver attached to it
+  * can produce their own Solution at the same time.
+  *
+  * The solution is the one over *all* the items, i.e., the very same one
+  * that get_var_solution() would write into the Variable; nullptr is
+  * returned if none is available. */
+
+ [[nodiscard]] Solution * get_Solution( Configuration * solc = nullptr )
+  override {
+  if( f_x.empty() )
+   return( nullptr );
+
+  return( new BinaryKnapsackSolution( std::vector< double >( f_x ) ) );
+  }
+
+/*--------------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
 

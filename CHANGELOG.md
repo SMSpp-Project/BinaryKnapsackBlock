@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `BinaryKnapsackSolver::get_Solution()` and
+  `DPBinaryKnapsackSolver::get_Solution()`, which build the
+  BinaryKnapsackSolution out of the data structures of the Solver, without
+  writing anything into the BinaryKnapsackBlock and therefore without
+  requiring any Variable to exist
+
+- accessor and setter to the variables of `BinaryKnapsackSolution`
+
 ## [0.3.2] - 2024-02-27
 
 ### Changed
