@@ -10,7 +10,7 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Francesco Demelas \n
+ * \author Francesca Demelas \n
  *         Laboratoire d'Informatique de Paris Nord \n
  *         Universite' Sorbonne Paris Nord \n
  *
@@ -19,7 +19,7 @@
  *         Universita' di Pisa \n
  *
  * \copyright &copy; by Federica Di Pasquale, Antonio Frangioni,
- *                      Francesco Demelas
+ *                      Francesca Demelas
  */
 /*--------------------------------------------------------------------------*/
 /*---------------------------- DEFINITIONS ---------------------------------*/
@@ -167,7 +167,8 @@ class BinaryKnapsackBlock : public Block {
   * issued. */
 
  void load( Index n , double Capacity , c_doubleVec & Weights , 
-            c_doubleVec & Profits , c_boolVec & Integrality = {} );
+            c_doubleVec & Profits , c_boolVec & Integrality = {} ,
+            const std::vector< unsigned char > fxd = {} );
 
 /*--------------------------------------------------------------------------*/
  /// loads the Binary Knapsack instance from memory, moving
@@ -187,30 +188,36 @@ class BinaryKnapsackBlock : public Block {
   * issued. */
 
  void load( Index n , double Capacity , doubleVec && Weights , 
-            doubleVec && Profits , boolVec && Integrality = {} );
+            doubleVec && Profits , boolVec && Integrality = {} ,
+            std::vector< unsigned char > && fxd = {} );
 
 /*--------------------------------------------------------------------------*/
- /// load instance from txt file  
- /** Loads a BinaryKnapsackBlock out of std::istream. The format is the
-  * following, with each element being separated by whitespaces and possibly
-  * comments:
+ /// load instance from txt file
+ /** Loads a BinaryKnapsackBlock out of std::istream, with each element being
+  * separated by whitespaces and possibly comments. Two input formats are
+  * supported, selected by \p frmt:
   *
-  * - number of items
+  * - frmt == 0 [default]: the native format
   *
-  * - capacity of the knapsack
+  *   - number of items
+  *   - capacity of the knapsack
+  *   - for i = 1 to n: weight of item i
+  *   - for i = 1 to n: profit of item i
   *
-  * - for i = 1 to n: weight of item i
+  *   If the stream (after having extracted whitespaces and comments) does
+  *   not eof() here, then
   *
-  * - for i = 1 to n: profit of item i
+  *   - for i = 1 to n: integrality of item i (true if integral, false if not)
   *
-  * If the stream (after having extracted whitespaces and comments) does not
-  * eof() here, then
+  *   If integrality is not specified, true is assumed for all objects.
   *
-  * - for i = 1 to n: integrality of item i (true if integral, false if not)
+  * - frmt == 'P': the Pisinger/Jooken knapsack benchmark format
   *
-  * If integrality is not specified, true is assumed for all objects.
+  *   - number of items
+  *   - for i = 1 to n: "<index> <profit> <weight>" (one item per line)
+  *   - capacity of the knapsack
   *
-  * Since there is only one supported input format, \p frmt is ignored.
+  *   the index column is ignored and all items are assumed integral.
   *
   * Like load( memory ), if there is any Solver attached to this 
   * BinaryKnapsackBlock then a NBModification (the "nuclear option") is 
@@ -513,6 +520,7 @@ class BinaryKnapsackBlock : public Block {
  bool is_feasible( bool useabstract = false , 
                    Configuration * fsbc = nullptr ) override;
 
+
 /*--------------------------------------------------------------------------*/
  /// returns true if the Binary Knapsack problem is empty.
  /** Returns true if the Binary Knapsack problem is empty. 
@@ -524,14 +532,6 @@ class BinaryKnapsackBlock : public Block {
 
  bool is_empty( bool useabstract = false ,
                 Configuration * optc = nullptr ) override;
-
-/*--------------------------------------------------------------------------*/
- /// returns true if the Binary Knapsack problem is unbounded.
-
- bool is_unbounded( bool useabstract = false ,
-                    Configuration * fsbc = nullptr ) override {
-  return( false );
-  }
 
 /** @} ---------------------------------------------------------------------*/
 /*------------------------- Methods for R3 Blocks --------------------------*/
@@ -549,7 +549,7 @@ class BinaryKnapsackBlock : public Block {
  Block * get_R3_Block( Configuration *r3bc = nullptr , Block * base = nullptr , 
                        Block * father = nullptr ) override;
 
- /*--------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
  /// maps back the solution from a copy BinaryKnapsackBlock to the current one
  /** Maps back the solution from a copy BinaryKnapsackBlock to the current one
   */
@@ -557,7 +557,7 @@ class BinaryKnapsackBlock : public Block {
  void map_back_solution( Block *R3B , Configuration *r3bc = nullptr ,
                          Configuration *solc = nullptr ) override;
 
- /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// maps the solution of the current BinaryKnapsackBlock to a copy.
  /** Maps the solution of the current BinaryKnapsackBlock to a copy. */
 
@@ -888,6 +888,22 @@ class BinaryKnapsackBlock : public Block {
                                 ModParam issueAMod = eNoBlck ); 
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the capacity of the Knapsack
+ /** Curious Range version of chg_capacity(), that takes the first element
+  * pointed by \p NC as the new capacity (unless \p rng is empty, in which
+  * case it does nothing. Only exists in order to be able to put it in the
+  * methods factory with the standard Range signature. */
+
+ void chg_capacity( c_dblVec_it NC , Range rng = INFRange ,
+                    ModParam issueMod = eNoBlck ,
+                    ModParam issueAMod = eNoBlck ) {
+  if( rng.second <= rng.first )  // the Range is empty
+   return;                       // silently return
+
+  chg_capacity( *NC , issueMod , issueAMod );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the sense of the objective function
 
  void set_objective_sense( bool sense , ModParam issueMod = eNoBlck ,
@@ -961,6 +977,69 @@ class BinaryKnapsackBlock : public Block {
   return( std::distance( v_x.data() ,
        static_cast< const ColVariable * >( var ) ) ); 
   }
+
+/*--------------------------------------------------------------------------*/
+/// register MCFBlock methods into the method factories
+/** Although in general private methods should not be commented, this one is
+ * because it does the registration of the following MCFBlock methods:
+ *
+ * - chg_costs() (both range and subset version)
+ *
+ * - chg_ucaps() (both range and subset version)
+ *
+ * - chg_dfcts() (both range and subset version)
+ *
+ * - close_arcs() (both range and subset version)
+ *
+ * - open_arcs() (both range and subset version)
+ *
+ * into the corresponding method factories. */
+
+ static void static_initialization( void )
+ {
+  /*!! does not work: TODO,
+       - implement fix_it() meaning "at the current value"
+       - extend the methods factory for bool input
+       - provide a passthrough version taking double iterators and
+         converting them to bool
+
+  register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::fix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::fix_x" , & BinaryKnapsackBlock::fix_x );
+
+ register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::unfix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::unfix_x" , & BinaryKnapsackBlock::fix_x );
+
+  register_method< BinaryKnapsackBlock , Range >(
+   "BinaryKnapsackBlock::chg_integrality" ,
+   & BinaryKnapsackBlock::chg_integrality );
+
+  register_method< BinaryKnapsackBlock , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_integrality" ,
+   & BinaryKnapsackBlock::chg_integrality );
+   !!*/
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_capacity" , & BinaryKnapsackBlock::chg_capacity );
+
+  }  // end( static_initialization )
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PRIVATE FIELDS ------------------------------*/
@@ -1181,6 +1260,12 @@ class BinaryKnapsackSolution : public Solution {
  explicit BinaryKnapsackSolution() {}  ///< constructor
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// constructor taking (and moving in) the values of the variables
+
+ explicit BinaryKnapsackSolution( std::vector< double > && x )
+  : v_x( std::move( x ) ) {}
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
  void deserialize( const netCDF::NcGroup & group ) override final;
 
@@ -1204,6 +1289,24 @@ class BinaryKnapsackSolution : public Solution {
  BinaryKnapsackSolution * scale( double factor ) const override final;
 
  void sum( const Solution * solution , double multiplier ) override final;
+
+/*----------- METHODS FOR READING AND WRITING THE SOLUTION -----------------*/
+ /// returns the values of the variables saved in this BinaryKnapsackSolution
+
+ [[nodiscard]] const std::vector< double > & get_x( void ) const {
+  return( v_x );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// sets the values of the variables saved in this BinaryKnapsackSolution
+ /** Sets the values of the variables saved in this BinaryKnapsackSolution.
+  * This is what a Solver fills the Solution with directly out of its own
+  * data structures, rather than writing the solution in the Variable of the
+  * BinaryKnapsackBlock and having it read back from there, which requires
+  * the Variable to exist at all [see BinaryKnapsackSolver::get_Solution()].
+  */
+
+ void set_x( std::vector< double > && x ) { v_x = std::move( x ); }
 
  BinaryKnapsackSolution * clone( bool empty = false ) const override final;
 
@@ -1295,12 +1398,34 @@ public:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- Change * apply( Block * block , 
-                 bool doUndo = false , 
-                 ModParam issueMod = eNoBlck , 
-                 ModParam issueAMod = eNoBlck ) override;
+ Change * apply( Block * block , bool doUndo = false , 
+                                 ModParam issueMod = eNoBlck , 
+                                 ModParam issueAMod = eNoBlck ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// get a const reference to the data of the Change
+
+ [[nodiscard]] const std::vector< double > & data( void ) const {
+  return( v_data );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// number of items the Change acts upon
+ /** Uniform polymorphic view of the set of items the Change acts upon (see
+  * also item()), so that whoever applies the Change does not need to know
+  * its concrete (ranged / subset) type; none in the base class. */
+
+ [[nodiscard]] virtual Block::Index num_items( void ) const { return( 0 ); }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// the index of the k-th item the Change acts upon (see num_items())
+
+ [[nodiscard]] virtual Block::Index item( Block::Index k ) const {
+  throw( std::logic_error( "BinaryKnapsackBlockChange::item: the Change "
+                           "acts upon no items" ) );
+  }
 
  void load( int type , const std::vector< double > & data = {} ) {
 
@@ -1438,15 +1563,27 @@ public:
   }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- Change * apply( Block * block , 
-                 bool doUndo = false , 
-                 ModParam issueMod = eNoBlck , 
-                 ModParam issueAMod = eNoBlck ) override;
+ Change * apply( Block * block , bool doUndo = false , 
+                                 ModParam issueMod = eNoBlck , 
+                                 ModParam issueAMod = eNoBlck ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to f_rng
 
  Block::Range rng( void ) const { return( f_rng ); }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// number of items the Change acts upon (the width of the range)
+
+ [[nodiscard]] Block::Index num_items( void ) const override {
+  return( f_rng.second - f_rng.first );
+  }
+
+ /// the index of the k-th item the Change acts upon
+
+ [[nodiscard]] Block::Index item( Block::Index k ) const override {
+  return( f_rng.first + k );
+  }
 
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 
@@ -1539,15 +1676,27 @@ public:
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- Change * apply( Block * block , 
-                 bool doUndo = false , 
-                 ModParam issueMod = eNoBlck , 
-                 ModParam issueAMod = eNoBlck ) override;
+ Change * apply( Block * block , bool doUndo = false , 
+                                 ModParam issueMod = eNoBlck , 
+                                 ModParam issueAMod = eNoBlck ) override;
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// accessor to f_nms
 
  Block::c_Subset & nms( void ) const { return( v_nms ); }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// number of items the Change acts upon (the size of the subset)
+
+ [[nodiscard]] Block::Index num_items( void ) const override {
+  return( v_nms.size() );
+  }
+
+ /// the index of the k-th item the Change acts upon
+
+ [[nodiscard]] Block::Index item( Block::Index k ) const override {
+  return( v_nms[ k ] );
+  }
 
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 

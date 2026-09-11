@@ -10,7 +10,7 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Francesco Demelas \n
+ * \author Francesca Demelas \n
  *         Laboratoire d'Informatique de Paris Nord \n
  *         Universite' Sorbonne Paris Nord \n
  *
@@ -19,7 +19,7 @@
  *         Universita' di Pisa \n
  *
  * \copyright &copy; by Federica Di Pasquale, Antonio Frangioni,
- *                      Francesco Demelas
+ *                      Francesca Demelas
  */
 /*--------------------------------------------------------------------------*/
 /*---------------------------- IMPLEMENTATION ------------------------------*/
@@ -114,8 +114,9 @@ SMSpp_insert_in_factory_cpp_1( BinaryKnapsackBlockSbstChange );
 
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
                                 const std::vector< double > & Weights , 
-                                const std::vector< double > & Profits,
-                                const std::vector< bool > & Integrality )
+                                const std::vector< double > & Profits ,
+                                const std::vector< bool > & Integrality ,
+                                const std::vector< unsigned char > fxd )
 {
  // sanity checks 
 
@@ -131,7 +132,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
  // call load( , , && , && , && ) on newly constructed copies
  load( n , Capacity , std::vector< double >( Weights ) ,
        std::vector< double >( Profits ) ,
-       std::vector< bool >( Integrality ) );
+       std::vector< bool >( Integrality ) ,
+       std::vector< unsigned char >( fxd ) );
 
  } // end( BinaryKnapsackBlock::load( memory ) )
 
@@ -140,7 +142,8 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
 void BinaryKnapsackBlock::load( Index n , double Capacity , 
                                 std::vector< double > && Weights , 
                                 std::vector< double > && Profits ,
-                                std::vector< bool > && Integrality )
+                                std::vector< bool > && Integrality ,
+                                std::vector< unsigned char > && fxd )
 {
  // sanity checks 
 
@@ -169,8 +172,11 @@ void BinaryKnapsackBlock::load( Index n , double Capacity ,
   v_I = std::move( Integrality );
 
  countCont = std::count( v_I.begin() , v_I.end() , false );
-
- v_fxd.assign( n , 0 ); // all the variables are not fixed
+ 
+ if( fxd.empty() )
+  v_fxd.assign( n , 0 ); // all the variables are not fixed
+ else
+  v_fxd = std::move( fxd );
  
  generate_abstract_variables();
 
@@ -195,31 +201,54 @@ void BinaryKnapsackBlock::load( std::istream & input , char frmt )
  // read problem data
  Index n;
  if( ! ( input >> eatcomments >> n ) )
-  throw( std::invalid_argument( "error reading number of items" ) );
-
- if( ! ( input >> eatcomments >> f_C ) )
-  throw( std::invalid_argument( "error reading Capacity" ) );
+  throw( std::invalid_argument(
+          "BinaryKnapsackBlock::load: error reading number of items" ) );
 
  v_W.resize( n );
  v_P.resize( n );
  v_I.assign( n , true );
- v_fxd.assign( n , 0 ); // all the variables are not fixed         
+ v_fxd.assign( n , 0 ); // all the variables are not fixed
 
- for( Index i = 0 ; i < get_NItems() ; ++i )
-  if( ! ( input >> eatcomments >> v_W[ i ] ) )
-   throw( std::invalid_argument( "error reading Weights" ) );
-
- for( Index i = 0 ; i < get_NItems() ; ++i )
-  if( ! ( input >> eatcomments >> v_P[ i ] ) )
-   throw( std::invalid_argument( "error reading Profits" ) );
-
- input >> eatcomments;
- if( ! input.eof() )
-  for( Index i = 0 ; i < get_NItems() ; ++i ) {
-   input >> eatcomments;
-   if( ! ( ( bool ) input >> v_I[ i ] ) )
-    throw( std::invalid_argument( "error reading Integrality Constraints" ) );
+ if( frmt == 'P' ) {
+  // Pisinger/Jooken knapsack benchmark format: after n, one line per item
+  //  "<index> <profit> <weight>", and the Capacity on the last line
+  for( Index i = 0 ; i < n ; ++i ) {
+   Index idx;
+   if( ! ( input >> eatcomments >> idx >> v_P[ i ] >> v_W[ i ] ) )
+    throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading item" ) );
    }
+
+  if( ! ( input >> eatcomments >> f_C ) )
+   throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading Capacity" ) );
+  }
+ else {
+  // native format: Capacity, then all Weights, then all Profits, then the
+  // optional Integrality
+  if( ! ( input >> eatcomments >> f_C ) )
+   throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading Capacity" ) );
+
+  for( Index i = 0 ; i < n ; ++i )
+   if( ! ( input >> eatcomments >> v_W[ i ] ) )
+    throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading Weights" ) );
+
+  for( Index i = 0 ; i < n ; ++i )
+   if( ! ( input >> eatcomments >> v_P[ i ] ) )
+    throw( std::invalid_argument(
+                   "BinaryKnapsackBlock::load: error reading Profits" ) );
+
+  input >> eatcomments;
+  if( ! input.eof() )
+   for( Index i = 0 ; i < n ; ++i ) {
+    input >> eatcomments;
+    if( ! ( ( bool ) input >> v_I[ i ] ) )
+     throw( std::invalid_argument(
+      "BinaryKnapsackBlock::load: error reading Integrality Constraints" ) );
+    }
+  }
 
  generate_abstract_variables();
 
@@ -453,7 +482,7 @@ Block * BinaryKnapsackBlock::get_R3_Block( Configuration * r3bc ,
  else
   BKB = new BinaryKnapsackBlock( father );
 
- BKB->load( get_NItems() , f_C , v_W , v_P );
+ BKB->load( get_NItems() , f_C , v_W , v_P , v_I , v_fxd );
  BKB->set_objective_sense( f_sense );
 
  return( BKB );
@@ -597,11 +626,28 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 
 void BinaryKnapsackBlock::add_Modification( sp_Mod mod , ChnlName chnl )
 {
- if( mod->concerns_Block() ) {
-  mod->concerns_Block( false );
-  guts_of_add_Modification( mod.get() , chnl );
- }
+ // A Block must keep its OWN registered Solvers (here the DP solver, via the
+ // cached v_P / v_W that it updates from the eChgProfit / eChgWeight issued by
+ // chg_profits() / chg_weights() inside guts_of_add_Modification()) in sync
+ // with its data on EVERY change of that data, irrespective of concerns_Block.
+ //
+ // concerns_Block only tells *enclosing* observers (e.g. a nested LagBFunction
+ // that shares this sub-Block's Objective) whether to treat the change as
+ // structural; it must NOT gate the local translation. In particular a
+ // LagBFunction pushing the Lagrangian costs c^y = c + yA into this Block's
+ // Objective does so with concerns_Block == false (so the enclosing
+ // LagBFunction filters it), yet the DP solver of *this* Block still needs the
+ // updated profits/weights, or it keeps solving the original knapsack.
+ //
+ // Hence the translation is attempted unconditionally. guts_of_add_Modification
+ // is a no-op on Modification types it does not recognise (so this does not
+ // start throwing on the mods that the previous concerns_Block == false branch
+ // used to skip), and the eChgProfit / eChgWeight it issues already carry
+ // concerns_Block == false (via the eNoBlck in chg_profits / chg_weights), so
+ // enclosing / nested LagBFunctions keep filtering them.
+ guts_of_add_Modification( mod.get() , chnl );
 
+ mod->concerns_Block( false );
  Block::add_Modification( mod , chnl );
  }
 
@@ -1568,8 +1614,11 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
   throw( std::invalid_argument( "Modification to the wrong objective" ) );
   }
 
- throw( std::invalid_argument( 
-                        "Unsupported Modification to BinaryKnapsackBlock" ) );
+ // any other Modification type does not affect the DP-relevant data
+ // (profits / weights / capacity / sense / variable state): nothing to
+ // translate, so just return. This must NOT throw, because now
+ // guts_of_add_Modification() is called for every Modification (see
+ // add_Modification()), including those it does not recognise.
 
 }  // end( BinaryKnapsackBlock::guts_of_add_Modification )
 
@@ -1757,9 +1806,10 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    bool old_sense = ( BKB->get_objective_sense() ==  Objective::eMax );
+    std::vector< double > old_sense = { 
+                 double( BKB->get_objective_sense() ==  Objective::eMax ) };
     undoChg = new BinaryKnapsackBlockChange( eChgSense , 
-                                            { double( old_sense ) } ); 
+                               std::move( old_sense ) ); 
     }
    
    // get new objective sense
@@ -1776,8 +1826,9 @@ Change * BinaryKnapsackBlockChange::apply( Block * block ,
    Change * undoChg = nullptr;
 
    if( doUndo ) {
-    double old_C = BKB->get_Capacity();
-    undoChg = new BinaryKnapsackBlockChange( eChgCapacity , { old_C } );
+    std::vector< double > old_C = { BKB->get_Capacity() };
+    undoChg = new BinaryKnapsackBlockChange( eChgCapacity , 
+                                             std::move( old_C ) );
    }
 
    double new_C = v_data[ 0 ];
@@ -1889,13 +1940,16 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
    for( Index i = f_rng.first ; i < f_rng.second ; ++i ) {
     if( BKB->is_fixed( i ) )
      throw( std::invalid_argument( "variable " + std::to_string( i ) + 
-                                   "already fixed" ) ); 
+                                   " already fixed" ) ); 
     }
 
    Change * undoChg = nullptr;
 
-   if( doUndo )
-    undoChg = new BinaryKnapsackBlockRngdChange( eUnfixX , {} , f_rng );
+   if( doUndo ){
+    std::vector< double > old_data;
+    undoChg = new BinaryKnapsackBlockRngdChange( eUnfixX , 
+                                          std::move( old_data ) , f_rng );
+    }
    
    // Change data
    std::vector< bool > new_x( v_data.begin() , v_data.end() ); 
@@ -1923,7 +1977,6 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
                                                  std::move( old_data ) ,
                                                  f_rng );
     }
-
 
    // Change data
    BKB->unfix_x( f_rng );
@@ -2042,14 +2095,17 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
    for( Index i : v_nms ) {
     if( BKB->is_fixed( i ) )
      throw( std::invalid_argument( "variable " + std::to_string( i ) + 
-                                   "already fixed" ) ); 
+                                   " already fixed" ) ); 
     }
 
    Change * undoChg = nullptr;
 
-   if( doUndo )
-    undoChg = new BinaryKnapsackBlockSbstChange( eUnfixX , {} , 
+   if( doUndo ){
+    std::vector< double > old_data;
+    undoChg = new BinaryKnapsackBlockSbstChange( eUnfixX , 
+                                                 std::move( old_data ) , 
                                                  Subset( v_nms ) );
+    }
    
    // Change data
    std::vector< bool > new_x( v_data.begin() , v_data.end() ); 

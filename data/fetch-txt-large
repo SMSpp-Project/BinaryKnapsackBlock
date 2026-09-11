@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# usage: fetch-txt-large [ <local archive.tgz> ]
+#
+# Populate ../data/txt-large with the STRUCTURALLY HARD Pisinger knapsack
+# instances, ONE per .csv (the first instance of each class), for the
+# scaling/coverage benchmark batch-pisinger-large. This is a performance
+# benchmark, not a correctness cross-check, so these are kept OUT of the
+# curated data/txt that feeds batch-pisinger.
+#
+# Source: David Pisinger's "hard" set, hardinstances_pisinger.tgz, from the
+# paper "Where are the hard knapsack problems?" (Computers & OR, 2005),
+# https://hjemmesider.diku.dk/~pisinger/codes.html . These classes are hard for
+# branch-and-bound because of their STRUCTURE (a weak LP bound), not their
+# coefficient size (R = 1000): spanner uncorrelated (11), spanner weakly (12)
+# and strongly (13) correlated, multiple strongly correlated (14), profit
+# ceiling (15), circle (16). The plain large-n uncorrelated / subset-sum classes
+# are NOT here: at R = 1000 they stay trivial for every solver, so they would
+# not stress anything.
+#
+# Same 'P'-format conversion as data/fetch-txt; the raw .csv packs 100 instances
+# per class, of which only the first block (through its first "-----") is kept,
+# so one process solves one instance and the benchmark's timeout/memcap is
+# meaningful. Pass an already-downloaded hardinstances_pisinger.tgz to skip the
+# (large) download.
+
+set -euo pipefail
+
+cd "$(dirname "$0")"   # run from data/
+
+URL="https://hjemmesider.diku.dk/~pisinger/hardinstances_pisinger.tgz"
+
+# hard structural classes (types 11..16) at a low/high size, to show where the
+# exact tree search blows up while the core DP / MILP hold
+TYPES=( 11 12 13 14 15 16 )
+SIZES=( 1000 2000 )
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+arch=${1:-}
+if [ -z "$arch" ]; then
+  arch="$tmp/hardinstances_pisinger.tgz"
+  echo "Downloading $URL ..."
+  curl -fsSL -o "$arch" "$URL"
+fi
+
+rm -rf txt-large
+mkdir -p txt-large
+for t in "${TYPES[@]}"; do
+  for n in "${SIZES[@]}"; do
+    cls="knapPI_${t}_${n}_1000"
+    if ! tar xzf "$arch" -C "$tmp" "$cls.csv" 2>/dev/null; then
+      echo "  $cls: not in archive, skipped"
+      continue
+    fi
+    # keep only the first instance block (through the first "-----"), CRLF-safe
+    awk '{ sub(/\r$/, "") } { print } /^-----/ { exit }' \
+      "$tmp/$cls.csv" > "txt-large/$cls.csv"
+    echo "  $cls: 1 instance"
+  done
+done
+
+echo "wrote instances to data/txt-large/"

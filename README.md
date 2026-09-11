@@ -1,18 +1,40 @@
-# BinaryKnapsackBlock 
+# BinaryKnapsackBlock
 
 This project covers two conceptually different things (which may one day be
 split to two different projects):
 
-- `BinaryKnapsackBlock`, a SMS++ :Block for the Binary Knapsack Problem
+- `BinaryKnapsackBlock`, a SMS++ :Block for the (Mixed) Binary Knapsack
+  Problem
 
-- `DPBinaryKnapsackSolver`, a SMS++ :Solver for BinaryKnapsackBlock based on
-  a trivial implementation of the standard Dynamic Programming approach
+- a family of SMS++ :Solver for BinaryKnapsackBlock:
+
+  - `DPBinaryKnapsackSolver`, the standard full-table Dynamic Programming
+    approach, with reoptimization support;
+
+  - `ParallelDPBinaryKnapsackSolver`, a DPBinaryKnapsackSolver whose inner
+    (capacity) loop can run on parallel engines (OpenMP / FastFlow /
+    std::thread); opt-in and serial by default, since this fine-grained
+    parallelism does not pay off in practice;
+
+  - `CoreDPBinaryKnapsackSolver`, an exact core / non-dominated-state solver
+    in the MINKNAP / COMBO / RECORD line (break-item enumeration with
+    dominance, LP / Martello-Toth / surrogate bounds, divisibility and
+    aggregation reductions, primal heuristics), orders of magnitude faster
+    than the full-table DP;
+
+  - `GreedyRelaxationBinaryKnapsackSolver`, the exact greedy (Dantzig)
+    solver of the continuous relaxation, providing true lower / upper bounds
+    on the integer optimum and branching on the critical item;
+
+  the last two share the abstract base class `BinaryKnapsackSolver` (raw
+  instance mirror with incremental Modification processing, normalized core,
+  continuous relaxation).
 
 
 ## Getting started
 
-These instructions will let you build `BinaryKnapsackBlock` and 
-`DPBinaryKnapsackSolver` on your system.
+These instructions will let you build the `BinaryKnapsackBlock` module on
+your system.
 
 ### Requirements
 
@@ -78,6 +100,48 @@ Check the [SMS++ installation wiki](https://gitlab.com/smspp/smspp-project/-/wik
 for further details.
 
 
+## Tools
+
+Under `tools/` the module ships `bkbench`, an in-process benchmark driver that
+runs any of the solvers over the large public Pisinger / Jooken benchmark
+archives (see the Data section), cross-checking each optimum against the
+certified one recorded in the data. It defaults to the efficient
+`CoreDPBinaryKnapsackSolver`; a comma-separated list selects / cross-checks
+other solvers.
+
+You can run it from the `<build-dir>/tools` directory, install it with the
+library (see above), or just go in the `tools/` folder and run `make` there
+(provided makefiles are properly set, see above). Run it without arguments for
+info on its usage:
+
+```sh
+bkbench
+```
+
+
+## Data
+
+A small sample of knapsack instances ships with the repo, in the Pisinger text
+format ([data/txt](data/txt)); the raw `.csv` kept alongside them embed, per
+instance, the certified optimum used by the test suite for the
+solver-vs-reference cross-check (see
+`tests/BinaryKnapsackBlock/batches/batch-pisinger`).
+
+The full public benchmark archives used by `bkbench` are large and are not
+included; populate the gitignored [data/benchmarks](data/benchmarks) folder
+via
+
+```sh
+cd data
+./fetch-benchmarks pisinger jooken
+```
+
+which downloads David Pisinger's instances
+(https://hjemmesider.diku.dk/~pisinger/codes.html) and the
+Jooken-Leyman-Causmaecker instances
+(https://github.com/JorikJooken/knapsackProblemInstances).
+
+
 ## Getting help
 
 If you need support, you want to submit bugs or propose a new feature, you
@@ -90,15 +154,21 @@ issue](https://gitlab.com/smspp/binaryknapsackblock/-/issues/new).
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of
 conduct, and the process for submitting merge requests to us.
 
+## Authors
+
 ### Current Lead Authors
 
 - **Federica Di Pasquale**  
   Dipartimento di Informatica  
   Università di Pisa
 
-- **Francesco Demelas**  
+- **Francesca Demelas**  
   Laboratoire d'Informatique de Paris Nord  
   Universite' Sorbonne Paris Nord
+
+- **Donato Meoli**  
+  Dipartimento di Informatica  
+  Università di Pisa
 
 ### Contributors
 
