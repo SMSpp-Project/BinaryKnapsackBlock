@@ -141,6 +141,13 @@ class BinaryKnapsackSolver : public virtual Solver {
   }
 
 /*--------------------------------------------------------------------------*/
+ /// the Solution comes from the data of the Solver, not from the Variable
+
+ [[nodiscard]] bool is_get_Solution_physical( void ) const override {
+  return( true );
+  }
+
+/*--------------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
 

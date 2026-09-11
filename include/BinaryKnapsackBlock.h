@@ -533,14 +533,6 @@ class BinaryKnapsackBlock : public Block {
  bool is_empty( bool useabstract = false ,
                 Configuration * optc = nullptr ) override;
 
-/*--------------------------------------------------------------------------*/
- /// returns true if the Binary Knapsack problem is unbounded.
-
- bool is_unbounded( bool useabstract = false ,
-                    Configuration * fsbc = nullptr ) override {
-  return( false );
-  }
-
 /** @} ---------------------------------------------------------------------*/
 /*------------------------- Methods for R3 Blocks --------------------------*/
 /*--------------------------------------------------------------------------*/
