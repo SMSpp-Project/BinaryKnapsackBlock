@@ -36,14 +36,22 @@ split to two different projects):
 These instructions will let you build the `BinaryKnapsackBlock` module on
 your system.
 
-The module also comes ready-made: `sudo apt install libsmspp-bkb-dev` from the
-[PPA of the project](https://launchpad.net/~smspp-project/+archive/ubuntu/smspp), which
-has `smspp-bkb` for its command-line tool as well, and `vcpkg install
-"smspp[core,bkb]"` from the [SMS++ vcpkg
-registry](https://gitlab.com/smspp/vcpkg-registry); `conda install -c
-conda-forge smspp-project` and `brew install smspp`, from the [tap of the
-project](https://github.com/SMSpp-Project/homebrew-smspp), carry the whole
-framework. What follows is about building it yourself.
+The module also comes ready-made, in any of
+
+```sh
+sudo add-apt-repository ppa:smspp-project/smspp   # Ubuntu
+sudo apt install libsmspp-bkb-dev                 # and smspp-bkb for the tool
+
+conda install -c conda-forge smspp-project        # Linux, macOS, Windows
+
+brew tap SMSpp-Project/smspp                      # macOS, Linux
+brew install smspp
+
+vcpkg install "smspp[core,bkb]"                   # from the sources
+```
+
+where apt and the port give the module alone, while conda and the tap carry
+the whole framework. What follows is about building it yourself.
 
 ### Requirements
 
