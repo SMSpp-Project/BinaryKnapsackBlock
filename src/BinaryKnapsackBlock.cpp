@@ -768,14 +768,19 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = Inf< double >();
 
- // TODO: use a GroupModification
+ // one item fixed is one abstract Modification: they all go into a single
+ // GroupModification, so that a Solver able to write a whole set of them in
+ // one operation does that instead of one call per item
+ auto nAM = un_ModBlock( make_par( par2mod( issueAMod ) ,
+                                   open_channel( par2chnl( issueAMod ) ) ) );
+
  for( i = rng.first ; i < rng.second ; i++ ) {
   double val = *(value++); // new value
 
   if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
     if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
-     v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
+     v_x[ i ].is_fixed( true , nAM );
      v_fxd[ i ] = val ? 2 : 1;
     }
     else
@@ -783,6 +788,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
       v_fxd[ i ] = val ? 2 : 1; 
   }
  }
+
+ close_channel( par2chnl( nAM ) );
 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
@@ -821,14 +828,17 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = Inf< double >();
 
- // TODO: use a GroupModification
+ // see the range version above for why they travel in one group
+ auto nAM = un_ModBlock( make_par( par2mod( issueAMod ) ,
+                                   open_channel( par2chnl( issueAMod ) ) ) );
+
  for( auto i : nms ) {
   double val = *(value++); // new value
 
   if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
     if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
-     v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
+     v_x[ i ].is_fixed( true , nAM );
      v_fxd[ i ] = val ? 2 : 1;
     }
     else
@@ -836,6 +846,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
       v_fxd[ i ] = val ? 2 : 1; 
    }
   }
+
+ close_channel( par2chnl( nAM ) );
 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
@@ -899,11 +911,17 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = Inf< double >();
 
- // TODO: use a GroupModification
- if( not_dry_run( issueAMod ) )
+ // see fix_x() for why they travel in one group
+ if( not_dry_run( issueAMod ) ) {
+  auto nAM = un_ModBlock( make_par( par2mod( issueAMod ) ,
+                                    open_channel( par2chnl( issueAMod ) ) ) );
+
   for( i = rng.first ; i < rng.second ; ++i ) {
-   v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) );
+   v_x[ i ].is_fixed( false , nAM );
    v_fxd[ i ] = 0; 
+   }
+
+  close_channel( par2chnl( nAM ) );
   }
  else
   if( not_dry_run( issueMod ) ) {
@@ -948,12 +966,17 @@ void BinaryKnapsackBlock::unfix_x( Subset && nms , bool ordered ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = Inf< double >();
 
- // TODO: use a GroupModification
+ // see fix_x() for why they travel in one group
  if( not_dry_run( issueAMod ) ) {
+  auto nAM = un_ModBlock( make_par( par2mod( issueAMod ) ,
+                                    open_channel( par2chnl( issueAMod ) ) ) );
+
   for( auto i : nms ) {
-   v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) );
+   v_x[ i ].is_fixed( false , nAM );
    v_fxd[ i ] = 0;
    }
+
+  close_channel( par2chnl( nAM ) );
   }
  else
   if( not_dry_run( issueMod ) ) {
