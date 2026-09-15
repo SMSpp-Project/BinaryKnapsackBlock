@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `fix_x()` and `unfix_x()` issue their "abstract" Modification inside a
+  GroupModification, one per call, rather than one loose Modification per
+  item: a Solver able to execute a whole set of fixings in one operation can
+  then do so, while one that is not takes the group apart and sees exactly
+  what it saw before
+
 ### Fixed
 
 ## [0.4.0] - 2026-09-12
