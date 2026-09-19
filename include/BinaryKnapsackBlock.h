@@ -823,18 +823,51 @@ class BinaryKnapsackBlock : public Block {
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of a contiguous interval of items
+ /** The i-th element of \p NWeight is the new weight of item
+  * rng.first + i; \p NWeight has to be at least as long as \p rng, once
+  * \p rng is restricted to the items there are. */
 
- void chg_weights( c_dblVec_it NWeight , Range rng = INFRange , 
+ void chg_weights( MF_dbl_sp NWeight , Range rng = INFRange ,
                    ModParam issueMod = eNoBlck ,
-                   ModParam issueAMod = eNoBlck ); 
+                   ModParam issueAMod = eNoBlck );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the weights of a contiguous interval of items, iterator form
+ /** As the span form, \p NWeight pointing to the first of the new weights;
+  * its length is taken from \p rng. */
+
+ void chg_weights( c_dblVec_it NWeight , Range rng = INFRange ,
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck ) {
+  rng.second = std::min( rng.second , get_NItems() );
+  if( rng.second > rng.first )
+   chg_weights( MF_dbl_sp( & * NWeight , rng.second - rng.first ) , rng ,
+                issueMod , issueAMod );
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
+ /** The k-th element of \p NWeight is the new weight of item nms[ k ];
+  * \p NWeight has to be at least as long as \p nms. */
 
- void chg_weights( c_dblVec_it NWeight , 
-                   Subset && nms , bool ordered = false ,  
+ void chg_weights( MF_dbl_sp NWeight ,
+                   Subset && nms , bool ordered = false ,
                    ModParam issueMod = eNoBlck ,
                    ModParam issueAMod = eNoBlck );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the weights of an arbitrary subsets of items, iterator form
+ /** As the span form, \p NWeight pointing to the first of the new weights;
+  * its length is taken from \p nms. */
+
+ void chg_weights( c_dblVec_it NWeight ,
+                   Subset && nms , bool ordered = false ,
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck ) {
+  if( ! nms.empty() )
+   chg_weights( MF_dbl_sp( & * NWeight , nms.size() ) , std::move( nms ) ,
+                ordered , issueMod , issueAMod );
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the boolean vector that tell which variable is 
@@ -868,18 +901,51 @@ class BinaryKnapsackBlock : public Block {
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of a contiguous interval of items
+ /** The i-th element of \p NProfit is the new profit of item
+  * rng.first + i; \p NProfit has to be at least as long as \p rng, once
+  * \p rng is restricted to the items there are. */
 
- void chg_profits( c_dblVec_it NProfit , Range rng = INFRange , 
+ void chg_profits( MF_dbl_sp NProfit , Range rng = INFRange ,
                    ModParam issueMod = eNoBlck ,
-                   ModParam issueAMod = eNoBlck ); 
+                   ModParam issueAMod = eNoBlck );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the profits of a contiguous interval of items, iterator form
+ /** As the span form, \p NProfit pointing to the first of the new profits;
+  * its length is taken from \p rng. */
+
+ void chg_profits( c_dblVec_it NProfit , Range rng = INFRange ,
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck ) {
+  rng.second = std::min( rng.second , get_NItems() );
+  if( rng.second > rng.first )
+   chg_profits( MF_dbl_sp( & * NProfit , rng.second - rng.first ) , rng ,
+                issueMod , issueAMod );
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of an arbitrary subsets of items
+ /** The k-th element of \p NProfit is the new profit of item nms[ k ];
+  * \p NProfit has to be at least as long as \p nms. */
 
- void chg_profits( c_dblVec_it NProfit , 
-                   Subset && nms , bool ordered = false ,  
+ void chg_profits( MF_dbl_sp NProfit ,
+                   Subset && nms , bool ordered = false ,
                    ModParam issueMod = eNoBlck ,
-                   ModParam issueAMod = eNoBlck ); 
+                   ModParam issueAMod = eNoBlck );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the profits of an arbitrary subsets of items, iterator form
+ /** As the span form, \p NProfit pointing to the first of the new profits;
+  * its length is taken from \p nms. */
+
+ void chg_profits( c_dblVec_it NProfit ,
+                   Subset && nms , bool ordered = false ,
+                   ModParam issueMod = eNoBlck ,
+                   ModParam issueAMod = eNoBlck ) {
+  if( ! nms.empty() )
+   chg_profits( MF_dbl_sp( & * NProfit , nms.size() ) , std::move( nms ) ,
+                ordered , issueMod , issueAMod );
+  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the capacity of the Knapsack
@@ -893,6 +959,22 @@ class BinaryKnapsackBlock : public Block {
   * pointed by \p NC as the new capacity (unless \p rng is empty, in which
   * case it does nothing. Only exists in order to be able to put it in the
   * methods factory with the standard Range signature. */
+
+ void chg_capacity( MF_dbl_sp NC , Range rng = INFRange ,
+                    ModParam issueMod = eNoBlck ,
+                    ModParam issueAMod = eNoBlck ) {
+  if( rng.second <= rng.first )  // the Range is empty
+   return;                       // silently return
+
+  if( NC.empty() )
+   throw( std::invalid_argument( "BinaryKnapsackBlock::chg_capacity: no "
+				 "value in the span" ) );
+
+  chg_capacity( NC.front() , issueMod , issueAMod );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// change the capacity of the Knapsack, iterator form of the above
 
  void chg_capacity( c_dblVec_it NC , Range rng = INFRange ,
                     ModParam issueMod = eNoBlck ,
@@ -1037,6 +1119,23 @@ class BinaryKnapsackBlock : public Block {
    "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
 
   register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
+   "BinaryKnapsackBlock::chg_capacity" , & BinaryKnapsackBlock::chg_capacity );
+
+  // the same methods in the span form, which the iterator one defers to
+
+  register_method< BinaryKnapsackBlock , MF_dbl_sp , Range >(
+   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_sp , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_sp , Range >(
+   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_sp , Subset && , bool >(
+   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
+
+  register_method< BinaryKnapsackBlock , MF_dbl_sp , Range >(
    "BinaryKnapsackBlock::chg_capacity" , & BinaryKnapsackBlock::chg_capacity );
 
   }  // end( static_initialization )

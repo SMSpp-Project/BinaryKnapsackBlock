@@ -56,9 +56,8 @@ using c_Subset = Block::c_Subset;
 // returns true if two vectors differ, one of them being given as a base
 // vector and a subset of indices
 
-template< typename T >
-static bool is_equal( std::vector< T > & vec , c_Subset & nms ,
-                      typename std::vector< T >::const_iterator cmp ,
+template< typename T , class It >
+static bool is_equal( std::vector< T > & vec , c_Subset & nms , It cmp ,
                       Index n_max )
 {
  for( auto nm : nms ) {
@@ -74,9 +73,8 @@ static bool is_equal( std::vector< T > & vec , c_Subset & nms ,
 /*--------------------------------------------------------------------------*/
 // copys one vector to a given subset of another
 
-template< typename T >
-static void copyidx( std::vector< T > & vec , c_Subset & nms ,
-                     typename std::vector< T >::const_iterator cpy )
+template< typename T , class It >
+static void copyidx( std::vector< T > & vec , c_Subset & nms , It cpy )
 {
  for( auto nm : nms )
   vec[ nm ] = *(cpy++);
@@ -1029,16 +1027,22 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight , 
+void BinaryKnapsackBlock::chg_weights( MF_dbl_sp NWeight , 
                                        Range rng , 
                                        ModParam issueMod , 
                                        ModParam issueAMod )
 {
  rng.second = std::min( rng.second , get_NItems() );
  if( rng.second <= rng.first )  // nothing to change
-  return;   
+  return;
 
- if( std::equal( NWeight , NWeight + ( rng.second - rng.first ) ,
+ if( NWeight.size() < rng.second - rng.first )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::chg_weights: the span "
+				"is shorter than the Range" ) );
+
+ auto NWeight_it = NWeight.begin();
+
+ if( std::equal( NWeight_it , NWeight_it + ( rng.second - rng.first ) ,
      v_W.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
@@ -1049,18 +1053,18 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ) {
   // physical representation
-  std::copy( NWeight , NWeight + ( rng.second - rng.first ) ,
+  std::copy( NWeight_it , NWeight_it + ( rng.second - rng.first ) ,
              v_W.begin() + rng.first );
 
   // abstract representation
   LF( f_cnst.get_function() )->modify_coefficients(
-    doubleVec( NWeight , NWeight + ( rng.second - rng.first ) ) ,
+    doubleVec( NWeight_it , NWeight_it + ( rng.second - rng.first ) ) ,
     rng , un_ModBlock( issueAMod ) );
   }
  else
   if( not_dry_run( issueMod ) )
    // otherwise change only physical representation 
-   std::copy( NWeight , NWeight + ( rng.second - rng.first ) ,
+   std::copy( NWeight_it , NWeight_it + ( rng.second - rng.first ) ,
         v_W.begin() + rng.first );
 
  // issue physical Modification 
@@ -1073,15 +1077,21 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight,
+void BinaryKnapsackBlock::chg_weights( MF_dbl_sp NWeight,
                                        Subset && nms , bool ordered ,  
                                        ModParam issueMod ,
                                        ModParam issueAMod )
 {
  if( nms.empty() )  // nothing to change
-  return;            
+  return;
 
- if( is_equal( v_W , nms , NWeight , get_NItems() ) )
+ if( NWeight.size() < nms.size() )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::chg_weights: the span "
+				"is shorter than the Subset" ) );
+
+ auto NWeight_it = NWeight.begin();
+
+ if( is_equal( v_W , nms , NWeight_it , get_NItems() ) )
   return;  // actually nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -1091,18 +1101,18 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ) {
   // physical representation
-  copyidx( v_W , nms , NWeight );
+  copyidx( v_W , nms , NWeight_it );
   
   // abstract representation
   LF( f_cnst.get_function() )->modify_coefficients(
-             doubleVec( NWeight , NWeight + nms.size() ) , 
+             doubleVec( NWeight_it , NWeight_it + nms.size() ) , 
              Subset( nms ) , ordered ,
              un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )
    // otherwise change only physical representation 
-   copyidx( v_W , nms , NWeight );
+   copyidx( v_W , nms , NWeight_it );
 
  // issue physical Modification 
  if( issue_pmod( issueMod ) ) {
@@ -1155,15 +1165,21 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng , 
+void BinaryKnapsackBlock::chg_profits( MF_dbl_sp NProfit , Range rng , 
                                        ModParam issueMod ,
                                        ModParam issueAMod )
 {
  rng.second = std::min( rng.second , get_NItems() );
  if( rng.second <= rng.first )  // nothing to change
-  return;   
+  return;
 
- if( std::equal( NProfit , NProfit + ( rng.second - rng.first ) ,
+ if( NProfit.size() < rng.second - rng.first )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::chg_profits: the span "
+				"is shorter than the Range" ) );
+
+ auto NProfit_it = NProfit.begin();
+
+ if( std::equal( NProfit_it , NProfit_it + ( rng.second - rng.first ) ,
              v_P.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
@@ -1175,17 +1191,17 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng ,
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ) {
   
   // physical representation
-  std::copy( NProfit , NProfit + ( rng.second - rng.first ) ,
+  std::copy( NProfit_it , NProfit_it + ( rng.second - rng.first ) ,
              v_P.begin() + rng.first );
   
   // abstract representation  
   LF( f_obj.get_function() )->modify_coefficients(
-    doubleVec( NProfit , NProfit + ( rng.second - rng.first ) ) ,
+    doubleVec( NProfit_it , NProfit_it + ( rng.second - rng.first ) ) ,
     rng , un_ModBlock( issueAMod ) );
   }
  else
   if( not_dry_run( issueMod ) )  // otherwise only physical representation 
-   std::copy( NProfit , NProfit + ( rng.second - rng.first ) ,
+   std::copy( NProfit_it , NProfit_it + ( rng.second - rng.first ) ,
         v_P.begin() + rng.first );
 
  // issue physical Modification 
@@ -1198,15 +1214,21 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit ,
+void BinaryKnapsackBlock::chg_profits( MF_dbl_sp NProfit ,
                                        Subset && nms , bool ordered ,  
                                        ModParam issueMod ,
                                        ModParam issueAMod )
 {
  if( nms.empty() )  // nothing to change
-  return;            
+  return;
 
- if( is_equal( v_P , nms , NProfit , get_NItems() ) )
+ if( NProfit.size() < nms.size() )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::chg_profits: the span "
+				"is shorter than the Subset" ) );
+
+ auto NProfit_it = NProfit.begin();
+
+ if( is_equal( v_P , nms , NProfit_it , get_NItems() ) )
   return;  // actually nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -1216,17 +1238,17 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ) {
   // physical representation
-  copyidx( v_P , nms , NProfit );
+  copyidx( v_P , nms , NProfit_it );
   
   // abstract representation
   LF( f_obj.get_function() )->modify_coefficients(
-       doubleVec( NProfit , NProfit + nms.size() ) , 
+       doubleVec( NProfit_it , NProfit_it + nms.size() ) , 
        Subset( nms ) , ordered , un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )
    // otherwise change only physical representation 
-   copyidx( v_P , nms , NProfit );
+   copyidx( v_P , nms , NProfit_it );
 
  // issue physical Modification 
  if( issue_pmod( issueMod ) ) {
@@ -1495,7 +1517,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
     for( Index i = tmod->range().first ; i < tmod->range().second ; i++ )
      ( * npi++ ) = lf->get_coefficient( i );
 
-    chg_profits( new_profits.begin() , tmod->range() ,
+    chg_profits( new_profits , tmod->range() ,
      make_par( eNoBlck , chnl ) , eDryRun );
     return;
     }   
@@ -1513,7 +1535,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
     for( Index i = tmod->range().first ; i < tmod->range().second ; i++ )
      ( * nwi++ ) = lf->get_coefficient( i );
 
-    chg_weights( new_weights.begin() , tmod->range() ,
+    chg_weights( new_weights , tmod->range() ,
      make_par( eNoBlck , chnl ) , eDryRun );
     return;
     }
@@ -1542,7 +1564,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
      for( auto i : tmod->subset() )
       ( * npi++ ) = lf->get_coefficient( i );
 
-     chg_profits( new_profits.begin() , Subset( tmod->subset() ) , true , 
+     chg_profits( new_profits , Subset( tmod->subset() ) , true , 
                   make_par( eNoBlck , chnl ) , eDryRun );
      return;
      }
@@ -1560,7 +1582,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
      for( auto i : tmod->subset() )
       ( * nwi++ ) = lf->get_coefficient( i );
 
-     chg_weights( new_weights.begin() , Subset( tmod->subset() ) , true , 
+     chg_weights( new_weights , Subset( tmod->subset() ) , true , 
                   make_par( eNoBlck , chnl ) , eDryRun );
      return;
      }

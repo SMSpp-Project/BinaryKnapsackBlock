@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `chg_weights()`, `chg_profits()` and `chg_capacity()` take their data as a
+  `std::span< const double >`, whose length they check against the Range or
+  the Subset instead of reading past the end, and are registered in the
+  methods factory in that form too; the forms taking an iterator stay, and
+  defer to the span ones
+
 - `fix_x()` and `unfix_x()` issue their "abstract" Modification inside a
   GroupModification, one per call, rather than one loose Modification per
   item: a Solver able to execute a whole set of fixings in one operation can
