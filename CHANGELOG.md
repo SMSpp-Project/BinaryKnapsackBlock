@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `bk2nc4`, which writes as a netCDF file a textual instance in the
+  Pisinger/Jooken benchmark format or in the native one, so that whoever
+  reads a `Block` rather than a knapsack has one to read; it can reverse the
+  sense while doing so, changing the sign of the profits, the problem being
+  the same one, which is what a component of a decomposition of a
+  minimization problem has to be. `tools/batch` writes a handful of the
+  curated instances this way and the `run_bk2nc4` target drives it
+
+- `is_sol_feasible()` reads the solution out of the `BinaryKnapsackSolution`
+  and checks it against the data of the problem, i.e. the bounds and the
+  integrality of the items, the ones that are fixed and the capacity, so that
+  the Variable of the `BinaryKnapsackBlock` are neither needed nor touched,
+  which `is_sol_feasible_physical()` says; the check that the base class does,
+  writing the solution in the Variable and putting back what was there, is
+  what a Function revalidating a global pool of hundreds of entries used to
+  pay for each of them
+
 ### Changed
 
 - the items fixed by one call travel as one `GroupModification`, one per call
@@ -36,6 +53,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what it saw before
 
 ### Fixed
+
+- the sense of the objective survives a netCDF round trip: `serialize()`
+  writes the attribute `Sense` when the problem is a minimization one, and
+  `deserialize()` reads it, a file without it describing a maximization
+  problem, which is what every file written before this did. The sense used
+  to be left at its default by `deserialize()`, so that a minimization
+  knapsack read back from a file was a maximization one
+
+- `serialize()` wrote the integrality of the items out of a vector it had
+  never sized, i.e. past its end, whenever some item was continuous
 
 ## [0.4.0] - 2026-09-12
 

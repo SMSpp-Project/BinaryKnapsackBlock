@@ -304,8 +304,19 @@ void BinaryKnapsackBlock::deserialize( const netCDF::NcGroup & group )
  
  countCont = std::count( v_I.begin() , v_I.end() , false );
 
- v_fxd.assign( n , 0 ); // all the variables are not fixed  
- 
+ // the sense of the objective, maximization unless the file says otherwise,
+ // which is what a file written before this attribute existed means
+ netCDF::NcGroupAtt s = group.getAtt( "Sense" );
+ if( s.isNull() )
+  f_sense = true;
+ else {
+  int sense;
+  s.getValues( &sense );
+  f_sense = ( sense != 0 );
+  }
+
+ v_fxd.assign( n , 0 ); // all the variables are not fixed
+
  generate_abstract_variables();
 
  // reset conditional bounds
@@ -429,6 +440,48 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
  return( tot_weight <= f_C );
 
  } // end( BinaryKnapsackBlock::is_feasible )
+
+/*--------------------------------------------------------------------------*/
+
+bool BinaryKnapsackBlock::is_sol_feasible( Solution * sol ,
+					   Configuration * fsbc )
+{
+ auto ksol = dynamic_cast< BinaryKnapsackSolution * >( sol );
+ if( ! ksol )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::is_sol_feasible: the "
+				"Solution is not a BinaryKnapsackSolution" ) );
+
+ // the feasible region is a subset of the unit cube, hence it has no rays
+ if( ksol->is_direction() )
+  return( false );
+
+ auto & x = ksol->get_x();
+ if( x.size() < get_NItems() )  // it holds no solution of this problem
+  return( false );
+
+ // the data of the problem is what the solution is checked against, as the
+ // physical part of is_feasible() does with the values of the Variable
+ double tot_weight = 0;
+ for( Index i = 0 ; i < get_NItems() ; ++i ) {
+  const double xi = x[ i ];
+
+  if( ( xi < 0 ) || ( xi > 1 ) )
+   return( false );
+
+  if( ( i < v_I.size() ) && v_I[ i ] && ( xi != 0 ) && ( xi != 1 ) )
+   return( false );
+
+  if( i < v_fxd.size() )
+   if( ( ( v_fxd[ i ] == 1 ) && ( xi != 0 ) ) ||
+       ( ( v_fxd[ i ] == 2 ) && ( xi != 1 ) ) )
+    return( false );
+
+  tot_weight += v_W[ i ] * xi;
+  }
+
+ return( tot_weight <= f_C );
+
+ } // end( BinaryKnapsackBlock::is_sol_feasible )
 
 /*--------------------------------------------------------------------------*/
 
@@ -698,11 +751,16 @@ void BinaryKnapsackBlock::serialize( netCDF::NcGroup & group ) const
  ( group.addVar( "Weights" , netCDF::NcDouble() , ni ) ).putVar( v_W.data() );
  
  ( group.addVar( "Profits" , netCDF::NcDouble() , ni ) ).putVar( v_P.data() );
- 
+
+ // the sense is written only when it is minimization, so that a file of a
+ // maximization problem is exactly what it used to be
+ if( ! f_sense )
+  group.putAtt( "Sense" , netCDF::NcInt() , 0 );
+
  if( countCont ) {
-   std::vector< int > tempI;
+   std::vector< int > tempI( v_I.size() );
    for( Index i = 0 ; i < v_I.size() ; ++i )
-    tempI[ i ] = ( int ) v_I[ i ]; 
+    tempI[ i ] = ( int ) v_I[ i ];
 
    ( group.addVar( "Integrality" ,
        netCDF::NcInt(), ni ) ).putVar( tempI.data() );

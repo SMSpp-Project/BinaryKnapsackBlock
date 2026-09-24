@@ -240,10 +240,19 @@ class BinaryKnapsackBlock : public Block {
   *   weight of the i-th item;
   *
   * - the variable "Profits", of type double and indexed over the dimension
-  *   "NItems"; the i-th entry of the variable is assumed to contain the 
+  *   "NItems"; the i-th entry of the variable is assumed to contain the
   *   profit of the i-th item;
-  * 
-  * All dimensions and variables are mandatory. */
+  *
+  * - the variable "Integrality", of type int and indexed over the dimension
+  *   "NItems", nonzero for an item that can only be taken as a whole; if it
+  *   is not there all the items are integer;
+  *
+  * - the attribute "Sense", of type int, zero for a minimization problem;
+  *   if it is not there the problem is a maximization one, which is what a
+  *   file written when the sense was not serialized describes.
+  *
+  * The dimensions and the variables of the data are mandatory, "Integrality"
+  * and "Sense" are not. */
 
  void deserialize( const netCDF::NcGroup & group ) override;
 
@@ -519,6 +528,26 @@ class BinaryKnapsackBlock : public Block {
 
  bool is_feasible( bool useabstract = false , 
                    Configuration * fsbc = nullptr ) override;
+
+/*--------------------------------------------------------------------------*/
+ /// returns true if the solution in the Solution is feasible
+ /** Returns true if the solution that the given BinaryKnapsackSolution holds
+  * is feasible: the values are read out of it and checked against the data of
+  * the problem, i.e., the bounds and the integrality of the items, the ones
+  * that are fixed and the capacity, so that the Variable of the
+  * BinaryKnapsackBlock are neither needed nor touched
+  * [see Block::is_sol_feasible()]. The feasible region being bounded, a
+  * Solution that says it holds a direction is not feasible. */
+
+ bool is_sol_feasible( Solution * sol ,
+		       Configuration * fsbc = nullptr ) override;
+
+/*--------------------------------------------------------------------------*/
+ /// is_sol_feasible() reads the Solution, the Variable are left alone
+
+ [[nodiscard]] bool is_sol_feasible_physical( void ) const override {
+  return( true );
+  }
 
 
 /*--------------------------------------------------------------------------*/
