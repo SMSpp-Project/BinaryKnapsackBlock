@@ -294,6 +294,36 @@ add_custom_target(fetch_bk_data
 # Ensure that the extraction is executed after the download
 add_dependencies(fetch_bk_data download_bk_txt)
 
+# A handful of the textual instances written as netCDF files, which is what a
+# tester that reads a Block from a file needs: tools/batch says which ones and
+# why, the tests of the module building their own instances instead.
+if (UNIX)
+    add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
+            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
+            COMMENT "Running bk2nc4"
+            VERBATIM
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
+elseif (WIN32)
+    add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            # using Git for Windows that includes Git Bash
+            COMMAND "C:/Program Files/Git/bin/bash.exe"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/batch" "$<TARGET_FILE:bk2nc4>"
+            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
+            COMMENT "Running bk2nc4"
+            VERBATIM
+            DEPENDS $<TARGET_FILE:bk2nc4> ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
+endif ()
+
+add_custom_target(run_bk2nc4
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated)
+
+add_dependencies(run_bk2nc4 bk2nc4 fetch_bk_data)
+
 # Hard-instance benchmark sources, curated on demand into data/ (gitignored).
 # data/fetch-jooken pulls a curated subset of the Jooken-Leyman-De Causmaecker
 # hard 0-1 knapsack instances (the .csv carry the published optimum z, read by

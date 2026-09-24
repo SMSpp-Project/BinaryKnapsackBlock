@@ -30,9 +30,16 @@ endif ()
 add_executable(bkbench bkbench.cpp)
 target_link_libraries(bkbench PRIVATE SMS++::BinaryKnapsackBlock)
 
+# ----- bk2nc4 -------------------------------------------------------------- #
+# the textual instances of the public archives, in the Pisinger/Jooken format
+# or in the native one, written as netCDF files, which is what whoever reads a
+# Block rather than a knapsack needs
+add_executable(bk2nc4 bk2nc4.cpp)
+target_link_libraries(bk2nc4 PRIVATE SMS++::BinaryKnapsackBlock)
+
 # ----- Install instructions ------------------------------------------------ #
 include(GNUInstallDirs)
-install(TARGETS bkbench
+install(TARGETS bkbench bk2nc4
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # --------------------------------------------------------------------------- #
