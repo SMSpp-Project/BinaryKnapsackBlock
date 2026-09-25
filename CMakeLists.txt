@@ -251,9 +251,19 @@ endif ()
 # Registry and extract it. The archive carries, per instance, the raw .csv that
 # embeds the published optimum z, which the tests read directly (no further
 # conversion): the fetch_bk_data target is the test fixture's only dependency.
+
+# The version of the archive in the Package Registry. A published version is
+# never replaced: new data go out under a new version, written here first [see
+# data/upload-txt], and the archive and the marker of its extraction carry it
+# in their name, so that a tree holding the data of an older version (a cache
+# of the CI, or a clone that has been extracted before) downloads and extracts
+# again instead of taking them for the current ones.
+set(DATA_VERSION 2026-06-24)
+
 # Download txt.tgz from GitLab Package Registry if it doesn't exist
-set(TXT_URL "https://gitlab.com/api/v4/projects/24425718/packages/generic/txt/latest/txt.tgz")
-set(TXT_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/data/txt.tgz)
+set(TXT_URL "https://gitlab.com/api/v4/projects/24425718/packages/generic/txt/${DATA_VERSION}/txt.tgz")
+set(TXT_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/data/txt-${DATA_VERSION}.tgz)
+set(DATA_MARKER ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted-${DATA_VERSION})
 set(TXT_SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/download_bk_txt.cmake)
 
 file(WRITE ${TXT_SCRIPT} "
@@ -285,7 +295,8 @@ add_custom_command(
 add_custom_target(download_bk_txt
         DEPENDS ${TXT_ARCHIVE})
 
-# Custom command to extract the txt.tgz archive if the .extracted file does not exist
+# Custom command to extract the txt.tgz archive if the marker of this version
+# does not exist
 if (UNIX)
     set(TAR_FLAGS --warning=no-unknown-keyword -xzf)
 elseif (WIN32)
@@ -293,9 +304,9 @@ elseif (WIN32)
 endif ()
 
 add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted
-        COMMAND tar ${TAR_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/data/txt.tgz
-        COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted
+        OUTPUT ${DATA_MARKER}
+        COMMAND tar ${TAR_FLAGS} ${TXT_ARCHIVE}
+        COMMAND echo > ${DATA_MARKER}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
         COMMENT "Extracting txt.tgz"
         VERBATIM
@@ -304,7 +315,7 @@ add_custom_command(
 # The raw .csv are ready as soon as the archive is extracted: this is the
 # terminal target the tests depend on (see tests/BinaryKnapsackBlock).
 add_custom_target(fetch_bk_data
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
+        DEPENDS ${DATA_MARKER})
 
 # Ensure that the extraction is executed after the download
 add_dependencies(fetch_bk_data download_bk_txt)
@@ -320,7 +331,7 @@ if (UNIX)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
             COMMENT "Running bk2nc4"
             VERBATIM
-            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${DATA_MARKER})
 elseif (WIN32)
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
@@ -331,7 +342,7 @@ elseif (WIN32)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
             COMMENT "Running bk2nc4"
             VERBATIM
-            DEPENDS $<TARGET_FILE:bk2nc4> ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
+            DEPENDS $<TARGET_FILE:bk2nc4> ${DATA_MARKER})
 endif ()
 
 add_custom_target(run_bk2nc4

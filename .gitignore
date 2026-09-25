@@ -30,8 +30,8 @@
 
 # --- Curated txt/csv sources (fetched + extracted by data/fetch-txt) --------
 data/txt
-data/txt.tgz
-data/.extracted
+data/txt*.tgz
+data/.extracted*
 
 # --- netCDF instances (written by tools/batch out of the curated txt) -------
 data/nc4
