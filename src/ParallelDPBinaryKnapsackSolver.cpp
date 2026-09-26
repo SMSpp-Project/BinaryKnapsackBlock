@@ -60,8 +60,14 @@ SMSpp_insert_in_factory_cpp_1( ParallelDPBinaryKnapsackSolver );
 /*-------------- METHODS OF ParallelDPBinaryKnapsackSolver -----------------*/
 /*--------------------------------------------------------------------------*/
 
-// defined here (not defaulted in the header) so that the destructor of the
-// pimpl'd ff::ParallelFor is instantiated where the type is complete
+// defined here (not in the header) so that the destructor of the pimpl'd
+// ff::ParallelFor is instantiated where the type is complete
+
+ParallelDPBinaryKnapsackSolver::ParallelDPBinaryKnapsackSolver(
+                                 Index maxthread , int whichparallel ) :
+                                 DPBinaryKnapsackSolver() ,
+                                 f_max_thread( maxthread ) ,
+                                 f_which_parallel( whichparallel ) {}
 
 ParallelDPBinaryKnapsackSolver::~ParallelDPBinaryKnapsackSolver() = default;
 

@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `BinaryKnapsackSolution::is_dual_feasible()` returns false, the Solution
   holding no dual values [see `Solution::is_dual_feasible()`]
 
+- a tester of the module in `test/`, run by `ctest -L BinaryKnapsackBlock`,
+  which needs nothing but the core: on small instances built in memory, whose
+  optimum it finds by enumeration, every Solver of the module has to find the
+  optimum (or the value of the relaxation and bounds on the two sides of the
+  optimum) with a feasible Solution worth it, over the corners of the data,
+  the fixings, the two senses, a sequence of changes made both on the Block
+  and through its abstract representation, the netCDF round trip, the R3
+  copy and the branching of the relaxation Solvers; the CI of the module
+  builds it alone with the core, as a user of the module would
+
 - `bk2nc4`, which writes as a netCDF file a textual instance in the
   Pisinger/Jooken benchmark format or in the native one, so that whoever
   reads a `Block` rather than a knapsack has one to read; it can reverse the
@@ -66,6 +76,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what it saw before
 
 ### Fixed
+
+- the items fixed in `load()` are fixed in their ColVariable too, at the
+  value they are fixed to: the ColVariable used to be left free and at 0, so
+  that `DPBinaryKnapsackSolver`, which reads the fixings there, took an item
+  fixed to 1 for one fixed to 0, and `is_empty()` did not see the fixings at
+  all; an R3 copy, which is made by `load()`, had the same defect
+
+- the conditional bounds of the Block, i.e. `get_valid_lower_bound()` and
+  `get_valid_upper_bound()`, take each fixed item at the value it is fixed
+  to, instead of as a free one: a profitable item of negative weight fixed to
+  0 used to be counted in the lower bound, which could then be above the
+  optimum
+
+- `fix_x()` on a Subset that is not ordered gives each item the value in the
+  same position, as documented: the Subset used to be sorted without the
+  values, which then went to other items
+
+- `ParallelDPBinaryKnapsackSolver.h` can be included without the headers of
+  FastFlow, the constructor being defined in the .cpp as the destructor is,
+  since it destroys the `ff::ParallelFor` if anything throws
 
 - on macOS a program linking the module lost the classes the module
   registers in the factories when the linker dropped the library, as it

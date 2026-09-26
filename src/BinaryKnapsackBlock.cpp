@@ -346,6 +346,13 @@ void BinaryKnapsackBlock::generate_abstract_variables( Configuration * stvv )
    v_x[ i ].set_type( ColVariable::kBinary , eNoBlck );
   else
    v_x[ i ].set_type( ColVariable::kPosUnitary , eNoBlck ); 
+
+  // an item fixed in the data is fixed in its ColVariable too, which is
+  // where whoever reads the Block finds the value it is fixed to
+  if( v_fxd[ i ] ) {
+   v_x[ i ].set_value( v_fxd[ i ] == 2 ? 1 : 0 );
+   v_x[ i ].is_fixed( true , eNoMod );
+   }
   }
 
  add_static_variable( v_x );
@@ -864,8 +871,21 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
  if( nms.empty() )
   return;
 
- if( ! ordered )
-  std::sort( nms.begin() , nms.end() );
+ // the values follow their items when these are sorted
+ boolVec sorted_value;
+ if( ! ordered ) {
+  std::vector< std::pair< Index , bool > > nv( nms.size() );
+  for( Index h = 0 ; h < nms.size() ; ++h )
+   nv[ h ] = { nms[ h ] , *(value++) };
+  std::sort( nv.begin() , nv.end() , []( auto & a , auto & b ) {
+   return( a.first < b.first ); } );
+  sorted_value.resize( nv.size() );
+  for( Index h = 0 ; h < nv.size() ; ++h ) {
+   nms[ h ] = nv[ h ].first;
+   sorted_value[ h ] = nv[ h ].second;
+   }
+  value = sorted_value.begin();
+  }
 
  if( nms.back() >= v_x.size() )
   throw( std::invalid_argument( "BinaryKnapsackBlock::fix_x: invalid item"
@@ -1735,6 +1755,15 @@ void BinaryKnapsackBlock::compute_conditional_bounds( void )
  for( Index i = 0 ; i < get_NItems() ; i++ ) { 
   double w = v_W[ i ];                        // weight of the current item
   double p = f_sense ? v_P[ i ] : -v_P[ i ];  // profit of the current item
+
+  // fixed items are worth what they are fixed to
+  if( v_fxd[ i ] == 1 )
+   continue;
+  if( v_fxd[ i ] == 2 ) {
+   f_cond_lower += p;
+   f_cond_upper += p;
+   continue;
+   }
 
   // items contained in the optimal solution
   if( ( w <= 0 ) && ( p >= 0 ) ) {
