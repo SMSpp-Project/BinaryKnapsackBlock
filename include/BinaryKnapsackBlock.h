@@ -1402,6 +1402,15 @@ class BinaryKnapsackSolution : public Solution {
  ~BinaryKnapsackSolution() override = default;
  ///< destructor: it is virtual, and empty
 
+/*--------------------------------------------------------------------------*/
+ /// a BinaryKnapsackSolution holds no dual values, hence none that is feasible
+ /** Returns false [see Solution::is_dual_feasible()]. */
+
+ bool is_dual_feasible( Block * block ,
+			Configuration * fsbc = nullptr ) override {
+  return( false );
+  }
+
 /*------ METHODS DESCRIBING THE BEHAVIOR OF A BinaryKnapsackSolution ------*/
 
  void read( const Block * const block ) override final;

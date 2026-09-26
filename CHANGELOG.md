@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `BinaryKnapsackSolution::is_dual_feasible()` returns false, the Solution
+  holding no dual values [see `Solution::is_dual_feasible()`]
+
 - `bk2nc4`, which writes as a netCDF file a textual instance in the
   Pisinger/Jooken benchmark format or in the native one, so that whoever
   reads a `Block` rather than a knapsack has one to read; it can reverse the
