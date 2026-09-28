@@ -77,6 +77,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- the data archive is extracted by `cmake -E tar`, which also works with the
+  tar of macOS, where the option `--warning=no-unknown-keyword` of GNU tar
+  stopped the build.
 - the items fixed in `load()` are fixed in their ColVariable too, at the
   value they are fixed to: the ColVariable used to be left free and at 0, so
   that `DPBinaryKnapsackSolver`, which reads the fixings there, took an item
