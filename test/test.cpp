@@ -19,7 +19,9 @@
  *
  * Every exact Solver of the module (DPBinaryKnapsackSolver, also with the
  * reoptimization on, ParallelDPBinaryKnapsackSolver with each of its engines,
- * CoreDPBinaryKnapsackSolver) has to find that optimum, with a Solution
+ * CoreDPBinaryKnapsackSolver with all its reoptimization on, and
+ * RECORDBinaryKnapsackSolver and COMBOBinaryKnapsackSolver the same way when
+ * the build has them) has to find that optimum, with a Solution
  * feasible and worth it, or say that there is none; the relaxation Solver
  * (GreedyRelaxationBinaryKnapsackSolver and its incremental variant) have to
  * find the value of the relaxation, a bound on the right side of the optimum
@@ -282,7 +284,14 @@ std::vector< Slv > attach( BinaryKnapsackBlock * b , bool integer = true )
    set_int( s , "intWhichParallel" , e );
    set_int( s , "intMaxThread" , 2 );
    }
-  add( "CoreDP" , "CoreDPBinaryKnapsackSolver" , true );
+  // the core DP with all its reoptimization, and the external solvers the
+  // same way, only built if their sources were given
+  for( std::string cls : { "CoreDPBinaryKnapsackSolver" ,
+                           "RECORDBinaryKnapsackSolver" ,
+                           "COMBOBinaryKnapsackSolver" } )
+   if( Solver::has_Solver( cls ) )
+    set_int( add( cls.substr( 0 , cls.find( "Binary" ) ) , cls , true ) ,
+             "intReopt" , 3 );
   }
  add( "Greedy" , "GreedyRelaxationBinaryKnapsackSolver" , false );
  add( "IncrementalGreedy" , "IncrementalGreedyRelaxationBinaryKnapsackSolver" ,

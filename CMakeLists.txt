@@ -142,9 +142,13 @@ target_sources(${modName} PRIVATE
 # away (the main() of the distributed source ignores the multiplicity it
 # reads and solves a bounded knapsack; the 0-1 problem is set up by the
 # bridge instead), and compiled alone in src/RECORDBridge.cpp, the only file
-# that sees its global names.
-set(RECORD_ROOT "" CACHE PATH "Checkout of RECORD (optional)")
-if (RECORD_ROOT AND EXISTS ${RECORD_ROOT}/source/RECORD.cpp)
+# that sees its global names. Without a RECORD_ROOT, the checkout is looked
+# for in the environment variable of the same name and where INSTALL.sh puts
+# it; RECORD uses POSIX clocks, which MSVC does not have.
+find_path(RECORD_ROOT NAMES source/RECORD.cpp
+        HINTS ENV RECORD_ROOT PATHS /opt/record /Library/record
+        DOC "Checkout of RECORD (optional)" NO_DEFAULT_PATH)
+if (RECORD_ROOT AND EXISTS ${RECORD_ROOT}/source/RECORD.cpp AND NOT MSVC)
     file(READ ${RECORD_ROOT}/source/RECORD.cpp _recordSrc)
     string(FIND "${_recordSrc}" "int main (" _recordMain)
     if (_recordMain GREATER -1)
@@ -171,9 +175,13 @@ endif ()
 # combo.c is copied at configure time into combo-shim/ with its product type
 # widened from double to a 128-bit integer (exact determinants of profits
 # and weights), and compiled alone in src/COMBOGuard.c, which turns the
-# exit() of COMBO on an internal error into an error code. The 128-bit
-# integer is not available with MSVC.
-set(COMBO_ROOT "" CACHE PATH "Directory with combo.c and combo.h (optional)")
+# exit() of COMBO on an internal error into an error code. Without a
+# COMBO_ROOT, the directory is looked for in the environment variable of the
+# same name and in /opt/combo or /Library/combo. The 128-bit integer is not
+# available with MSVC.
+find_path(COMBO_ROOT NAMES combo.c
+        HINTS ENV COMBO_ROOT PATHS /opt/combo /Library/combo
+        DOC "Directory with combo.c and combo.h (optional)" NO_DEFAULT_PATH)
 if (COMBO_ROOT AND EXISTS ${COMBO_ROOT}/combo.c AND
         EXISTS ${COMBO_ROOT}/combo.h AND NOT MSVC)
     file(READ ${COMBO_ROOT}/combo.c _comboSrc)

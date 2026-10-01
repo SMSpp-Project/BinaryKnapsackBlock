@@ -59,14 +59,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   integer core of the instance to RECORD and to COMBO, everything else
   (the mirror of the data, its reduction, the reoptimization of `intReopt`
   and the case with continuous variables) being that of
-  `CoreDPBinaryKnapsackSolver`, from which they derive. They are only built
-  if the sources are given at configure time (`RECORD_ROOT`, a checkout of
-  RECORD; `COMBO_ROOT`, the directory with `combo.c` and `combo.h` of its
-  authors, which are for academic or non-commercial use only and are not
-  distributed); the sources are used as they are, but for the `main()` of
+  `CoreDPBinaryKnapsackSolver`, from which they derive. They are only built,
+  by CMake and by the makefiles, if the sources are found: `RECORD_ROOT` is a
+  checkout of RECORD, which `INSTALL.sh` makes, and `COMBO_ROOT` the
+  directory with `combo.c` and `combo.h` of its authors, which are for
+  academic or non-commercial use only and are not distributed; each is
+  looked for in the variable, in the environment and in the default path of
+  `extlib`. The sources are used as they are, but for the `main()` of
   RECORD, which is cut away, and the products of profits and weights in
   COMBO, which are widened to 128-bit integers so that its tests stay exact
-  past 2^53
+  past 2^53; the tester of the module runs them when the build has them
 
 ### Changed
 
