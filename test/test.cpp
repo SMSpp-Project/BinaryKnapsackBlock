@@ -937,9 +937,11 @@ void test_R3_copy( void )
  check( close( evaluate( in , x ).first , optimum( in ) ) ,
         "R3: map_back_solution() does not bring the optimum back" );
 
- // and forward again, onto a copy whose ColVariable are cleared
+ // and forward again, onto a copy whose free ColVariable are cleared (a
+ // fixed one keeps its value [see ColVariable::set_value()])
  for( Index i = 0 ; i < in.n() ; ++i )
-  c->set_x( i , 0 );
+  if( ! c->is_fixed( i ) )
+   c->set_x( i , 0 );
  b->map_forward_solution( c );
  dVec y( in.n() );
  c->get_x( y.begin() );

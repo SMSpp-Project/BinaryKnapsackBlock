@@ -9,9 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `BinaryKnapsackSolution::is_dual_feasible()` returns false, the Solution
-  holding no dual values [see `Solution::is_dual_feasible()`]
-
 - a tester of the module in `test/`, run by `ctest -L BinaryKnapsackBlock`,
   which needs nothing but the core: on small instances built in memory, whose
   optimum it finds by enumeration, every Solver of the module has to find the
