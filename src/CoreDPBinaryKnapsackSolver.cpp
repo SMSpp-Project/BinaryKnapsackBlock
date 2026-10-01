@@ -276,9 +276,10 @@ double CoreDPBinaryKnapsackSolver::solve_integer_core(
 double CoreDPBinaryKnapsackSolver::last_still_optimal(
                                             std::vector< char > & in ) const
 {
- // the last solution y is optimal for the last core; with the same capacity
- // and items, no weight decreased and those of the taken items unchanged,
- // the new feasible set is within the old one and y is in it. Then, for any
+ // the last solution y is optimal for the last core; with the same items, a
+ // capacity no larger, no weight decreased and those of the taken items
+ // unchanged, the new feasible set is within the old one, and y is in it if
+ // it still fits the capacity. Then, for any
  // z, p'z - p'y = ( pz - py ) + sum_k ( p'_k - p_k )( z_k - y_k ), where the
  // first term is <= 0 and so is every term of the sum but those of the
  // suspect items (y_k = 0 and p'_k > p_k, or y_k = 1 and p'_k < p_k) with
@@ -286,13 +287,16 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
  // optimal; with intReopt 3, it is also when, for each suspect item k, a
  // Lagrangian bound of the new core with x_k = 1 - y_k cannot beat p'y
  const std::size_t m = v_w.size();
- if( ( f_C != f_last_C ) || ( m != v_last_w.size() ) ||
+ if( ( f_C > f_last_C ) || ( m != v_last_w.size() ) ||
      ( v_last_in.size() != m ) ) {
   f_lambda = -1;
   return( - Inf< double >() );
   }
+ if( f_C != f_last_C )         // the break item moves with the capacity
+  f_lambda = -1;
 
  double z = 0;
+ long wy = 0;
  std::vector< std::size_t > sus;
  for( std::size_t k = 0 ; k < m ; ++k ) {
   if( ( v_orig[ k ] != v_last_orig[ k ] ) ||
@@ -308,6 +312,7 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
    if( v_p[ k ] < v_last_p[ k ] )
     sus.push_back( k );
    z += v_p[ k ];
+   wy += v_w[ k ];
    }
   else {
    if( v_w[ k ] < v_last_w[ k ] ) {
@@ -318,6 +323,8 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
     sus.push_back( k );
    }
   }
+ if( wy > f_C )                 // y does not fit the smaller capacity
+  return( - Inf< double >() );
 
  if( ! sus.empty() ) {
   if( f_reopt < 3 )

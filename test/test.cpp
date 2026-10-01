@@ -1059,6 +1059,32 @@ void test_reopt_outcome( void )
 
  b->unregister_Solvers( true );
  delete b;
+
+ // the capacity: one no larger that the previous solution still fits needs
+ // no solve, one it does not fit or a larger one needs a solve
+ in.C = 3;
+ in.P = { 10 , 10 , 1 };
+ b = build( in );
+ s = dynamic_cast< CoreDPBinaryKnapsackSolver * >(
+			   Solver::new_Solver( "CoreDPBinaryKnapsackSolver" ) );
+ b->register_Solver( s );
+ set_int( s , "intReopt" , 3 );
+ check( s->compute() == Solver::kOK , "reopt: the first solve fails" );
+ auto cap = [ & ]( double C , double z , int outcome ,
+		   const std::string & what ) {
+  b->chg_capacity( C );
+  check( s->compute() == Solver::kOK , "reopt: " + what + " fails" );
+  check( std::abs( s->get_var_value() - z ) < 1e-9 ,
+	 "reopt: " + what + " gives a wrong optimum" );
+  check( s->get_reopt_outcome() == outcome ,
+	 "reopt: " + what + " reuses the wrong amount" );
+  };
+ cap( 2 , 20 , 2 , "a smaller capacity the solution fits" );
+ cap( 1 , 10 , 1 , "a capacity the solution does not fit" );
+ cap( 3 , 20 , 1 , "a larger capacity" );
+
+ b->unregister_Solvers( true );
+ delete b;
  }
 
 /// the two children of branch() cover the relaxation, then undo

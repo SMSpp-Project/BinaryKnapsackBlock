@@ -40,9 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `intReopt`: with 1 the previous optimal solution, repaired to the new data,
   is the incumbent the enumeration starts from; with 2 it is moreover
   returned with no solve at all when the changes since cannot have made it
-  suboptimal (same capacity and core items, the taken ones with the same
-  weight and no less profit, the others with no less weight and no more
-  profit); with 3 also when some profit moved against it, provided that for
+  suboptimal (same core items, a capacity no larger that it still fits, the
+  taken ones with the same weight and no less profit, the others with no
+  less weight and no more profit); with 3 also when some profit moved against it, provided that for
   each such item a Lagrangian bound with that item flipped cannot beat it,
   the test being skipped for a doubling number of solves after repeated
   failures

@@ -147,9 +147,9 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   *   \f$ \bar{x} \f$ itself is returned when nothing beats it; 2 = as 1,
   *   and moreover no solve at all when the changes since the last solve
   *   cannot have made any other solution better than \f$ \bar{x} \f$: same
-  *   capacity and same core items, of which the taken ones kept their weight
-  *   and did not lose profit, and the others did not lose weight nor gain
-  *   profit; 3 = as 2, and moreover no solve also when some taken item lost
+  *   core items, a capacity no larger that \f$ \bar{x} \f$ still fits, the
+  *   taken items with the same weight and no less profit, and the others
+  *   with no less weight and no more profit; 3 = as 2, and moreover no solve also when some taken item lost
   *   profit or some other one gained it, if for each such item \f$ k \f$
   *   the Lagrangian bound of the new data (capacity relaxed, multiplier
   *   the efficiency of the break item) with \f$ x_k = 1 - \bar{x}_k \f$
