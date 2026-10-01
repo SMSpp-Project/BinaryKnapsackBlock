@@ -47,6 +47,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the test being skipped for a doubling number of solves after repeated
   failures
 
+- `CoreDPBinaryKnapsackSolver::get_reopt_outcome()` says how much of the
+  previous solve the last one reused: nothing, the previous solution as the
+  incumbent, or the previous solution itself, returned with no solve because
+  the changes could not affect it or because a Lagrangian bound showed it
+
 - the components of the enumeration of `CoreDPBinaryKnapsackSolver` are
   switched by int parameters instead of macros, so that the choice can be
   made per instance in a configuration file: `intSurrogate`,

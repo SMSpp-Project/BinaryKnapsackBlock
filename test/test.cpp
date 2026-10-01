@@ -1015,6 +1015,52 @@ void test_rounding( void )
   }
  }
 
+/// what each kind of change lets the core DP reuse of the previous solve
+
+void test_reopt_outcome( void )
+{
+ // two efficient items fill the capacity, the third one is the break item
+ Inst in;
+ in.C = 2;
+ in.W = { 1 , 1 , 2 };
+ in.P = { 10 , 10 , 1 };
+ in.I.assign( 3 , true );
+ in.fxd.assign( 3 , 0 );
+ auto b = build( in );
+ auto s = dynamic_cast< CoreDPBinaryKnapsackSolver * >(
+			   Solver::new_Solver( "CoreDPBinaryKnapsackSolver" ) );
+ b->register_Solver( s );
+ set_int( s , "intReopt" , 3 );
+ check( s->compute() == Solver::kOK , "reopt: the first solve fails" );
+ check( s->get_reopt_outcome() == 0 , "reopt: the first solve is warm" );
+
+ // a taken item gains profit: no solve at all, no suspect item
+ auto chg = [ & ]( Index i , double p , double z , int outcome ,
+		   const std::string & what ) {
+  std::vector< double > P = { b->get_Profit( 0 ) , b->get_Profit( 1 ) ,
+			      b->get_Profit( 2 ) };
+  P[ i ] = p;
+  b->chg_profits( Block::MF_dbl_sp( P ) , Block::Range( 0 , 3 ) );
+  check( s->compute() == Solver::kOK , "reopt: " + what + " fails" );
+  check( std::abs( s->get_var_value() - z ) < 1e-9 ,
+	 "reopt: " + what + " gives a wrong optimum" );
+  check( s->get_reopt_outcome() == outcome ,
+	 "reopt: " + what + " reuses the wrong amount" );
+  };
+ chg( 0 , 11 , 21 , 2 , "a taken item gaining profit" );
+
+ // the third item gains a little: a suspect, which the Lagrangian bound
+ // with the multiplier of the break item clears (it stays at 21)
+ chg( 2 , 2 , 21 , 3 , "an untaken item gaining a little" );
+
+ // the third item gains a lot: the bound cannot clear it, and the optimum
+ // becomes the third item alone
+ chg( 2 , 30 , 30 , 1 , "an untaken item gaining enough to enter" );
+
+ b->unregister_Solvers( true );
+ delete b;
+ }
+
 /// the two children of branch() cover the relaxation, then undo
 
 void test_branch( void )
@@ -1101,6 +1147,7 @@ int main( void )
   { "R3 copy" , test_R3_copy } ,
   { "fractional weights" , test_fractional_weights } ,
   { "rounding of the bounds" , test_rounding } ,
+  { "reuse of the previous solve" , test_reopt_outcome } ,
   { "branching" , test_branch } };
 
  for( auto & [ name , f ] : cases ) {

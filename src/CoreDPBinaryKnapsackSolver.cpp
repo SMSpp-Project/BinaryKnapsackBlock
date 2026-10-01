@@ -224,6 +224,7 @@ void CoreDPBinaryKnapsackSolver::enumerate_states( void )
  std::vector< char > in;
  if( v_cw.empty() ) {
   double z = - Inf< double >();
+  f_outcome = ( f_reopt && f_prev_valid ) ? 1 : 0;
   if( ( f_reopt >= 2 ) && f_prev_valid )
    z = last_still_optimal( in );
   if( z == - Inf< double >() )
@@ -238,6 +239,7 @@ void CoreDPBinaryKnapsackSolver::enumerate_states( void )
   }
  else {
   std::vector< double > cx;
+  f_outcome = 0;                // not warm started (see intReopt)
   f_obj += solve_with_continuous( in , cx );
   for( std::size_t j = 0 ; j < v_cw.size() ; ++j )
    f_x[ v_corig[ j ] ] = v_ccomp[ j ] ? ( 1.0 - cx[ j ] ) : cx[ j ];
@@ -390,6 +392,7 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
  fprintf( stderr , "CERT ok sus=%zu m=%zu\n" , sus.size() , m );
 #endif
  f_cert_fail = 0;
+ f_outcome = sus.empty() ? 2 : 3;
  in = v_last_in;
  return( z );
  }

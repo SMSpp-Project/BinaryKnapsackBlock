@@ -281,6 +281,15 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
 
  void get_var_solution( Configuration * solc = nullptr ) override;
 
+ /// how much of the previous solve the last one reused [see intReopt]
+ /** Returns 0 if the last compute() solved the instance from scratch, 1 if
+  * it started from the previous solution as the incumbent, 2 if it
+  * returned the previous solution with no solve because the changes could
+  * not have made it suboptimal, and 3 if it did so because a Lagrangian
+  * bound showed it. */
+
+ [[nodiscard]] int get_reopt_outcome( void ) const { return( f_outcome ); }
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -589,6 +598,10 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
 
  mutable int f_cert_fail = 0;
  mutable int f_cert_wait = 0;
+
+ /// what get_reopt_outcome() returns
+
+ mutable int f_outcome = 0;
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
