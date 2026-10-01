@@ -17,7 +17,7 @@ NAME = bkbench
 DIR = .
 
 # common flags
-COMMON_SW = -std=c++17 -ferror-limit=1
+COMMON_SW = -std=c++20 -ferror-limit=1
 
 # debug switches
 SW_DEBUG = -g -glldb -fno-inline $(COMMON_SW)
