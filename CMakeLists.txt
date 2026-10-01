@@ -134,6 +134,72 @@ target_sources(${modName} PRIVATE
         src/GreedyRelaxationBinaryKnapsackSolver.cpp
         src/IncrementalGreedyRelaxationBinaryKnapsackSolver.cpp)
 
+# ----- RECORD (optional) --------------------------------------------------- #
+# RECORDBinaryKnapsackSolver hands the integer core to RECORD
+# (gitlab.com/renanfernandofranco/record), which is distributed as a single
+# source file with a main(): given a checkout in RECORD_ROOT, the file is
+# copied at configure time into record-shim/RECORD.hpp with the main() cut
+# away (the main() of the distributed source ignores the multiplicity it
+# reads and solves a bounded knapsack; the 0-1 problem is set up by the
+# bridge instead), and compiled alone in src/RECORDBridge.cpp, the only file
+# that sees its global names.
+set(RECORD_ROOT "" CACHE PATH "Checkout of RECORD (optional)")
+if (RECORD_ROOT AND EXISTS ${RECORD_ROOT}/source/RECORD.cpp)
+    file(READ ${RECORD_ROOT}/source/RECORD.cpp _recordSrc)
+    string(FIND "${_recordSrc}" "int main (" _recordMain)
+    if (_recordMain GREATER -1)
+        string(SUBSTRING "${_recordSrc}" 0 ${_recordMain} _recordSrc)
+    endif ()
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/record-shim/RECORD.hpp
+            "${_recordSrc}")
+    target_sources(${modName} PRIVATE
+            src/RECORDBridge.cpp
+            src/RECORDBinaryKnapsackSolver.cpp)
+    set_source_files_properties(src/RECORDBridge.cpp PROPERTIES
+            INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/record-shim)
+    if (NOT MSVC)               # its simd pragmas
+        set_source_files_properties(src/RECORDBridge.cpp PROPERTIES
+                COMPILE_OPTIONS "-fopenmp-simd")
+    endif ()
+    message(STATUS "${modName}: RECORD found in ${RECORD_ROOT}.")
+endif ()
+
+# ----- COMBO (optional) ---------------------------------------------------- #
+# COMBOBinaryKnapsackSolver hands the integer core to COMBO, which is
+# distributed by its authors as combo.c and combo.h, for academic or
+# non-commercial use only: given a directory holding them in COMBO_ROOT,
+# combo.c is copied at configure time into combo-shim/ with its product type
+# widened from double to a 128-bit integer (exact determinants of profits
+# and weights), and compiled alone in src/COMBOGuard.c, which turns the
+# exit() of COMBO on an internal error into an error code. The 128-bit
+# integer is not available with MSVC.
+set(COMBO_ROOT "" CACHE PATH "Directory with combo.c and combo.h (optional)")
+if (COMBO_ROOT AND EXISTS ${COMBO_ROOT}/combo.c AND
+        EXISTS ${COMBO_ROOT}/combo.h AND NOT MSVC)
+    file(READ ${COMBO_ROOT}/combo.c _comboSrc)
+    string(REGEX REPLACE "typedef[ \t]+double[ \t]+prod;"
+            "typedef __int128 prod;" _comboWide "${_comboSrc}")
+    if (_comboWide STREQUAL _comboSrc)
+        message(WARNING "${modName}: the type prod of ${COMBO_ROOT}/combo.c "
+                "is not the expected double, COMBO is not built.")
+    else ()
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/combo-shim/combo.c
+                "${_comboWide}")
+        configure_file(${COMBO_ROOT}/combo.h
+                ${CMAKE_CURRENT_BINARY_DIR}/combo-shim/combo.h COPYONLY)
+        target_sources(${modName} PRIVATE
+                src/COMBOGuard.c
+                src/COMBOBridge.cpp
+                src/COMBOBinaryKnapsackSolver.cpp)
+        set_source_files_properties(src/COMBOGuard.c src/COMBOBridge.cpp
+                PROPERTIES INCLUDE_DIRECTORIES
+                ${CMAKE_CURRENT_BINARY_DIR}/combo-shim)
+        set_source_files_properties(src/COMBOGuard.c PROPERTIES
+                COMPILE_OPTIONS "-w")    # its K&R-era code
+        message(STATUS "${modName}: COMBO found in ${COMBO_ROOT}.")
+    endif ()
+endif ()
+
 # When using target_include_directories(), PUBLIC means that any targets
 # that link to this target also need that include directory.
 # Other options are PRIVATE (only affect the current target, not dependencies),

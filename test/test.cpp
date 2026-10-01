@@ -979,6 +979,33 @@ void test_fractional_weights( void )
  run( in , "fractional weights" , false );
  }
 
+/// bounds rounded on values that are integers in exact arithmetic
+/** The core enumeration rounds its upper bounds to integers: with weights
+ * that are multiples of 84 (or of 42) the values computed in floating point
+ * once landed just off the integer, the rounding lost a unit and the
+ * optimum 5202 came out as 5201; the same weights divided by 84 never did. */
+
+void test_rounding( void )
+{
+ const std::vector< std::pair< int , int > > wp = {
+  { 84 , 110 } , { 84 , 110 } , { 84 , 110 } , { 84 , 110 } , { 84 , 109 } ,
+  { 84 , 109 } , { 84 , 109 } , { 336 , 434 } , { 420 , 542 } ,
+  { 420 , 542 } , { 252 , 325 } , { 336 , 433 } , { 252 , 324 } ,
+  { 168 , 216 } , { 252 , 324 } , { 252 , 324 } , { 84 , 108 } ,
+  { 84 , 108 } , { 252 , 324 } , { 420 , 539 } };
+ for( int s : { 1 , 2 , 84 } ) {
+  Inst in;
+  for( const auto & [ w , p ] : wp ) {
+   in.W.push_back( w / s );
+   in.P.push_back( p );
+   in.I.push_back( true );
+   in.fxd.push_back( 0 );
+   }
+  in.C = 4032 / s;
+  run( in , "rounding, weights / " + std::to_string( s ) );
+  }
+ }
+
 /// the two children of branch() cover the relaxation, then undo
 
 void test_branch( void )
@@ -1064,6 +1091,7 @@ int main( void )
   { "netCDF round trip" , test_netcdf } ,
   { "R3 copy" , test_R3_copy } ,
   { "fractional weights" , test_fractional_weights } ,
+  { "rounding of the bounds" , test_rounding } ,
   { "branching" , test_branch } };
 
  for( auto & [ name , f ] : cases ) {

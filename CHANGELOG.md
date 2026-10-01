@@ -36,7 +36,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what a Function revalidating a global pool of hundreds of entries used to
   pay for each of them
 
+- `CoreDPBinaryKnapsackSolver` reoptimizes a sequence of solves, as chosen by
+  `intReopt`: with 1 the previous optimal solution, repaired to the new data,
+  is the incumbent the enumeration starts from; with 2 it is moreover
+  returned with no solve at all when the changes since cannot have made it
+  suboptimal (same capacity and core items, the taken ones with the same
+  weight and no less profit, the others with no less weight and no more
+  profit); with 3 also when some profit moved against it, provided that for
+  each such item a Lagrangian bound with that item flipped cannot beat it,
+  the test being skipped for a doubling number of solves after repeated
+  failures
+
+- the components of the enumeration of `CoreDPBinaryKnapsackSolver` are
+  switched by int parameters instead of macros, so that the choice can be
+  made per instance in a configuration file: `intSurrogate`,
+  `intSurrTrigger` and `intSurrAdapt` for the surrogate relaxation with a
+  cardinality constraint and its adaptive rules, `intDPExtension`,
+  `intDominanceFix`, `intReductionFix`, `intPrimalHeur` and `intLazyCore`;
+  all of them are exact, changing the running time and never the optimum
+
+- `RECORDBinaryKnapsackSolver` and `COMBOBinaryKnapsackSolver` hand the
+  integer core of the instance to RECORD and to COMBO, everything else
+  (the mirror of the data, its reduction, the reoptimization of `intReopt`
+  and the case with continuous variables) being that of
+  `CoreDPBinaryKnapsackSolver`, from which they derive. They are only built
+  if the sources are given at configure time (`RECORD_ROOT`, a checkout of
+  RECORD; `COMBO_ROOT`, the directory with `combo.c` and `combo.h` of its
+  authors, which are for academic or non-commercial use only and are not
+  distributed); the sources are used as they are, but for the `main()` of
+  RECORD, which is cut away, and the products of profits and weights in
+  COMBO, which are widened to 128-bit integers so that its tests stay exact
+  past 2^53
+
 ### Changed
+
+- the enumeration of `CoreDPBinaryKnapsackSolver` does less work per state
+  and generates fewer states: the break item is found by quickselect, the
+  states carry a 64-bit mask of the last items with checkpoints from which
+  the solution is rebuilt, the profits are integers whenever the data allow
+  it, the core is first solved on a small window around the break item as a
+  heuristic, and the items are reduced against the incumbent and fixed by
+  dominance while the enumeration grows
 
 - the data archive is downloaded by version: `DATA_VERSION` in CMakeLists.txt
   names the version of the Package Registry to read, and the archive and the
@@ -73,6 +113,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what it saw before
 
 ### Fixed
+
+- `CoreDPBinaryKnapsackSolver` could return the optimum less one: a bound
+  computed in floating point that is mathematically an integer could land
+  just below it and lose a unit when rounded, which bounds now do past a
+  relative tolerance in the direction that can only loosen them; the case is
+  in the tester
+
+- `CoreDPBinaryKnapsackSolver::compute()` releases the lock of the Solver
+  before passing on an exception thrown by the solve of the core (as the
+  external solvers of the derived classes may do), instead of leaving it
+  locked
 
 - the data archive is extracted by `cmake -E tar`, which also works with the
   tar of macOS, where the option `--warning=no-unknown-keyword` of GNU tar

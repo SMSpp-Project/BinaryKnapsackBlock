@@ -20,7 +20,13 @@ split to two different projects):
     in the MINKNAP / COMBO / RECORD line (break-item enumeration with
     dominance, LP / Martello-Toth / surrogate bounds, divisibility and
     aggregation reductions, primal heuristics), orders of magnitude faster
-    than the full-table DP;
+    than the full-table DP, which can reuse the previous solution after a
+    change of the data, as the incumbent or, when the change provably cannot
+    affect its optimality, as the answer;
+
+  - `RECORDBinaryKnapsackSolver` and `COMBOBinaryKnapsackSolver`, which hand
+    the integer core to the external RECORD and COMBO solvers, with the same
+    reoptimization (optional, see Requirements);
 
   - `GreedyRelaxationBinaryKnapsackSolver`, the exact greedy (Dantzig)
     solver of the continuous relaxation, providing true lower / upper bounds
@@ -57,6 +63,12 @@ the whole framework. What follows is about building it yourself.
 
 - The [SMS++ core library](https://gitlab.com/smspp/smspp) and its
   requirements.
+
+- Optionally, [RECORD](https://gitlab.com/renanfernandofranco/record), whose
+  checkout is given to CMake as `-DRECORD_ROOT=<dir>`, and COMBO, whose
+  `combo.c` and `combo.h` are given as `-DCOMBO_ROOT=<dir>` (they are
+  distributed by their authors for academic or non-commercial use only);
+  without them the corresponding Solvers are not built.
 
 ### Build and install with CMake
 
