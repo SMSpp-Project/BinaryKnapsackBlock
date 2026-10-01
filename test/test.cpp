@@ -1085,6 +1085,37 @@ void test_reopt_outcome( void )
 
  b->unregister_Solvers( true );
  delete b;
+
+ // the weights: an untaken item losing weight is a suspect, which the bound
+ // may clear, a taken item gaining weight is fine while the solution fits,
+ // a taken item losing weight needs a solve
+ in.C = 3;
+ in.W = { 1 , 1 , 3 };
+ b = build( in );
+ s = dynamic_cast< CoreDPBinaryKnapsackSolver * >(
+			   Solver::new_Solver( "CoreDPBinaryKnapsackSolver" ) );
+ b->register_Solver( s );
+ set_int( s , "intReopt" , 3 );
+ check( s->compute() == Solver::kOK , "reopt: the first solve fails" );
+ auto wgt = [ & ]( Index i , double w , double z , int outcome ,
+		   const std::string & what ) {
+  std::vector< double > W = { b->get_Weight( 0 ) , b->get_Weight( 1 ) ,
+			      b->get_Weight( 2 ) };
+  W[ i ] = w;
+  b->chg_weights( Block::MF_dbl_sp( W ) , Block::Range( 0 , 3 ) );
+  check( s->compute() == Solver::kOK , "reopt: " + what + " fails" );
+  check( std::abs( s->get_var_value() - z ) < 1e-9 ,
+	 "reopt: " + what + " gives a wrong optimum" );
+  check( s->get_reopt_outcome() == outcome ,
+	 "reopt: " + what + " reuses the wrong amount" );
+  };
+ wgt( 2 , 2 , 20 , 3 , "an untaken item losing a little weight" );
+ wgt( 0 , 2 , 20 , 2 , "a taken item gaining weight, still fitting" );
+ wgt( 2 , 1 , 20 , 3 , "an untaken item losing more weight" );
+ wgt( 0 , 1 , 21 , 1 , "a taken item losing weight" );
+
+ b->unregister_Solvers( true );
+ delete b;
  }
 
 /// the two children of branch() cover the relaxation, then undo

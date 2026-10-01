@@ -147,16 +147,17 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   *   \f$ \bar{x} \f$ itself is returned when nothing beats it; 2 = as 1,
   *   and moreover no solve at all when the changes since the last solve
   *   cannot have made any other solution better than \f$ \bar{x} \f$: same
-  *   core items, a capacity no larger that \f$ \bar{x} \f$ still fits, the
-  *   taken items with the same weight and no less profit, and the others
-  *   with no less weight and no more profit; 3 = as 2, and moreover no solve also when some taken item lost
-  *   profit or some other one gained it, if for each such item \f$ k \f$
-  *   the Lagrangian bound of the new data (capacity relaxed, multiplier
-  *   the efficiency of the break item) with \f$ x_k = 1 - \bar{x}_k \f$
-  *   cannot beat \f$ \bar{x} \f$ (any better solution must flip one of
-  *   them); after a few failures in a row this test is skipped for a
-  *   number of solves that doubles with each further failure. Only the
-  *   pure 0-1 case (no continuous variable) is warm started.
+  *   core items, a capacity no larger, no weight smaller, \f$ \bar{x} \f$
+  *   still fitting, no taken item with less profit and no other one with
+  *   more; 3 = as 2, and moreover no solve also when some taken item lost
+  *   profit, or some other one gained profit or lost weight, if for each such
+  *   item \f$ k \f$ the Lagrangian bound of the new data (capacity relaxed,
+  *   multiplier the efficiency of the break item) with
+  *   \f$ x_k = 1 - \bar{x}_k \f$ cannot beat \f$ \bar{x} \f$ (any better
+  *   solution must flip one of them); after a few failures in a row this
+  *   test is skipped for a number of solves that doubles with each further
+  *   failure. Only the pure 0-1 case (no continuous variable) is warm
+  *   started.
   *
   * The following ones switch the components of the core enumeration, all
   * exact (they change the running time, never the optimum), so that the

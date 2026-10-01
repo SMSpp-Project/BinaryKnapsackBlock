@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what a Function revalidating a global pool of hundreds of entries used to
   pay for each of them
 
+- the certificate of `CoreDPBinaryKnapsackSolver` (`intReopt` 2 and 3)
+  covers the changes of the weights too: the items of the previous solution
+  may gain weight while it still fits, and the other items may gain weight
+  or lose it, an item losing weight being then checked by the Lagrangian
+  bound as one whose profit moved
+
 - `CoreDPBinaryKnapsackSolver` reoptimizes a sequence of solves, as chosen by
   `intReopt`: with 1 the previous optimal solution, repaired to the new data,
   is the incumbent the enumeration starts from; with 2 it is moreover

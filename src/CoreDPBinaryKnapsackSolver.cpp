@@ -277,15 +277,16 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
                                             std::vector< char > & in ) const
 {
  // the last solution y is optimal for the last core; with the same items, a
- // capacity no larger, no weight decreased and those of the taken items
- // unchanged, the new feasible set is within the old one, and y is in it if
- // it still fits the capacity. Then, for any
+ // capacity no larger and no weight of a taken item decreased, y is feasible
+ // if it still fits, and every new feasible z that takes no untaken item
+ // whose weight decreased is feasible for the last core as well. For such a
  // z, p'z - p'y = ( pz - py ) + sum_k ( p'_k - p_k )( z_k - y_k ), where the
- // first term is <= 0 and so is every term of the sum but those of the
- // suspect items (y_k = 0 and p'_k > p_k, or y_k = 1 and p'_k < p_k) with
- // z_k != y_k: a z beating y flips some suspect item. With none, y is
- // optimal; with intReopt 3, it is also when, for each suspect item k, a
- // Lagrangian bound of the new core with x_k = 1 - y_k cannot beat p'y
+ // first term is <= 0 and so is every term of the sum but those of the items
+ // with y_k = 0 and p'_k > p_k, or y_k = 1 and p'_k < p_k, with z_k != y_k.
+ // Hence, a z beating y flips some suspect item: one of those, or an untaken
+ // item whose weight decreased. With none, y is optimal; with intReopt 3, it
+ // is also when, for each suspect item k, a Lagrangian bound of the new core
+ // with x_k = 1 - y_k cannot beat p'y
  const std::size_t m = v_w.size();
  if( ( f_C > f_last_C ) || ( m != v_last_w.size() ) ||
      ( v_last_in.size() != m ) ) {
@@ -297,6 +298,7 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
 
  double z = 0;
  long wy = 0;
+ bool wchg = false;
  std::vector< std::size_t > sus;
  for( std::size_t k = 0 ; k < m ; ++k ) {
   if( ( v_orig[ k ] != v_last_orig[ k ] ) ||
@@ -304,8 +306,10 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
    f_lambda = -1;
    return( - Inf< double >() );
    }
+  if( v_w[ k ] != v_last_w[ k ] )
+   wchg = true;
   if( v_last_in[ k ] ) {
-   if( v_w[ k ] != v_last_w[ k ] ) {
+   if( v_w[ k ] < v_last_w[ k ] ) {
     f_lambda = -1;
     return( - Inf< double >() );
     }
@@ -314,16 +318,13 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
    z += v_p[ k ];
    wy += v_w[ k ];
    }
-  else {
-   if( v_w[ k ] < v_last_w[ k ] ) {
-    f_lambda = -1;
-    return( - Inf< double >() );
-    }
-   if( v_p[ k ] > v_last_p[ k ] )
+  else
+   if( ( v_p[ k ] > v_last_p[ k ] ) || ( v_w[ k ] < v_last_w[ k ] ) )
     sus.push_back( k );
-   }
   }
- if( wy > f_C )                 // y does not fit the smaller capacity
+ if( wchg )                     // the break item moves with the weights
+  f_lambda = -1;
+ if( wy > f_C )                 // y does not fit the new data
   return( - Inf< double >() );
 
  if( ! sus.empty() ) {
