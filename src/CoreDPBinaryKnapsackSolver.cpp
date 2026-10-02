@@ -286,7 +286,8 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
  // Hence, a z beating y flips some suspect item: one of those, or an untaken
  // item whose weight decreased. With none, y is optimal; with intReopt 3, it
  // is also when, for each suspect item k, a Lagrangian bound of the new core
- // with x_k = 1 - y_k cannot beat p'y
+ // with x_k = 1 - y_k cannot beat p'y, and with intReopt 4 when either that
+ // bound or the Martello-Toth one cannot
  const std::size_t m = v_w.size();
  if( ( f_C > f_last_C ) || ( m != v_last_w.size() ) ||
      ( v_last_in.size() != m ) ) {
@@ -327,6 +328,7 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
  if( wy > f_C )                 // y does not fit the new data
   return( - Inf< double >() );
 
+ bool by_mt = false;           // some suspect item cleared by Martello-Toth
  if( ! sus.empty() ) {
   if( f_reopt < 3 )
    return( - Inf< double >() );
@@ -379,11 +381,70 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
    }
 
   const double tol = 1e-12 * std::max( 1.0 , std::abs( z ) );
+  auto beats = [ & ]( double b ) {
+   return( intp ? ( floor_safe( b ) > z ) : ( b > z + tol ) );
+   };
+
+  // with intReopt 4, a suspect item k that the Lagrangian bound does not
+  // clear gets the Martello-Toth bound with x_k = 1 - y_k: the larger of
+  // the two continuous bounds with the critical item also fixed to 0 and
+  // to 1, which, unlike any continuous bound, sees that an item (say, one
+  // as large as the capacity) is either taken whole or not at all. The
+  // items are sorted by efficiency on the first such item only
+  std::vector< std::size_t > ord;
+  auto lp = [ & ]( std::size_t a , int va , std::size_t b , int vb ,
+                   std::size_t & crit ) {
+   double cap = double( f_C ) - va * double( v_w[ a ] );
+   double val = va * v_p[ a ];
+   if( b < m ) {
+    cap -= vb * double( v_w[ b ] );
+    val += vb * v_p[ b ];
+    }
+   crit = m;
+   if( cap < 0 )
+    return( - Inf< double >() );
+   for( auto j : ord ) {
+    if( ( j == a ) || ( j == b ) )
+     continue;
+    if( double( v_w[ j ] ) <= cap ) {
+     cap -= double( v_w[ j ] );
+     val += v_p[ j ];
+     }
+    else {
+     val += v_p[ j ] * cap / double( v_w[ j ] );
+     crit = j;
+     break;
+     }
+    }
+   return( val );
+   };
+  auto mt_bound = [ & ]( std::size_t k ) {
+   if( ord.empty() ) {
+    ord.resize( m );
+    std::iota( ord.begin() , ord.end() , 0 );
+    std::sort( ord.begin() , ord.end() ,
+               [ this ]( std::size_t a , std::size_t b ) {
+                return( v_p[ a ] * double( v_w[ b ] ) >
+                        v_p[ b ] * double( v_w[ a ] ) );
+                } );
+    }
+   const int v = v_last_in[ k ] ? 0 : 1;
+   std::size_t c , c2;
+   const double l = lp( k , v , m , 0 , c );
+   if( c == m )                // the continuous solution is integer
+    return( l );
+   return( std::max( lp( k , v , c , 0 , c2 ) , lp( k , v , c , 1 , c2 ) ) );
+   };
+
   for( auto k : sus ) {
    const double r = v_p[ k ] - f_lambda * double( v_w[ k ] );
    const double uk = u - ( v_last_in[ k ] ? std::max( 0.0 , r )
                                           : std::max( 0.0 , r ) - r );
-   if( intp ? ( floor_safe( uk ) > z ) : ( uk > z + tol ) ) {
+   if( beats( uk ) && ( f_reopt >= 4 ) && ( ! beats( mt_bound( k ) ) ) ) {
+    by_mt = true;
+    continue;
+    }
+   if( beats( uk ) ) {
 #if CORE_STATS
     fprintf( stderr , "CERT fail sus=%zu m=%zu\n" , sus.size() , m );
 #endif
@@ -400,7 +461,7 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
  fprintf( stderr , "CERT ok sus=%zu m=%zu\n" , sus.size() , m );
 #endif
  f_cert_fail = 0;
- f_outcome = sus.empty() ? 2 : 3;
+ f_outcome = sus.empty() ? 2 : ( by_mt ? 4 : 3 );
  in = v_last_in;
  return( z );
  }

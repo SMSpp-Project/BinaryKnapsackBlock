@@ -156,8 +156,15 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   *   \f$ x_k = 1 - \bar{x}_k \f$ cannot beat \f$ \bar{x} \f$ (any better
   *   solution must flip one of them); after a few failures in a row this
   *   test is skipped for a number of solves that doubles with each further
-  *   failure. Only the pure 0-1 case (no continuous variable) is warm
-  *   started.
+  *   failure; 4 = as 3, and moreover an item \f$ k \f$ whose Lagrangian
+  *   bound beats \f$ \bar{x} \f$ is tried again with the Martello-Toth
+  *   bound with \f$ x_k = 1 - \bar{x}_k \f$, i.e., the larger of the two
+  *   continuous bounds with the critical item also fixed to 0 and to 1,
+  *   which costs one sort of the items by efficiency and a pass over them
+  *   per item, but sees that an item as large as (say) the capacity is
+  *   either taken whole or not at all, as in the subproblems of the
+  *   Lagrangian relaxation of facility location problems. Only the pure
+  *   0-1 case (no continuous variable) is warm started.
   *
   * The following ones switch the components of the core enumeration, all
   * exact (they change the running time, never the optimum), so that the
@@ -286,8 +293,8 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
  /** Returns 0 if the last compute() solved the instance from scratch, 1 if
   * it started from the previous solution as the incumbent, 2 if it
   * returned the previous solution with no solve because the changes could
-  * not have made it suboptimal, and 3 if it did so because a Lagrangian
-  * bound showed it. */
+  * not have made it suboptimal, 3 if it did so because a Lagrangian bound
+  * showed it, and 4 if it needed the Martello-Toth bound for some item. */
 
  [[nodiscard]] int get_reopt_outcome( void ) const { return( f_outcome ); }
 

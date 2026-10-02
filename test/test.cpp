@@ -1116,6 +1116,39 @@ void test_reopt_outcome( void )
 
  b->unregister_Solvers( true );
  delete b;
+
+ // the Martello-Toth bound of intReopt 4: the optimum takes the last three
+ // items (21), the first one gains profit, and the Lagrangian bound with it
+ // taken (25) cannot clear it while the Martello-Toth one (21) can; with
+ // more profit it enters the optimum, and neither bound may clear it
+ in.C = 10;
+ in.W = { 5 , 5 , 2 , 2 };
+ in.P = { 8 , 11 , 8 , 2 };
+ in.I.assign( 4 , true );
+ in.fxd.assign( 4 , 0 );
+ for( int level : { 3 , 4 } ) {
+  b = build( in );
+  s = dynamic_cast< CoreDPBinaryKnapsackSolver * >(
+			   Solver::new_Solver( "CoreDPBinaryKnapsackSolver" ) );
+  b->register_Solver( s );
+  set_int( s , "intReopt" , level );
+  check( s->compute() == Solver::kOK , "reopt: the first solve fails" );
+  const std::string lv = "intReopt " + std::to_string( level ) + ", ";
+  auto mt = [ & ]( double p , double z , int outcome ,
+		   const std::string & what ) {
+   std::vector< double > P = { p , 11 , 8 , 2 };
+   b->chg_profits( Block::MF_dbl_sp( P ) , Block::Range( 0 , 4 ) );
+   check( s->compute() == Solver::kOK , "reopt: " + lv + what + " fails" );
+   check( std::abs( s->get_var_value() - z ) < 1e-9 ,
+	  "reopt: " + lv + what + " gives a wrong optimum" );
+   check( s->get_reopt_outcome() == outcome ,
+	  "reopt: " + lv + what + " reuses the wrong amount" );
+   };
+  mt( 10 , 21 , level == 4 ? 4 : 1 , "an item only Martello-Toth clears" );
+  mt( 14 , 25 , 1 , "an item no bound may clear" );
+  b->unregister_Solvers( true );
+  delete b;
+  }
  }
 
 /// the two children of branch() cover the relaxation, then undo

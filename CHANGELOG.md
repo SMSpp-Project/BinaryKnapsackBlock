@@ -36,6 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what a Function revalidating a global pool of hundreds of entries used to
   pay for each of them
 
+- `intReopt` 4 of `CoreDPBinaryKnapsackSolver`: as 3, and moreover an item
+  that the Lagrangian bound does not clear is tried again with the
+  Martello-Toth bound with that item flipped (the larger of the two
+  continuous bounds with the critical item fixed to 0 and to 1), which sees
+  that an item as large as the capacity is taken whole or not at all, as in
+  the subproblems of the Lagrangian relaxation of facility location
+  problems; `get_reopt_outcome()` returns 4 when it was needed
+
 - the certificate of `CoreDPBinaryKnapsackSolver` (`intReopt` 2 and 3)
   covers the changes of the weights too: the items of the previous solution
   may gain weight while it still fits, and the other items may gain weight
