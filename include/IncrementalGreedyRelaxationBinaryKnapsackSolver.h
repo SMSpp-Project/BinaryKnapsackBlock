@@ -286,6 +286,7 @@ namespace SMSpp_di_unipi_it
         std::vector<double> v_W;          ///< vector of Weights
         std::vector<double> v_P;          ///< vector of Profits
         std::vector<unsigned char> v_fxd; ///< how the x are fixed
+        std::vector<bool> v_I;            ///< vector of Integrality 
         /**< v_fxd[ i ] says whether x_i is fixed, with the encoding
          * 0 = not fixed, 1 = fixed to 0, 2 = fixed to 1 */
         bool f_sense; ///< the sense of the objective
@@ -294,7 +295,7 @@ namespace SMSpp_di_unipi_it
         double f_ciVal;          ///< value of the critical item
         double obj;              ///< the value of the objective
         std::vector<double> v_x; ///< vector of variables
-
+        
         /// the items sorted by nonincreasing efficiency (profit / weight)
         std::vector<Index> sortedVar;
         /// the position of each item in sortedVar
@@ -463,14 +464,13 @@ namespace SMSpp_di_unipi_it
             // otherwise it is a maximization problem and the solution without
             // the critical item is a feasible solution and it provides a lower
             // bound for the original problem
-            if (f_ciVal == 1)
+            if (f_ciVal == 1 || v_I[f_ci] == 0)
                 return (obj);
 
             /* 			if (complemented[f_ci])
                         {
                             return (obj + (1 - f_ciVal) * v_P[f_ci]);
                         } */
-
             return (obj - f_ciVal * v_P[f_ci]);
         }
 
@@ -504,7 +504,7 @@ namespace SMSpp_di_unipi_it
             // otherwise it is a minimization problem and the solution without
             // the critical item is a feasible solution and it provides an
             // upper bound for the original problem
-            if (f_ciVal == 1)
+            if (f_ciVal == 1 || v_I[f_ci] == 0)
                 return (-obj);
 
             /* 			if (complemented[f_ci])
@@ -541,7 +541,7 @@ namespace SMSpp_di_unipi_it
             BinaryKnapsackBlock *BKB = static_cast<BinaryKnapsackBlock *>(this->f_Block);
             BKB->lock(this);
             for (Index i = 0; i < f_N; i++)
-                if (i == f_ci)
+                if (i == f_ci && v_I[f_ci] == 1)
                     BKB->set_x(i, complemented[f_ci] ? (v_x[f_ci] == 1 ? 0 : 1) : (v_x[f_ci] == 1 ? 1 : 0));
                 else
                     BKB->set_x(i, v_x[i]);
@@ -565,7 +565,7 @@ namespace SMSpp_di_unipi_it
             std::vector<double> sol_x(v_x);
             // TODO: whether complemented is needed here, since update_v_x()
             // has already used it
-            if (!reachTheEnd)
+            if (!reachTheEnd && v_I[f_ci] == 1)
                 sol_x[f_ci] = (complemented[f_ci] && !skip[f_ci]) ? (sol_x[f_ci] == 1 ? 0 : 1) : (sol_x[f_ci] == 1 ? 1 : 0);
             //  debug use only
             //  double value = 0;

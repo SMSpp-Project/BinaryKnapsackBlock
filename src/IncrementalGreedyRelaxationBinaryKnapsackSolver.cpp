@@ -564,7 +564,6 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::initializeVariables()
 	skip.assign(f_N, false);
 	for (int i = 0; i < f_N; ++i)
 	{
-
 		if (v_fxd[i] == 1)
 		{
 			v_x[i] = 0;
@@ -635,6 +634,7 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::load()
 		f_N = 0;
 		v_P.clear();
 		v_W.clear();
+		v_I.clear();
 		v_x.clear();
 		v_fxd.clear();
 		sortedVar.clear();
@@ -670,17 +670,20 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::load()
 	v_P.resize(f_N);
 	v_W.resize(f_N);
 	v_fxd.resize(f_N);
+	v_I.resize(f_N);
 	complemented.resize(f_N);
 	// get references to profits, weights and integrality values
 	const auto &P = BKB->get_Profits();
 	const auto &W = BKB->get_Weights();
 	const auto &FXD = BKB->get_fxd();
+	const auto &I = BKB->get_Integrality();
 
 	for (Index i = 0; i < f_N; ++i)
 	{
 		v_P[i] = f_sense ? P[i] : -P[i];
 		v_W[i] = W[i];
 		v_fxd[i] = FXD[i];
+		v_I[i] = I[i];
 		complemented[i] = false;
 		if (v_W[i] < 0 && v_P[i] < 0)
 		{
@@ -832,6 +835,10 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::process_outstanding_Modificati
 						v_W[i] = -v_W[i];
 				}
 				break;
+			case (BinaryKnapsackBlockMod::eChgIntegrality):
+				for (Index i = tmod->rng().first; i < tmod->rng().second; i++)
+					v_I[i] = BKB->get_Integrality(i);
+				break;
 			}
 		}
 
@@ -896,6 +903,10 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::process_outstanding_Modificati
 					else if (complemented[i])
 						v_W[i] = -v_W[i];
 				}
+				break;
+				case (BinaryKnapsackBlockMod::eChgIntegrality):
+				for (auto i : tmod->nms())
+					v_I[i] = BKB->get_Integrality(i);
 				break;
 			}
 		}
