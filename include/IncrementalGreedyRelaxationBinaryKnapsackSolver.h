@@ -37,8 +37,8 @@
 /*--------------------------------------------------------------------------*/
 
 #ifndef __IncrementalGreedyRelaxationBinaryKnapsackSolver
-#define __IncrementalGreedyRelaxationBinaryKnapsackSolver
-/* self-identification: #endif at the end of the file */
+ #define __IncrementalGreedyRelaxationBinaryKnapsackSolver
+                      /* self-identification: #endif at the end of the file */
 
 /*--------------------------------------------------------------------------*/
 /*------------------------------ INCLUDES ----------------------------------*/
@@ -46,7 +46,6 @@
 
 #include "BinaryKnapsackBlock.h"
 
-// #include "RelaxationSolver.h"
 #include "ChangeSolver.h"
 
 /*--------------------------------------------------------------------------*/
@@ -66,533 +65,433 @@ namespace SMSpp_di_unipi_it
 /*--------------------------------------------------------------------------*/
 /*--------------------------- GENERAL NOTES --------------------------------*/
 /*--------------------------------------------------------------------------*/
-    /// ChangeSolver of the continuous relaxation of a BinaryKnapsackBlock
-    /** Solves the continuous (Dantzig) relaxation of the BinaryKnapsackBlock
-     * by the greedy fill along the items sorted by nonincreasing efficiency,
-     * and keeps it across the Changes applied to it [see apply()]: a fixing
-     * updates the residual capacity and the profit accumulated so far, and
-     * moves the position in the efficiency order from which the next
-     * compute() resumes the search of the critical item, instead of
-     * restarting it from the first item. Items with negative weight and
-     * profit are complemented, and the data are normalized to a maximization
-     * [see load()]. */
+/// ChangeSolver of the continuous relaxation of a BinaryKnapsackBlock
+/** Solves the continuous (Dantzig) relaxation of the BinaryKnapsackBlock by
+ * the greedy fill along the items sorted by nonincreasing efficiency, and
+ * keeps it across the Changes applied to it [see apply()]: a fixing updates
+ * the residual capacity and the profit accumulated so far, and moves the
+ * position in the efficiency order from which the next compute() resumes
+ * the search of the critical item, instead of restarting it from the first
+ * item. Items with negative weight and profit are complemented, and the
+ * data are normalized to a maximization [see load()]. */
 
-    class IncrementalGreedyChangeBinaryKnapsackSolver : public virtual ChangeSolver, public Solver
-    {
+class IncrementalGreedyChangeBinaryKnapsackSolver
+ : public virtual ChangeSolver , public Solver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
 /*--------------------------------------------------------------------------*/
 
-    public:
+ public:
+
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PUBLIC TYPES --------------------------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Public types
-         @{ */
 
-        using Index = Block::Index;
+ using Index = Block::Index;
 
-/*--------------------------------------------------------------------------*/
-/*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Constructor and Destructor
-         *  @{ */
+
+ /// constructor
+
+ IncrementalGreedyChangeBinaryKnapsackSolver()
+  : ChangeSolver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) , f_ci( 0 ) ,
+    f_ciVal( 0 ) , obj( - Inf< double >() ) , changedData( true ) ,
+    startingSearchIndex( 0 ) , presolveCapacity( 0 ) , P( 0 ) , C( 0 ) ,
+    reachTheEnd( false ) {}
+
+ /// destructor
+
+ ~IncrementalGreedyChangeBinaryKnapsackSolver() override = default;
 
 /*--------------------------------------------------------------------------*/
-        /// constructor
-
-        IncrementalGreedyChangeBinaryKnapsackSolver() : ChangeSolver(),
-                                                        sortedVar(),
-                                                        skip(),
-                                                        varToSorted(),
-                                                        v_x(),
-                                                        changedData(true),
-                                                        complemented(),
-                                                        startingSearchIndex(0),
-                                                        presolveCapacity(0),
-                                                        C(0),
-                                                        P(0),
-                                                        reachTheEnd(false),
-                                                        f_N(0),
-                                                        f_C(0),
-                                                        f_sense(true),
-                                                        f_ci(0),
-                                                        f_ciVal(0),
-                                                        obj(-Inf<double>()) {
-                                                        };
-
-/*--------------------------------------------------------------------------*/
-        /// destructor
-
-        ~IncrementalGreedyChangeBinaryKnapsackSolver() override = default;
-
-/** @} ---------------------------------------------------------------------*/
 /*-------------------------- OTHER INITIALIZATIONS -------------------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Other initializations @{ */
 
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-        /// set the (pointer to the) Block that the Solver has to solve
+ /// set the (pointer to the) Block that the Solver has to solve
 
-        void set_Block(Block *block) override;
+ void set_Block( Block * block ) override;
 
-/** @} ---------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Solving a relaxation of the Binary Knapsack encoded by the
-         * current BinaryKnapsackBlock @{ */
 
-        /// solve the continuous relaxation, resuming from the last Changes
+ /// solve the continuous relaxation, resuming from the last Changes
 
-        int compute(bool changedvars = true) override;
+ int compute( bool changedvars = true ) override;
 
-/** @} ---------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Accessing the found solutions (if any)
-         *  @{ */
+
+ /// return a valid lower bound on the optimal objective function value
+ /** For a minimization problem the relaxation optimum is a lower bound; for
+  * a maximization one, the value of the greedy solution without the
+  * critical item, which is feasible, or the relaxation optimum itself if
+  * the critical item is a continuous variable (the greedy solution is then
+  * feasible as it is). */
+
+ OFValue get_lb( void ) override {
+  if( ! f_sense )
+   return( - obj );
+  if( ( f_ciVal == 1 ) || ( ( f_ci < f_N ) && ( ! v_I[ f_ci ] ) ) )
+   return( obj );
+  return( obj - f_ciVal * v_P[ f_ci ] );
+  }
 
 /*--------------------------------------------------------------------------*/
-        /// return a valid lower bound on the optimal objective function value
-        /** For a minimization problem the relaxation optimum is a lower bound;
-         * for a maximization one, the value of the greedy solution without
-         * the critical item, which is feasible. */
+ /// return a valid upper bound on the optimal objective function value
+ /** Symmetric to get_lb(): the relaxation optimum for a maximization
+  * problem, the value of the greedy solution without the critical item for
+  * a minimization one. */
 
-        OFValue get_lb(void) override
-        {
-
-            // if it is a minimization problem, the optimal value is a lower
-            // bound for the original problem
-            if (!f_sense)
-                return (-obj);
-
-            // otherwise it is a maximization problem and the solution without
-            // the critical item is a feasible solution and it provides a lower
-            // bound for the original problem
-            if (f_ciVal == 1)
-                return (obj);
-
-            /* 			if (complemented[f_ci] < 0)
-                        {
-                            return (obj + (1 - f_ciVal) * v_P[f_ci]);
-                        }
-             */
-            return (obj - f_ciVal * v_P[f_ci]);
-        }
+ OFValue get_ub( void ) override {
+  if( f_sense )
+   return( obj );
+  if( ( f_ciVal == 1 ) || ( ( f_ci < f_N ) && ( ! v_I[ f_ci ] ) ) )
+   return( - obj );
+  return( - obj + f_ciVal * v_P[ f_ci ] );
+  }
 
 /*--------------------------------------------------------------------------*/
-        /// return a valid upper bound on the optimal objective function value
-        /** Symmetric to get_lb(): the relaxation optimum for a maximization
-         * problem, the value of the greedy solution without the critical item
-         * for a minimization one. */
+ /// return the value of the (current) solution
+ /** Returns the value of the current solution, with the sign of the sense
+  * of the problem (f_sense). */
 
-        OFValue get_ub(void) override
-        {
-
-            // if it is a maximization problem, the optimal value is an upper
-            // bound for the original problem
-            if (f_sense)
-                return (obj);
-
-            // otherwise it is a minimization problem and the solution without
-            // the critical item is a feasible solution and it provides an
-            // upper bound for the original problem
-            if (f_ciVal == 1)
-                return (-obj);
-
-            /* 			if (complemented[f_ci])
-                        {
-                            return (-obj - (1 - f_ciVal) * v_P[f_ci]);
-                        } */
-
-            return (-obj + f_ciVal * v_P[f_ci]);
-        }
+ OFValue get_var_value( void ) override { return( f_sense ? obj : - obj ); }
 
 /*--------------------------------------------------------------------------*/
-        /// return the value of the (current) solution
-        /** Returns the value of the current solution, with the sign of the
-         * sense of the problem (f_sense). */
+ /// tells whether a solution of the relaxation is available
 
-        OFValue get_var_value() override { return f_sense ? obj : -obj; }
+ bool has_var_solution( void ) override { return( f_ci <= f_N ); }
 
 /*--------------------------------------------------------------------------*/
-        /// tells whether a solution of the relaxation is available
+ /// tells whether the solution of the relaxation is feasible for it
 
-        bool has_var_solution(void) override { return (/*f_ci >= 0 && */ f_ci <= f_N); }
-
-        /// tells whether the solution of the relaxation is feasible for it
-
-        bool is_var_feasible(void) override { return has_var_solution(); }
+ bool is_var_feasible( void ) override { return( has_var_solution() ); }
 
 /*--------------------------------------------------------------------------*/
-        /// write the current solution in the variables of the Block
+ /// write the current solution, the critical item rounded, in the Block
 
-        void get_var_solution(Configuration *solc = nullptr) override;
-
-        /// physically construct the Solution, the critical item rounded
-
-        Solution *get_Solution(Configuration *solc) override;
+ void get_var_solution( Configuration * solc = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/
-        /// read the solution currently stored in the BinaryKnapsackBlock
-        void set_var_blockSolution(void)
-        {
-            auto BKB = dynamic_cast<BinaryKnapsackBlock *>(this->f_Block);
-            if (BKB == nullptr)
-                throw(std::invalid_argument("IncrementalGreedyChangeBinaryKnapsackSolver::set_var_blockSolution: the Block is not a BinaryKnapsackBlock"));
-            BKB->get_x(v_x.begin());
-        }
+ /// physically construct the current Solution, the critical item rounded
+
+ Solution * get_Solution( Configuration * solc = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/
+ /// read the solution currently stored in the BinaryKnapsackBlock
 
-/** @} ---------------------------------------------------------------------*/
+ void set_var_blockSolution( void ) {
+  auto BKB = dynamic_cast< BinaryKnapsackBlock * >( f_Block );
+  if( ! BKB )
+   throw( std::invalid_argument( "IncrementalGreedyChangeBinaryKnapsack"
+				 "Solver::set_var_blockSolution: the Block "
+				 "is not a BinaryKnapsackBlock" ) );
+  BKB->get_x( v_x.begin() );
+  }
+
+/*--------------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Changing the data of the model
-         *  @{ */
 
-        /// add a Modification to the list of those to be processed
-        /** Reacts to a NBModification by reloading the instance and clearing
-         * the list of the Modification; any other one is stored, to be
-         * processed by the next compute(). */
+ /// add a Modification to the list of those to be processed
+ /** Reacts to a NBModification by reloading the instance and clearing the
+  * list of the Modification; any other one is stored, to be processed by
+  * the next compute(). */
 
-        void add_Modification(sp_Mod &mod) override;
+ void add_Modification( sp_Mod & mod ) override;
 
 /*--------------------------------------------------------------------------*/
+ /// apply the Change; (un)fixing Changes are applied internally
+ /** The (un)fixing Changes [see
+  * IncrementalGreedyRelaxationBinaryKnapsackSolver::branch()] update the
+  * state of the greedy fill (residual capacity, accumulated profit and
+  * position in the efficiency order) without reaching the Block, and so
+  * does the returned undo Change, which for a branching Change carries the
+  * state of the parent in its last three data (the position, the residual
+  * capacity and the profit), so that undoing a child brings the parent
+  * back; any other Change is forwarded to the Block. */
 
-        /// apply the Change; (un)fixing Changes are applied internally
-        /** The (un)fixing Changes [see branch()] update the state of the
-         * greedy fill (residual capacity, accumulated profit and position in
-         * the efficiency order) without reaching the Block, and so does the
-         * returned undo Change; any other Change is forwarded to the Block. */
-        Change *apply(Change *, bool doUndo = false) override;
+ Change * apply( Change * chg , bool doUndo = false ) override;
 
-/** @} ---------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 
-    protected:
-/*--------------------------------------------------------------------------*/
-/*---------------------------- PROTECTED FIELDS ----------------------------*/
-/*--------------------------------------------------------------------------*/
-
-        // the data of the Binary Knapsack instance
-
-        Index f_N;                        ///< the number of Items
-        double f_C;                       ///< the Capacity of the Knapsack
-        std::vector<double> v_W;          ///< vector of Weights
-        std::vector<double> v_P;          ///< vector of Profits
-        std::vector<unsigned char> v_fxd; ///< how the x are fixed
-        std::vector<bool> v_I;            ///< vector of Integrality 
-        /**< v_fxd[ i ] says whether x_i is fixed, with the encoding
-         * 0 = not fixed, 1 = fixed to 0, 2 = fixed to 1 */
-        bool f_sense; ///< the sense of the objective
-
-        Index f_ci;              ///< index of the critical item
-        double f_ciVal;          ///< value of the critical item
-        double obj;              ///< the value of the objective
-        std::vector<double> v_x; ///< vector of variables
-        
-        /// the items sorted by nonincreasing efficiency (profit / weight)
-        std::vector<Index> sortedVar;
-        /// the position of each item in sortedVar
-        std::vector<Index> varToSorted;
-        /// the items that compute() skips (fixed, or settled by their signs)
-        std::vector<bool> skip;
-        /// whether the data have changed (Modification, or first load)
-        bool changedData = true;
-        /// whether the item is complemented, i.e., its profit and weight
-        /// have changed sign
-        std::vector<bool> complemented;
-        /// the position in sortedVar from which compute() resumes the search
-        /// of the critical item (after a branching, say)
-        Index startingSearchIndex;
-        /// the capacity left by the fixed items alone, for a quick
-        /// feasibility check
-        double presolveCapacity;
-        /// the profit of the greedy solution without the critical item
-        double P;
-        /// the residual capacity of the greedy solution without the critical
-        /// item
-        double C;
-        /// whether the greedy fill reached the last item, i.e., there is no
-        /// critical item
-        bool reachTheEnd;
+ protected:
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PROTECTED METHODS ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-        /// write in v_x the greedy solution, the critical item at f_ciVal
+ /// write in v_x the greedy solution, the critical item at f_ciVal
 
-        void update_v_x()
-        {
-            double xval = 1;
-            for (Index i : sortedVar)
-            {
-                if (skip[i])
-                {
-                    if (i == f_ci)
-                        xval = 0;
-                    continue;
-                }
+ void update_v_x( void ) {
+  double xval = 1;
+  for( Index i : sortedVar ) {
+   if( skip[ i ] ) {
+    if( i == f_ci )
+     xval = 0;
+    continue;
+    }
+   if( i == f_ci ) {
+    v_x[ i ] = complemented[ i ] ? 1 - f_ciVal : f_ciVal;
+    xval = 0;
+    }
+   else
+    v_x[ i ] = complemented[ i ] ? 1 - xval : xval;
+   }
+  }
 
-                if (i == f_ci)
-                {
-                    v_x[i] = complemented[i] ? 1 - f_ciVal : f_ciVal;
-                    xval = 0;
-                }
-                else
-                {
-                    v_x[i] = complemented[i] ? 1 - xval : xval;
-                }
-            }
-        }
+/*--------------------------------------------------------------------------*/
+ /// the greedy solution with the critical item rounded away, if any
+ /** Returns v_x [see update_v_x()] with the critical item, if the greedy
+  * fill has one and it is an integer variable, rounded to 0 in the space of
+  * the complemented items, i.e., to 1 if it is complemented: the solution
+  * of the original problem. */
+
+ std::vector< double > rounded_x( void ) {
+  update_v_x();
+  std::vector< double > sol( v_x );
+  if( ( ! reachTheEnd ) && ( f_ci < f_N ) && v_I[ f_ci ] )
+   sol[ f_ci ] = complemented[ f_ci ] ? 1 : 0;
+  return( sol );
+  }
+
+/*--------------------------------------------------------------------------*/
+/*---------------------------- PROTECTED FIELDS ----------------------------*/
+/*--------------------------------------------------------------------------*/
+
+ // the data of the Binary Knapsack instance
+
+ Index f_N;                        ///< the number of items
+ double f_C;                       ///< the capacity of the knapsack
+ std::vector< double > v_W;        ///< the weights
+ std::vector< double > v_P;        ///< the profits
+ std::vector< bool > v_I;          ///< whether each item is integer
+
+ std::vector< unsigned char > v_fxd;  ///< how the x are fixed
+ /**< v_fxd[ i ] says whether x_i is fixed, with the encoding 0 = not fixed,
+  * 1 = fixed to 0, 2 = fixed to 1 */
+
+ bool f_sense;                     ///< the sense of the objective
+
+ Index f_ci;                       ///< index of the critical item
+ double f_ciVal;                   ///< value of the critical item
+ double obj;                       ///< the value of the objective
+ std::vector< double > v_x;        ///< the solution
+
+ /// the items sorted by nonincreasing efficiency (profit / weight)
+ std::vector< Index > sortedVar;
+
+ /// the position of each item in sortedVar
+ std::vector< Index > varToSorted;
+
+ /// the items that compute() skips (fixed, or settled by their signs)
+ std::vector< bool > skip;
+
+ /// whether the data have changed (Modification, or first load)
+ bool changedData;
+
+ /// whether the item is complemented, i.e., its profit and weight have
+ /// changed sign
+ std::vector< bool > complemented;
+
+ /// the position in sortedVar from which compute() resumes the search of
+ /// the critical item (after a branching, say)
+ Index startingSearchIndex;
+
+ /// the capacity left by the fixed items alone, for a quick feasibility
+ /// check
+ double presolveCapacity;
+
+ /// the profit of the greedy solution without the critical item
+ double P;
+
+ /// the residual capacity of the greedy solution without the critical item
+ double C;
+
+ /// whether the greedy fill reached the last item, i.e., there is no
+ /// critical item
+ bool reachTheEnd;
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 
-    private:
+ private:
+
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE METHODS ------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-        /// load the Binary Knapsack instance
-        void load();
+ /// load the Binary Knapsack instance
 
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-        /// process all the pending modifications
+ void load( void );
 
-        void process_outstanding_Modification();
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-        /// initialize the state of the greedy fill after (re)loading the
-        /// instance
+/*--------------------------------------------------------------------------*/
+ /// process all the pending Modification
 
-        void initializeVariables();
+ void process_outstanding_Modification( void );
 
-        SMSpp_insert_in_factory_h; // insert it in the factory
+/*--------------------------------------------------------------------------*/
+ /// initialize the state of the greedy fill after (re)loading the instance
+
+ void initializeVariables( void );
+
+/*--------------------------------------------------------------------------*/
+ /// unfix item i, which was fixed to value
+ /** Updates the capacity left by the fixed items and moves the position
+  * from which compute() resumes back to the item, if it is before. */
+
+ void unfix_item( Index i , double value );
+
+/*--------------------------------------------------------------------------*/
+ /// fix item i to value (0 or 1)
+ /** Updates the solution, the capacity left by the fixed items, the profit
+  * and residual capacity of the greedy fill and the position from which
+  * compute() resumes, as the fixing requires. */
+
+ void fix_item( Index i , double value );
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-/*--------------------------------------------------------------------------*/
+ SMSpp_insert_in_factory_h;  // insert it in the factory
+
 /*--------------------------------------------------------------------------*/
 
-    }; // end( class( IncrementalGreedyChangeBinaryKnapsackSolver ) )
+ };  // end( class( IncrementalGreedyChangeBinaryKnapsackSolver ) )
 
 /*--------------------------------------------------------------------------*/
 /*---------- CLASS IncrementalGreedyRelaxationBinaryKnapsackSolver ---------*/
 /*--------------------------------------------------------------------------*/
 /*--------------------------- GENERAL NOTES --------------------------------*/
 /*--------------------------------------------------------------------------*/
-    /// RelaxationSolver of the continuous relaxation of a BinaryKnapsackBlock
-    /** Extends IncrementalGreedyChangeBinaryKnapsackSolver with the
-     * RelaxationSolver interface: the true bounds and solution of the
-     * original integer problem, and the branching on the critical item. */
+/// RelaxationSolver of the continuous relaxation of a BinaryKnapsackBlock
+/** Extends IncrementalGreedyChangeBinaryKnapsackSolver with the
+ * RelaxationSolver interface: the true bounds and solution of the original
+ * integer problem, and the branching on the critical item. */
 
-    class IncrementalGreedyRelaxationBinaryKnapsackSolver : public IncrementalGreedyChangeBinaryKnapsackSolver,
-                                                            public virtual RelaxationSolver
-    {
+class IncrementalGreedyRelaxationBinaryKnapsackSolver
+ : public IncrementalGreedyChangeBinaryKnapsackSolver ,
+   public virtual RelaxationSolver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
 /*--------------------------------------------------------------------------*/
 
-    public:
+ public:
+
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PUBLIC TYPES --------------------------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Public types
-         @{ */
 
-        using Index = Block::Index;
+ using Index = Block::Index;
 
-/*--------------------------------------------------------------------------*/
-/*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Constructor and Destructor
-         *  @{ */
+
+ /// constructor
+
+ IncrementalGreedyRelaxationBinaryKnapsackSolver()
+  : IncrementalGreedyChangeBinaryKnapsackSolver() {}
+
+ /// destructor
+
+ ~IncrementalGreedyRelaxationBinaryKnapsackSolver() override = default;
 
 /*--------------------------------------------------------------------------*/
-        /// constructor
+/*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
+/*--------------------------------------------------------------------------*/
 
-        IncrementalGreedyRelaxationBinaryKnapsackSolver() : IncrementalGreedyChangeBinaryKnapsackSolver() {};
+ /// branch on the critical item
+ /** The children fix the critical item to 1 and to 0 (only to 0 if it does
+  * not fit the capacity left by the fixed items). Besides the value, the
+  * data of each child carry, in its last two positions, the residual
+  * capacity and the profit of the greedy solution of the child, so that
+  * apply() picks up the state of the parent without recomputing it. */
+
+ std::vector< Change * > branch( void ) override;
 
 /*--------------------------------------------------------------------------*/
-        /// destructor
-
-        ~IncrementalGreedyRelaxationBinaryKnapsackSolver() override = default;
-
-/*--------------------------------------------------------------------------*/
-        /// branch on the critical item
-        /** The children fix the critical item to 1 and to 0 (only to 0 if it
-         * does not fit the capacity left by the fixed items). Besides the
-         * value, the data of each child carry, in its last two positions, the
-         * residual capacity and the profit of the greedy solution of the
-         * child, so that apply() picks up the state of the parent without
-         * recomputing it. */
-
-        std::vector<Change *> branch() override;
-
-/** @} ---------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
-        /** @name Accessing the found solutions (if any)
-         *  @{ */
+
+ /// return a valid lower bound on the optimal value of the true problem
+ /** As get_lb(). */
+
+ OFValue get_true_lb( void ) override { return( get_lb() ); }
 
 /*--------------------------------------------------------------------------*/
-        /// return a valid lower bound on the optimal value of the true problem
-        /** As get_lb(). TODO: the correctness of the true bounds is to be
-         * checked. */
+ /// return a valid upper bound on the optimal value of the true problem
+ /** As get_ub(). */
 
-        OFValue get_true_lb(void) override
-        {
-
-            // if it is a minimization problem, the optimal value is a lower
-            // bound for the original problem
-            if (!f_sense)
-                return (-obj);
-
-            // otherwise it is a maximization problem and the solution without
-            // the critical item is a feasible solution and it provides a lower
-            // bound for the original problem
-            if (f_ciVal == 1 || v_I[f_ci] == 0)
-                return (obj);
-
-            /* 			if (complemented[f_ci])
-                        {
-                            return (obj + (1 - f_ciVal) * v_P[f_ci]);
-                        } */
-            return (obj - f_ciVal * v_P[f_ci]);
-        }
-
-        /* TODO: whether get_ub() and get_lb(), already defined in the base
-         * IncrementalGreedyChangeBinaryKnapsackSolver, should rather be the
-         * following ones, the relaxed solution being infeasible:
-                 OFValue get_ub(void) override
-                {
-                    return f_sense ? obj : -obj;
-                }
-
-                OFValue get_lb(void) override
-                {
-                    return !f_sense ? -obj : obj;
-                }
-        */
+ OFValue get_true_ub( void ) override { return( get_ub() ); }
 
 /*--------------------------------------------------------------------------*/
-        /// return a valid upper bound on the optimal value of the true problem
-        /** As get_ub(). TODO: the correctness of the true bounds is to be
-         * checked. */
+ /// tells whether a true solution (a solution of the true original problem
+ /// and not of the relaxed one solved by RelaxationSolver) is available
+ /** Called after compute() this method has to return true if a true
+  * solution of the original problem (not the relaxed one solved by
+  * RelaxationSolver) is available to be read with get_true_var_solution().
+  * The greedy solution with the critical item rounded away always is. */
 
-        OFValue get_true_ub(void) override
-        {
-
-            // if it is a maximization problem, the optimal value is an upper
-            // bound for the original problem
-            if (f_sense)
-                return (obj);
-
-            // otherwise it is a minimization problem and the solution without
-            // the critical item is a feasible solution and it provides an
-            // upper bound for the original problem
-            if (f_ciVal == 1 || v_I[f_ci] == 0)
-                return (-obj);
-
-            /* 			if (complemented[f_ci])
-                        {
-                            return (-obj - (1 - f_ciVal) * v_P[f_ci]);
-                        } */
-
-            return (-obj + f_ciVal * v_P[f_ci]);
-        }
+ bool has_true_var_solution( void ) override { return( f_ci <= f_N ); }
 
 /*--------------------------------------------------------------------------*/
-        /// tells whether a true solution (a solution of the true original
-        /// problem and not of the relaxed one solved by RelaxationSolver) is
-        /// available
-        /** Called after compute() this method has to return true if a true
-         * solution of the original problem (not the relaxed one solved by
-         * RelaxationSolver) is available to be read with
-         * get_true_var_solution().
-         *
-         * Once "the first" solution (if ever) has been read, new ones may be
-         * produced, if the Solver allows it, by means of
-         * new_true_var_solution().*/
+ /// write the current true solution in the variables of the Block
+ /** The true solution is the greedy one with the critical item rounded
+  * away [see rounded_x()]. */
 
-        bool has_true_var_solution(void) override { return (/* f_ci >= 0 &&  */ f_ci <= f_N); }
+ void get_true_var_solution( Configuration * solc = nullptr ) override {
+  auto x = rounded_x();
+  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+  BKB->lock( this );
+  BKB->set_x( x.begin() );
+  BKB->unlock( this );
+  }
 
 /*--------------------------------------------------------------------------*/
-        /// write the current true solution in the variables of the Block
-        /** The true solution is the greedy one with the critical item rounded.
-         * TODO: its correctness is to be checked. */
+ /// after has_true_var_solution(), whether another true solution exists
 
-        void get_true_var_solution(Configuration *solc = nullptr) override
-        {
-            update_v_x();
-            BinaryKnapsackBlock *BKB = static_cast<BinaryKnapsackBlock *>(this->f_Block);
-            BKB->lock(this);
-            for (Index i = 0; i < f_N; i++)
-                if (i == f_ci && v_I[f_ci] == 1)
-                    BKB->set_x(i, complemented[f_ci] ? (v_x[f_ci] == 1 ? 0 : 1) : (v_x[f_ci] == 1 ? 1 : 0));
-                else
-                    BKB->set_x(i, v_x[i]);
-            BKB->unlock(this);
-        }
+ bool new_true_var_solution( void ) override { return( false ); }
 
 /*--------------------------------------------------------------------------*/
-        /// after has_true_var_solution(), whether another true solution exists
+ /// physically construct the true Solution, the critical item rounded
 
-        bool new_true_var_solution(void) override
-        {
-            return false;
-        }
+ Solution * get_true_solution( Configuration * solc = nullptr ) override {
+  return( new BinaryKnapsackSolution( rounded_x() ) );
+  }
 
 /*--------------------------------------------------------------------------*/
-        /// physically construct the true Solution, the critical item rounded
+/*--------------------- PRIVATE PART OF THE CLASS --------------------------*/
+/*--------------------------------------------------------------------------*/
 
-        Solution *get_true_solution(Configuration *solc) override
-        {
-            update_v_x();
-            std::vector<double> sol_x(v_x);
-            // TODO: whether complemented is needed here, since update_v_x()
-            // has already used it
-            if (!reachTheEnd && v_I[f_ci] == 1)
-                sol_x[f_ci] = (complemented[f_ci] && !skip[f_ci]) ? (sol_x[f_ci] == 1 ? 0 : 1) : (sol_x[f_ci] == 1 ? 1 : 0);
-            //  debug use only
-            //  double value = 0;
-            //  for (Index i = 0; i < f_N; ++i)
-            //	value += sol_x[i] * v_P[i];
-            return new BinaryKnapsackSolution(std::move(sol_x));
-        }
+ private:
+
+/*--------------------------------------------------------------------------*/
+/*--------------------------- PRIVATE FIELDS -------------------------------*/
+/*--------------------------------------------------------------------------*/
+
+ SMSpp_insert_in_factory_h;  // insert it in the factory
 
 /*--------------------------------------------------------------------------*/
 
-/** @} ---------------------------------------------------------------------*/
-/*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
-/*--------------------------------------------------------------------------*/
+ };  // end( class( IncrementalGreedyRelaxationBinaryKnapsackSolver ) )
 
-        SMSpp_insert_in_factory_h; // insert it in the factory
+}  // end( namespace SMSpp_di_unipi_it )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-    }; // end( class( IncrementalGreedyRelaxationBinaryKnapsackSolver ) )
-
-} // end( namespace SMSpp_di_unipi_it )
-
-/*--------------------------------------------------------------------------*/
-/*--------------------------------------------------------------------------*/
-
-#endif /* IncrementalGreedyRelaxationBinaryKnapsackSolver.h included */
+#endif  /* IncrementalGreedyRelaxationBinaryKnapsackSolver.h included */
 
 /*--------------------------------------------------------------------------*/
 /*---- End File IncrementalGreedyRelaxationBinaryKnapsackSolver.h ----------*/

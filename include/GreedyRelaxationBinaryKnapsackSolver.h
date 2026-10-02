@@ -11,10 +11,6 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Federica Di Pasquale \n
- *         Dipartimento di Informatica \n
- *         Universita' di Pisa \n
- *
  * \author Donato Meoli \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
@@ -26,8 +22,8 @@
 /*--------------------------------------------------------------------------*/
 
 #ifndef __GreedyRelaxationBinaryKnapsackSolver
-#define __GreedyRelaxationBinaryKnapsackSolver
-/* self-identification: #endif at the end of the file */
+ #define __GreedyRelaxationBinaryKnapsackSolver
+                      /* self-identification: #endif at the end of the file */
 
 /*--------------------------------------------------------------------------*/
 /*------------------------------ INCLUDES ----------------------------------*/
@@ -56,318 +52,314 @@ namespace SMSpp_di_unipi_it
 /*--------------------------------------------------------------------------*/
 /*--------------------------- GENERAL NOTES --------------------------------*/
 /*--------------------------------------------------------------------------*/
-  /// Solver of the continuous (Dantzig) relaxation of a BinaryKnapsackBlock
-  /** Thin wrapper around the machinery of BinaryKnapsackSolver: compute()
-   * normalizes the instance and solves its continuous relaxation by the greedy
-   * fractional fill, which also identifies the *critical* (fractional) item -
-   * the natural branching candidate, see branch(). Besides the relaxation
-   * value, valid true lower / upper bounds on the original mixed-binary
-   * problem are available [see get_true_lb() / get_true_ub()]. */
+/// Solver of the continuous (Dantzig) relaxation of a BinaryKnapsackBlock
+/** Thin wrapper around the machinery of BinaryKnapsackSolver: compute()
+ * normalizes the instance and solves its continuous relaxation by the greedy
+ * fractional fill, which also identifies the *critical* (fractional) item -
+ * the natural branching candidate, see branch(). Besides the relaxation
+ * value, valid true lower / upper bounds on the original mixed-binary
+ * problem are available [see get_true_lb() / get_true_ub()]. */
 
-  class GreedyRelaxationBinaryKnapsackSolver : public BinaryKnapsackSolver,
-                                               public RelaxationSolver
-  {
+class GreedyRelaxationBinaryKnapsackSolver : public BinaryKnapsackSolver ,
+                                             public RelaxationSolver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
 /*--------------------------------------------------------------------------*/
 
-  public:
+public:
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
 /*--------------------------------------------------------------------------*/
-    /** @name Constructor and Destructor
-     *  @{ */
+/** @name Constructor and Destructor
+ *  @{ */
 
 /*--------------------------------------------------------------------------*/
-    /// constructor
+ /// constructor
 
-    GreedyRelaxationBinaryKnapsackSolver() : BinaryKnapsackSolver(),
-                                             f_ci(0),
-                                             obj(-Inf<double>())
-    {
-      f_fi = FracInfo{-1, 1, false, false, 0, 0};
-    }
+ GreedyRelaxationBinaryKnapsackSolver() : BinaryKnapsackSolver() ,
+                                          f_ci( 0 ) ,
+                                          obj( - Inf< double >() ) {
+  f_fi = FracInfo{ -1 , 1 , false , false , 0 , 0 };
+  }
 
 /*--------------------------------------------------------------------------*/
-    /// destructor
+ /// destructor
 
-    ~GreedyRelaxationBinaryKnapsackSolver() override = default;
+ ~GreedyRelaxationBinaryKnapsackSolver() override = default;
+
+/** @} ---------------------------------------------------------------------*/
+/*-------------------------- OTHER INITIALIZATIONS -------------------------*/
+/*--------------------------------------------------------------------------*/
+/** @name Other initializations
+ *  @{ */
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
-    /** @name Solving a relaxation of the Binary Knapsack encoded by the
-     * current BinaryKnapsackBlock @{ */
+/** @name Solving a relaxation of the Binary Knapsack encoded by the current
+ * BinaryKnapsackBlock @{ */
 
-    /// solve the continuous relaxation of the BinaryKnapsackBlock
+ /// solve the continuous relaxation of the BinaryKnapsackBlock
 
-    int compute(bool changedvars = true) override;
+ int compute( bool changedvars = true ) override;
 
 /** @} ---------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
-    /** @name Accessing the found solutions (if any)
-     *  @{ */
+/** @name Accessing the found solutions (if any)
+ *  @{ */
 
 /*--------------------------------------------------------------------------*/
-    /// return a valid lower bound on the optimal objective function value
-    /** For a minimisation problem the relaxation optimum itself is a valid
-     * lower bound. For a maximisation problem the bound is the value of a
-     * feasible solution of the original problem: the greedy one without the
-     * fractional part \f$ \phi \, p_c \f$ of the critical item \f$ c \f$ - or
-     * the greedy solution itself when there is no critical item or it is a
-     * continuous variable (the solution is then feasible as it is). */
+ /// return a valid lower bound on the optimal objective function value
+ /** For a minimisation problem the relaxation optimum itself is a valid
+  * lower bound. For a maximisation problem the bound is the value of a
+  * feasible solution of the original problem: the greedy one without the
+  * fractional part \f$ \phi \, p_c \f$ of the critical item \f$ c \f$ - or
+  * the greedy solution itself when there is no critical item or it is a
+  * continuous variable (the solution is then feasible as it is). */
 
-    OFValue get_true_lb(void) override
-    {
-      return (f_sense ? true_feasible_value() : -obj);
-    }
-
-/*--------------------------------------------------------------------------*/
-    /// return a valid upper bound on the optimal objective function value
-    /** Symmetric to get_true_lb(): the relaxation optimum for a maximisation
-     * problem, (minus) the value of the feasible greedy solution without the
-     * critical fraction for a minimisation one. */
-
-    OFValue get_true_ub(void) override
-    {
-      return (f_sense ? obj : -true_feasible_value());
-    }
+ OFValue get_true_lb( void ) override {
+  return( f_sense ? true_feasible_value() : - obj );
+  }
 
 /*--------------------------------------------------------------------------*/
-    /// tells whether a true solution (a solution of the true original problem
-    /// and not of the relaxed one solved by this Solver) is available
-    /** Called after compute() this method has to return true if a true
-     * solution of the original problem (not the relaxed one solved by this
-     * Solver) is available to be read with get_true_var_solution().
-     *
-     * Once "the first" solution (if ever) has been read, new ones may be
-     * produced, if the Solver allows it, by means of
-     * new_true_var_solution(). */
+ /// return a valid upper bound on the optimal objective function value
+ /** Symmetric to get_true_lb(): the relaxation optimum for a maximisation
+  * problem, (minus) the value of the feasible greedy solution without the
+  * critical fraction for a minimisation one. */
 
-    bool has_true_var_solution(void) override;
+ OFValue get_true_ub( void ) override {
+  return( f_sense ? obj : - true_feasible_value() );
+  }
 
 /*--------------------------------------------------------------------------*/
-    /// write the current true (rounded greedy) solution in the Block
+ /// tells whether a true solution (a solution of the true original problem
+ /// and not of the relaxed one solved by this Solver) is available
+ /** Called after compute() this method has to return true if a true solution
+  * of the original problem (not the relaxed one solved by this Solver)
+  * is available to be read with get_true_var_solution().
+  *
+  * Once "the first" solution (if ever) has been read, new ones may be
+  * produced, if the Solver allows it, by means of new_true_var_solution().*/
 
-    void get_true_var_solution(Configuration *solc = nullptr) override
-    {
-      auto BKB = static_cast<BinaryKnapsackBlock *>(f_Block);
-      auto sol = rounded_x();
-      BKB->set_x(sol.begin());
-    }
-
-/*--------------------------------------------------------------------------*/
-    /// physically construct the Solution of the relaxation
-    /** The Solution holds the (possibly fractional) greedy solution, built out
-     * of the data structures of the Solver without going through the Block. */
-
-    Solution *get_Solution(Configuration *solc = nullptr) override
-    {
-      return (new BinaryKnapsackSolution(std::vector<double>(f_x)));
-    }
+ bool has_true_var_solution( void ) override;
 
 /*--------------------------------------------------------------------------*/
-    /// valid lower bound on the optimal value of the TRUE problem
-    /** For a maximisation problem this is the value of the rounded greedy
-     * solution [see rounded_x()], for a minimisation one the value of the
-     * relaxation. */
+ /// write the current true (rounded greedy) solution in the Block
 
-    OFValue get_lb(void) override { return (get_true_lb()); }
-
-    /// valid upper bound on the optimal value of the TRUE problem (symmetric)
-
-    OFValue get_ub(void) override { return (get_true_ub()); }
+ void get_true_var_solution( Configuration * solc = nullptr ) override {
+  auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+  auto sol = rounded_x();
+  BKB->set_x( sol.begin() );
+  }
 
 /*--------------------------------------------------------------------------*/
-    /// after has_true_var_solution(), whether another true solution exists
-    /** There is never more than one: the rounded greedy solution. */
+ /// physically construct the Solution of the relaxation
+ /** The Solution holds the (possibly fractional) greedy solution, built out
+  * of the data structures of the Solver without going through the Block. */
 
-    bool new_true_var_solution(void) override { return (false); }
-
-/*--------------------------------------------------------------------------*/
-    /// write the current solution in the variables of the BinaryKnapsackBlock
-
-    void get_var_solution(Configuration *solc = nullptr) override;
+ Solution * get_Solution( Configuration * solc = nullptr ) override {
+  return( new BinaryKnapsackSolution( std::vector< double >( f_x ) ) );
+  }
 
 /*--------------------------------------------------------------------------*/
-    /// return the value of the (current) solution
-    /** Return the value of the current solution. Change the sign according
-     * to the sense of the problem (f_sense). */
+ /// valid lower bound on the optimal value of the TRUE problem
+ /** For a maximisation problem this is the value of the rounded greedy
+  * solution [see rounded_x()], for a minimisation one the value of the
+  * relaxation. */
 
-    OFValue get_var_value() override { return (f_sense ? obj : -obj); }
+ OFValue get_lb( void ) override { return( get_true_lb() ); }
+
+ /// valid upper bound on the optimal value of the TRUE problem (symmetric)
+
+ OFValue get_ub( void ) override { return( get_true_ub() ); }
+
+/*--------------------------------------------------------------------------*/
+ /// write the current true solution in the variables of the Block
+
+ bool new_true_var_solution( void ) override { return( false ); }
+
+/*--------------------------------------------------------------------------*/
+ /// write the current solution in the variables of the BinaryKnapsackBlock
+
+ void get_var_solution( Configuration * solc = nullptr ) override;
+
+/*--------------------------------------------------------------------------*/
+ /// return the value of the (current) solution
+ /** Return the value of the current solution. Change the sign according
+  * to the sense of the problem (f_sense). */
+
+ OFValue get_var_value() override { return( f_sense ? obj : - obj ); }
 
 /** @} ---------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
-    /** @name Changing the data of the model
-     *  @{ */
+/** @name Changing the data of the model
+ *  @{ */
 
-    /// branch on the critical item, pegging by reduced cost along the way
-    /** The two children fix the critical item to 0 and to 1. Each also
-     * carries, when an incumbent is available (in the "DoubleProperties"
-     * universe of the GlobalInformation [see GlobalInformation.h]), the
-     * reduced-cost (Martello-Toth) pegging valid in this subtree: with
-     * \f$ \rho \f$ the efficiency of the critical item and \f$ U \f$ the
-     * relaxation value, flipping a free integer item \f$ j \f$ away from its
-     * greedy value \f$ \bar{x}_j \f$ cannot yield more than
-     * \f$ U - | p_j - \rho w_j | \f$ (in the normalized maximisation
-     * sense), so whenever this does not beat the incumbent \f$ x_j \f$ is
-     * fixed at \f$ \bar{x}_j \f$ throughout the subtree. These node-local
-     * fixings travel folded into the branching Change (a GroupChange), exactly
-     * as the critical disjunction does, rather than through any external
-     * protocol. */
+ /// branch on the critical item, pegging by reduced cost along the way
+ /** The two children fix the critical item to 0 and to 1. Each also carries,
+  * when an incumbent is available (in the "DoubleProperties" universe of
+  * the GlobalInformation [see GlobalInformation.h]), the
+  * reduced-cost (Martello-Toth) pegging valid in this subtree: with
+  * \f$ \rho \f$ the efficiency of the critical item and \f$ U \f$ the
+  * relaxation value, flipping a free integer item \f$ j \f$ away from its
+  * greedy value \f$ \bar{x}_j \f$ cannot yield more than
+  * \f$ U - | p_j - \rho w_j | \f$ (in the normalized maximisation sense), so
+  * whenever this does not beat the incumbent \f$ x_j \f$ is fixed at
+  * \f$ \bar{x}_j \f$ throughout the subtree. These node-local fixings travel
+  * folded into the branching Change (a GroupChange), exactly as the critical
+  * disjunction does, rather than through any external protocol. */
 
-    std::vector<Change *> branch() override;
-
-/*--------------------------------------------------------------------------*/
-    /// classify the effect of a Modification on an enumeration tree
-    /** The knapsack-specific classification below is not active: classify()
-     * is not redefined, and the default of ChangeSolver [see
-     * ChangeSolver::classify()] applies. Once enabled, it would classify as
-     * follows [see RelaxationSolver::classify()]:
-     * profit changes only touch the objective, weight / capacity changes only
-     * touch the feasible region, while (un)fixings, integrality and sense
-     * changes reshape the branching space (they invalidate the enumeration
-     * tree structure, not merely its bounds) and so, together with anything
-     * structural (NBModification, GroupModification, that update_instance()
-     * would not unpack either), conservatively invalidate everything.
-     * Non-physical Modification (the abstract-representation mirror of the
-     * physical ones) are classified eModNothing, consistently with
-     * update_instance() ignoring them: this Solver only listens to the
-     * physical representation. */
-
-    /*  [[nodiscard]] int classify( const sp_Mod & mod ) override {
-      const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
-      if( ! tmod ) {
-       if( std::dynamic_pointer_cast< NBModification >( mod ) ||
-           std::dynamic_pointer_cast< GroupModification >( mod ) )
-        return( eModEverything );
-       return( eModNothing );    // abstract-representation mirror: ignored
-       }
-      switch( tmod->type() ) {
-       case( BinaryKnapsackBlockMod::eChgProfit ):
-        return( eModObjective );
-       case( BinaryKnapsackBlockMod::eChgWeight ):
-       case( BinaryKnapsackBlockMod::eChgCapacity ):
-        return( eModFeasibility );
-       default:    // incl. (un)fixings, integrality and sense changes
-        return( eModEverything );
-       }
-      } */
+ std::vector< Change * > branch() override;
 
 /*--------------------------------------------------------------------------*/
-    /// physically construct the true (rounded greedy) Solution
+ /// classify the effect of a Modification on an enumeration tree
+ /** The knapsack-specific classification below is not active: classify()
+  * is not redefined, and the default of ChangeSolver [see
+  * ChangeSolver::classify()] applies. Once enabled, it would classify as
+  * follows [see RelaxationSolver::classify()]:
+  * profit changes only touch the objective, weight / capacity changes only
+  * touch the feasible region, while (un)fixings, integrality and sense
+  * changes reshape the branching space (they invalidate the enumeration
+  * tree structure, not merely its bounds) and so, together with anything
+  * structural (NBModification, GroupModification, that update_instance()
+  * would not unpack either), conservatively invalidate everything.
+  * Non-physical Modification (the abstract-representation mirror of the
+  * physical ones) are classified eModNothing, consistently with
+  * update_instance() ignoring them: this Solver only listens to the
+  * physical representation. */
 
-    Solution *get_true_solution(Configuration *solc = nullptr) override
-    {
-      return (new BinaryKnapsackSolution(rounded_x()));
-    }
+ /*
+ [[nodiscard]] int classify( const sp_Mod & mod ) override {
+  const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
+  if( ! tmod ) {
+   if( std::dynamic_pointer_cast< NBModification >( mod ) ||
+       std::dynamic_pointer_cast< GroupModification >( mod ) )
+    return( eModEverything );
+   return( eModNothing );    // abstract-representation mirror: ignored
+   }
+  switch( tmod->type() ) {
+   case( BinaryKnapsackBlockMod::eChgProfit ):
+    return( eModObjective );
+   case( BinaryKnapsackBlockMod::eChgWeight ):
+   case( BinaryKnapsackBlockMod::eChgCapacity ):
+    return( eModFeasibility );
+   default:    // incl. (un)fixings, integrality and sense changes
+    return( eModEverything );
+   }
+  }
+ */
 
 /*--------------------------------------------------------------------------*/
-    /// apply the Change; (un)fixing Changes are applied INTERNALLY
-    /** The (un)fixing Changes produced by branch() - and, in general, any
-     * BinaryKnapsackBlockChange of eFixX / eUnfixX type - are applied to the
-     * internal mirror of the instance [see
-     * BinaryKnapsackSolver::apply_to_mirror()], NOT to the Block: the next
-     * compute() then re-solves the relaxation under the new fixings. Any
-     * other Change is forwarded to the Block. */
+ /// physically construct the true (rounded greedy) Solution
 
-    Change *apply(Change *chg, bool doUndo = false) override
-    {
-      // a GroupChange (e.g., the composed undo of branching plus separation,
-      // see BranchAndXSolver) is applied by decomposing it; the sub-undos are
-      // composed back in reverse order
-      if (auto grp = dynamic_cast<GroupChange *>(chg))
-      {
-        GroupChange *undo = doUndo ? new GroupChange() : nullptr;
-        for (auto sub : grp->sub_Changes())
-          if (auto u = apply(sub, doUndo); u && undo)
-            undo->add_front(u);
-        return (undo);
-      }
+ Solution * get_true_solution( Configuration * solc = nullptr ) override {
+  return( new BinaryKnapsackSolution( rounded_x() ) );
+  }
 
-      auto CHG = dynamic_cast<BinaryKnapsackBlockChange *>(chg);
+/*--------------------------------------------------------------------------*/
+ /// apply the Change; (un)fixing Changes are applied INTERNALLY
+ /** The (un)fixing Changes produced by branch() - and, in general, any
+  * BinaryKnapsackBlockChange of eFixX / eUnfixX type - are applied to the
+  * internal mirror of the instance [see
+  * BinaryKnapsackSolver::apply_to_mirror()], NOT to the Block: the next
+  * compute() then re-solves the relaxation under the new fixings. Any
+  * other Change is forwarded to the Block. */
 
-      if (!CHG)
-        throw(std::invalid_argument("GreedyRelaxationBinaryKnapsackSolver::"
-                                    "apply: the Change must be a BinaryKnapsackBlockChange"));
+ Change * apply( Change * chg , bool doUndo = false ) override {
+  // a GroupChange (e.g., the composed undo of branching plus separation,
+  // see BranchAndXSolver) is applied by decomposing it; the sub-undos are
+  // composed back in reverse order
+  if( auto grp = dynamic_cast< GroupChange * >( chg ) ) {
+   GroupChange * undo = doUndo ? new GroupChange() : nullptr;
+   for( auto sub : grp->sub_Changes() )
+    if( auto u = apply( sub , doUndo ) ; u && undo )
+     undo->add_front( u );
+   return( undo );
+   }
 
-      if ((CHG->type() != BinaryKnapsackBlockChange::eFixX) &&
-          (CHG->type() != BinaryKnapsackBlockChange::eUnfixX))
-        return (CHG->apply(f_Block, doUndo)); // not an (un)fix: to the Block
+  auto CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
 
-      return (apply_to_mirror(CHG, doUndo));
-    }
+  if( ! CHG )
+   throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
+          "apply: the Change must be a BinaryKnapsackBlockChange" ) );
+
+  if( ( CHG->type() != BinaryKnapsackBlockChange::eFixX ) &&
+      ( CHG->type() != BinaryKnapsackBlockChange::eUnfixX ) )
+   return( CHG->apply( f_Block , doUndo ) );  // not an (un)fix: to the Block
+
+  return( apply_to_mirror( CHG , doUndo ) );
+  }
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 
-  protected:
+protected:
+
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PROTECTED METHODS ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-    /// the value (in the maximisation sense) of the greedy solution made
-    /// feasible for the TRUE problem by dropping the critical fraction
+ /// the value (in the maximisation sense) of the greedy solution made
+ /// feasible for the TRUE problem by dropping the critical fraction
 
-    double true_feasible_value(void) const
-    {
-      if ((f_fi.orig < 0) || f_fi.cont) // feasible as it is
-        return (obj);
-      return (obj - f_fi.cfrac * f_fi.cp);
-    }
+ double true_feasible_value( void ) const {
+  if( ( f_fi.orig < 0 ) || f_fi.cont )   // feasible as it is
+   return( obj );
+  return( obj - f_fi.cfrac * f_fi.cp );
+  }
 
 /*--------------------------------------------------------------------------*/
-    /// the greedy solution rounded to a true-feasible one
-    /** Returns the greedy solution with the critical item, if any and not a
-     * continuous one, rounded away (to 0, i.e., to 1 in the original space if
-     * complemented): the solution whose value true_feasible_value()
-     * returns. */
+ /// the greedy solution rounded to a true-feasible one
+ /** Returns the greedy solution with the critical item, if any and not a
+  * continuous one, rounded away (to 0, i.e., to 1 in the original space if
+  * complemented): the solution whose value true_feasible_value() returns. */
 
-    std::vector<double> rounded_x(void) const
-    {
-      std::vector<double> sol(f_x);
-      if ((f_fi.orig >= 0) && (!f_fi.cont))
-        sol[f_fi.orig] = f_fi.comp ? 1 : 0;
-      return (sol);
-    }
+ std::vector< double > rounded_x( void ) const {
+  std::vector< double > sol( f_x );
+  if( ( f_fi.orig >= 0 ) && ( ! f_fi.cont ) )
+   sol[ f_fi.orig ] = f_fi.comp ? 1 : 0;
+  return( sol );
+  }
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PROTECTED FIELDS ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-    Index f_ci;    ///< index (in the Block) of the critical item
-    FracInfo f_fi; ///< the critical item of the last compute()
-    double obj;    ///< the value of the relaxation (maximisation sense)
+ Index f_ci;        ///< index (in the Block) of the critical item
+ FracInfo f_fi;     ///< the critical item of the last compute()
+ double obj;        ///< the value of the relaxation (maximisation sense)
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 
-  private:
+private:
+
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-    SMSpp_insert_in_factory_h;
-    // insert GreedyRelaxationBinaryKnapsackSolver in the factory
+ SMSpp_insert_in_factory_h;
+ // insert GreedyRelaxationBinaryKnapsackSolver in the factory
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-  }; // end( class( GreedyRelaxationBinaryKnapsackSolver ) )
+ }; // end( class( GreedyRelaxationBinaryKnapsackSolver ) )
 
-} // end( namespace SMSpp_di_unipi_it )
+}  // end( namespace SMSpp_di_unipi_it )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-#endif /* GreedyRelaxationBinaryKnapsackSolver.h included */
+#endif  /* GreedyRelaxationBinaryKnapsackSolver.h included */
 
 /*--------------------------------------------------------------------------*/
 /*------------ End File GreedyRelaxationBinaryKnapsackSolver.h -------------*/
