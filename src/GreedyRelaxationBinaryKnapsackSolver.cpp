@@ -153,7 +153,7 @@ std::vector<Change *> GreedyRelaxationBinaryKnapsackSolver::branch()
   }
 
   return (branches);
-}
+} // end( GreedyRelaxationBinaryKnapsackSolver::branch() )
 
 /*--------------------------------------------------------------------------*/
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/

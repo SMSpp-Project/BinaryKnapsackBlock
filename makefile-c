@@ -33,9 +33,6 @@
 # *H   is the list of all include files
 # *INC is the -I< include directories >
 
-FF_SDR ?= $(HOME)/fastflow
-FF_INC  = -I$(FF_SDR)
-
 # define input macros for SMS++ complete makefile, then include it
 SMS++SDR = $(BKBkSDR)/../SMS++
 include $(SMS++SDR)/lib/makefile-c
@@ -48,7 +45,7 @@ include $(BKBkSDR)/makefile
 # append external -I directives to BKBkINC, BKBkOBJ and BKBkH as defined
 # by the makefile, thus the := assignment has to be used (use GNU make)
 BKBkOBJ := $(BKBkOBJ) $(SMS++OBJ)
-BKBkINC := $(BKBkINC) $(FF_INC) $(SMS++INC)
+BKBkINC := $(BKBkINC) $(SMS++INC)
 
 # external libraries for BKBlock
 BKBkLIB = $(SMS++LIB) -pthread

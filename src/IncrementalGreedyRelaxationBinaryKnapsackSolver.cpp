@@ -1,16 +1,17 @@
 /*--------------------------------------------------------------------------*/
-/*--------------------- File IncrementalGreedyRelaxationBinaryKnapsackSolver.cpp --------------------*/
+/*----- File IncrementalGreedyRelaxationBinaryKnapsackSolver.cpp -----------*/
 /*--------------------------------------------------------------------------*/
 /** @file
- * Implementation of the *concrete* class IncrementalGreedyRelaxationBinaryKnapsackSolver,
- *  which
- * implements the RelaxationSolver concept [see RelaxationSolver.h] and the
- * Solver concept [see Solver.h] for solving the continuous relaxation of a
+ * Implementation of the *concrete* classes
+ * IncrementalGreedyChangeBinaryKnapsackSolver and
+ * IncrementalGreedyRelaxationBinaryKnapsackSolver, which implement the
+ * ChangeSolver concept [see ChangeSolver.h] and the RelaxationSolver one
+ * [see RelaxationSolver.h] for solving the continuous relaxation of a
  * Knapsack problem as represented by a BinaryKnapsackBlock.
  *
- * \author 	Filippo Magi
- * 	   		Dipartimento di Informatica \n
- * 			Universita' di Pisa \n
+ * \author Filippo Magi \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
  *
  * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
@@ -19,7 +20,6 @@
  * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
- *
  *
  * Copyright &copy by Filippo Magi, Federica Di Pasquale, Antonio Frangioni
  */
@@ -53,13 +53,14 @@ using c_Subset = Block::c_Subset;
 /*----------------------------- STATIC MEMBERS -----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-// register IncrementalGreedyRelaxationBinaryKnapsackSolver  and GreedyHeuristicSolver to the factory
+// register IncrementalGreedyChangeBinaryKnapsackSolver and
+// IncrementalGreedyRelaxationBinaryKnapsackSolver to the factory
 
 SMSpp_insert_in_factory_cpp_1(IncrementalGreedyChangeBinaryKnapsackSolver);
 SMSpp_insert_in_factory_cpp_1(IncrementalGreedyRelaxationBinaryKnapsackSolver);
 
 /*--------------------------------------------------------------------------*/
-/*------------------ METHODS OF IncrementalGreedyRelaxationBinaryKnapsackSolver ---------------------*/
+/*------- METHODS OF IncrementalGreedyChangeBinaryKnapsackSolver ----------*/
 /*--------------------------------------------------------------------------*/
 /*-------------------------- OTHER INITIALIZATIONS -------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -92,17 +93,15 @@ int IncrementalGreedyChangeBinaryKnapsackSolver::compute(bool changedvars)
 		C = presolveCapacity;
 	}
 	changedData = false;
-	// preprocessing
+	// C, P and startingSearchIndex are kept up to date by apply()
 
-	// C,P and startingSearchIndex updated during apply
-
-	// presolve capacity consider
+	// the fixed items alone exceed the capacity: the problem is empty
 	if (presolveCapacity < 0)
 	{
 		unlock();
 		return (kInfeasible);
 	}
-	// solve continuous knapsack
+	// solve the continuous knapsack, resuming from startingSearchIndex
 
 	// f_ci = sortedVar.back(); // index of the critical item
 	f_ciVal = 1; // variable value of the critical item
@@ -128,11 +127,13 @@ int IncrementalGreedyChangeBinaryKnapsackSolver::compute(bool changedvars)
 
 	f_ci = reachTheEnd ? sortedVar.back() : f_ci;
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// -
 
 	obj = P + (f_ciVal == 0 || f_ciVal == 1 ? 0 : v_P[f_ci] * f_ciVal); // update objective value
 
-	// std::cout << "Obj " << obj << " true lb: " << get_true_lb() << std::endl;
+	// std::cout << "Obj " << obj << " true lb: " << get_true_lb() <<
+	// std::endl;
 
 Return_OK:
 
@@ -143,8 +144,12 @@ Return_OK:
 
 /*--------------------------------------------------------------------------*/
 
-// in case we have multiple items, we consider in last position the profit of the father solution and, in the second to last position the capacity of the father solution, to be used in the branching change
-// gives the value for wthich f_i is fixed to, the residual capacity after the fix and the profit of that node considering the fix
+/*------- METHODS OF IncrementalGreedyRelaxationBinaryKnapsackSolver -------*/
+/*--------------------------------------------------------------------------*/
+
+// the data of each child are the value the critical item is fixed to, the
+// residual capacity after the fixing and the profit of the child, the last
+// two being what apply() takes as the state of the child
 std::vector<Change *> IncrementalGreedyRelaxationBinaryKnapsackSolver::branch()
 {
 
@@ -193,7 +198,8 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 	else if (BinaryKnapsackBlockSbstChange *change = dynamic_cast<BinaryKnapsackBlockSbstChange *>(CHG))
 	{
 		Block::Subset subset = change->nms();
-		// TODO valutare se è giusto usare la move
+		// TODO: whether moving the data out of the Change is right, since it
+		// leaves the Change empty
 		std::vector<double> data = std::move(change->data());
 		Change *undo = nullptr;
 		// branching case
@@ -202,16 +208,19 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 			// in last position there is the profit in case we branch
 			P = data.back();
 			data.pop_back();
-			// in second to last position there is the residual capacity in case we branch
+			// in second to last position there is the residual capacity in
+			// case we branch
 			C = data.back();
 			data.pop_back();
 		}
 		// create the undo change
 		if (doUndo)
 		{
-			// don't insert information about C and P, since there will be a fix that will give that values before compute
+			// no C and P in the undo, since a fixing gives them before the
+			// next
+			// compute()
 			// std::vector<double> inversed_data(subset.size());
-			// TODO capire perché faccio inversed data
+			// TODO: why the data were inverted
 			/* 			for (Index i = 0; i < subset.size(); ++i)
 						{
 							inversed_data[i] = (1 - data[i]);
@@ -256,7 +265,10 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 						P -= v_P[z];
 						C += v_W[z];
 					}
-				// TODO capire se e come è necessario trattare il caso fisso a 1  AND f_ci != startingSearchIndex (quindi ho avuto unfix)
+				// TODO: whether and how the case of a fixing to 1 with f_ci
+				// not at
+				// startingSearchIndex (i.e., after an unfixing) is to be
+				// handled
 				else if (data[idx] == 1 && startingSearchIndex > varToSorted[f_ci])
 				{
 					for (Index j = varToSorted[f_ci]; j < startingSearchIndex; ++j)
@@ -314,7 +326,8 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 			// in last position there is the profit in case we branch
 			P = data.back();
 			data.pop_back();
-			// in second to last position there is the residual capacity in case we branch
+			// in second to last position there is the residual capacity in
+			// case we branch
 			C = data.back();
 			data.pop_back();
 		}
@@ -353,9 +366,14 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 				f_ci = i;
 
 				//   fixing to 1
-				// Main idea: if I fix to 1 after and I don't have a enough capacity, I come back to search the first element that permit to have a feasible region, and then I restart from that element my new search
+				// if the fixing to 1 leaves too little capacity, go back to
+				// the first
+				// item from which the capacity is enough, and resume the
+				// search from
+				// there
 
-				//   TODO capire se è possibile gone back in questo caso (probabilmente no)
+				// TODO: whether going back is possible in this case (probably
+				// not)
 				if (data[i - rng.first] == 1 && /* varToSorted[i] == startingSearchIndex  &&*/ C < 0)
 				{
 					for (int j = varToSorted[i]; j >= 0; --j)
@@ -372,8 +390,13 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 						}
 					}
 				}
-				// TODO capire se e come è necessario trattare il caso fisso a 1  AND f_ci != startingSearchIndex (quindi ho avuto unfix)
-				// Main idea: in this case I fix after at least one unfix, then I have to update correctly my node
+				// TODO: whether and how the case of a fixing to 1 with f_ci
+				// not at
+				// startingSearchIndex (i.e., after an unfixing) is to be
+				// handled: the
+				// fixing comes after at least one unfixing, and the state of
+				// the node
+				// has to be updated accordingly
 				else if (data[i - rng.first] == 1 /* && startingSearchIndex > varToSorted[i] */)
 				{
 					if (startingSearchIndex > varToSorted[i])
@@ -398,7 +421,7 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 							C += v_W[z];
 						}
 				}
-				// per capire cosa succede per davvore, dovrebbe venire coperto alla fine
+				// to see what really happens; it should be covered at the end
 				/* 				else if (data[i - rng.first] == 1 && startingSearchIndex < varToSorted[i])
 								{
 									for (Index j = startingSearchIndex; j <= varToSorted[i]; ++j)
@@ -414,10 +437,11 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 				//  fixing to zero
 				else if (data[i - rng.first] == 0)
 				{
-					// I move back
+					// move back
 					if (startingSearchIndex > varToSorted[i])
 					{
-						// TODO undestand why I change the value of P and C accordly (actually commented)
+						// TODO: why P and C were changed accordingly (now
+						// commented out)
 						/* 						for (Index j = varToSorted[i]; j <= startingSearchIndex; ++j)
 												{
 													Index z = sortedVar[j];
@@ -430,7 +454,9 @@ Change *IncrementalGreedyChangeBinaryKnapsackSolver::apply(Change *chg, bool doU
 						// C += data[startingSearchIndex] * v_W[i];
 						startingSearchIndex = varToSorted[i];
 					}
-					// main idea, i have to start from SSI, I update the value C and P from the position of the fix to SSI
+					// start from startingSearchIndex, updating C and P from it
+					// to the
+					// position of the fixed item
 					else if (startingSearchIndex < varToSorted[i])
 						for (Index j = startingSearchIndex; j <= varToSorted[i]; ++j)
 						{
@@ -495,7 +521,8 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::add_Modification(sp_Mod &mod)
 	while (f_mod_lock.test_and_set(std::memory_order_acquire))
 		;
 
-	// if NBModification, reload BinaryKnapsack instance and clear modifications
+	// if NBModification, reload BinaryKnapsack instance and clear
+	// modifications
 	if (const auto tmod = std::dynamic_pointer_cast<NBModification>(mod))
 	{
 		load();
@@ -515,7 +542,7 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::add_Modification(sp_Mod &mod)
 
 void IncrementalGreedyChangeBinaryKnapsackSolver::initializeVariables()
 {
-	// order sortedVar according to profit/weight ratio
+	// sort the items by nonincreasing profit / weight ratio
 	C = 0;
 	P = 0;
 	startingSearchIndex = 0;
@@ -523,7 +550,7 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::initializeVariables()
 	varToSorted.resize(f_N);
 	// complemented.resize(f_N);
 	std::iota(sortedVar.begin(), sortedVar.end(), 0);
-	// sort indeces in order of profit/weight
+	// sort the indices by profit / weight
 	sort(sortedVar.begin(), sortedVar.end(), [&](auto a, auto b)
 		 { return (v_P[a] / v_W[a] > v_P[b] / v_W[b]); });
 	for (int i = 0; i < f_N; ++i)
@@ -550,7 +577,7 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::initializeVariables()
 		{
 			v_x[i] = 1;
 			skip[i] = true;
-			// controllare che abbia senso
+			// TODO: to be checked
 			P += v_P[i];
 			presolveCapacity -= v_W[i];
 			continue;
@@ -585,7 +612,7 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::initializeVariables()
 		}
 		else if (complemented[i])
 		{
-			// since it have already positive values, we have to consider the opposite operation
+			// it already has positive values: the opposite operation
 			presolveCapacity += v_W[i]; // update weight
 			P -= v_P[i];				// update total Profit
 		}
@@ -673,7 +700,8 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::load()
 void IncrementalGreedyChangeBinaryKnapsackSolver::process_outstanding_Modification()
 {
 
-	// copy v_mod in a temporary list of modifications - - - - - - - - - - - - -
+	// copy v_mod in a temporary list of modifications - - - - - - - - - - - -
+	// -
 
 	Lst_sp_Mod v_mod_tmp; // temporary list of modifications
 
@@ -688,12 +716,14 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::process_outstanding_Modificati
 
 	f_mod_lock.clear(std::memory_order_release); // release lock
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// -
 
 	auto BKB = static_cast<BinaryKnapsackBlock *>(f_Block);
 
 	// Any changes in Profits must be processed only AFTER checking the changes
-	// on the sense of the Objective. Hence v_mod_tmp is scanned twice, checking
+	// on the sense of the Objective. Hence v_mod_tmp is scanned twice,
+	// checking
 	// modifications on Objective sense (and also Capacity) first
 
 	auto mod = v_mod_tmp.begin();
@@ -702,7 +732,8 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::process_outstanding_Modificati
 	{
 		changedData = true;
 
-		// BinaryKnapsackBlockMod - - - - - - - - - - - - - - - - - - - - - - - - -
+		// BinaryKnapsackBlockMod - - - - - - - - - - - - - - - - - - - - - - -
+		// - -
 		if (const auto tmod = dynamic_cast<BinaryKnapsackBlockMod *>(mod->get()))
 		{
 			switch (tmod->type())
@@ -742,7 +773,8 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::process_outstanding_Modificati
 	for (auto mod : v_mod_tmp)
 	{
 		changedData = true;
-		// BinaryKnapsackBlockRngdMod - - - - - - - - - - - - - - - - - - - - - - -
+		// BinaryKnapsackBlockRngdMod - - - - - - - - - - - - - - - - - - - - -
+		// - -
 		if (const auto tmod = dynamic_cast<BinaryKnapsackBlockRngdMod *>(
 				mod.get()))
 		{
@@ -803,7 +835,8 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::process_outstanding_Modificati
 			}
 		}
 
-		// BinaryKnapsackBlockSbstMod - - - - - - - - - - - - - - - - - - - - - - -
+		// BinaryKnapsackBlockSbstMod - - - - - - - - - - - - - - - - - - - - -
+		// - -
 		if (const auto tmod = dynamic_cast<BinaryKnapsackBlockSbstMod *>(
 				mod.get()))
 		{
@@ -873,5 +906,5 @@ void IncrementalGreedyChangeBinaryKnapsackSolver::process_outstanding_Modificati
 } // end( process_outstanding_Modification() )
 
 /*--------------------------------------------------------------------------*/
-/*----------------- End File GreedyRelaxationSolver.cpp --------------------*/
+/*--- End File IncrementalGreedyRelaxationBinaryKnapsackSolver.cpp ---------*/
 /*--------------------------------------------------------------------------*/
