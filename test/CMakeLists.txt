@@ -45,7 +45,7 @@ endif ()
 # The tester builds its instances in memory and needs no data.
 add_test(NAME ${modName}_unit_test
          COMMAND ${modName}_unit_test
-         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # ----- the label of this module's tests ------------------------------------ #
 

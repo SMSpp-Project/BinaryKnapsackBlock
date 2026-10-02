@@ -16,8 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   optimum) with a feasible Solution worth it, over the corners of the data,
   the fixings, the two senses, a sequence of changes made both on the Block
   and through its abstract representation, the netCDF round trip, the R3
-  copy and the branching of the relaxation Solvers; the CI of the module
-  builds it alone with the core, as a user of the module would
+  copy and the branching of the relaxation Solvers; the Solvers and their
+  parameters come from the `BlockSolverConfig` files of `test/`, and the CI
+  of the module builds the tester alone with the core, as a user of the
+  module would
 
 - `bk2nc4`, which writes as a netCDF file a textual instance in the
   Pisinger/Jooken benchmark format or in the native one, so that whoever
@@ -35,6 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writing the solution in the Variable and putting back what was there, is
   what a Function revalidating a global pool of hundreds of entries used to
   pay for each of them
+
+- `intReopt` 5 of `CoreDPBinaryKnapsackSolver`: as 4, the certificate being
+  checked on the original items rather than on the core, so that it
+  survives a change of the core: an item fixed since the last solve at its
+  value in the previous solution keeps it valid, an item unfixed since is
+  one more item whose flip the bounds have to exclude, and the items that
+  leave the core because a datum changed sign have to take there their value
+  in the previous solution, as at the nodes of a branch-and-bound or along a
+  Lagrangian dual whose multipliers change the sign of some profits
 
 - `intReopt` 4 of `CoreDPBinaryKnapsackSolver`: as 3, and moreover an item
   that the Lagrangian bound does not clear is tried again with the

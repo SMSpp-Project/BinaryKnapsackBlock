@@ -30,6 +30,16 @@ file, the R3 copy with the mapping of the solutions, the refusal of weights
 that are not integer by the DP Solvers, and the branching of the relaxation
 Solvers, whose two children have to hold the optimum and be undone.
 
+The Solvers are attached by the `BlockSolverConfig` files of this directory,
+which the tester only reads and applies: `BSPar-relax.txt` the relaxation
+ones, `BSPar-exact.txt` the exact ones, `BSPar-RECORD.txt` and
+`BSPar-COMBO.txt` the external ones when their sources were given, and
+`BSPar-reopt.txt` the core DP with `intReopt` 3, 4 and 5, whose outcomes after
+each change are checked against each other; the `ComputeConfig` fragments
+`DPCfg.txt`, `PDPCfg.txt` and `ReoptCfg.txt` hold the parameters, which the
+variants override. The tester therefore runs from this directory, which is
+also the one `ctest` uses.
+
 The exit code is 0 when every check passes, printing `All tests passed!!`, and
 1 otherwise. The `makefile` builds the executable including the
 `BinaryKnapsackBlock` module and the core SMS++ library.

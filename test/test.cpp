@@ -47,11 +47,14 @@
 #include <filesystem>
 #include <functional>
 #include <iostream>
+#include <map>
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
 
 #include "BinaryKnapsackBlock.h"
+#include "BlockSolverConfig.h"
 #include "CoreDPBinaryKnapsackSolver.h"
 #include "DPBinaryKnapsackSolver.h"
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
@@ -238,7 +241,7 @@ std::pair< double , bool > evaluate( const Inst & in , const dVec & x )
  }
 
 /*--------------------------------------------------------------------------*/
-/// the Solver of the module, each with its parameters
+/// the Solver of the module, as the BlockSolverConfig files attach them
 
 struct Slv {
  std::string name;
@@ -246,57 +249,47 @@ struct Slv {
  bool exact;
  };
 
-void set_int( Solver * s , const std::string & name , int value )
+/// a BlockSolverConfig file of the test directory, read only once
+
+BlockSolverConfig * bsc( const std::string & file )
 {
- s->set_par( s->int_par_str2idx( name ) , value );
+ static std::map< std::string , std::unique_ptr< BlockSolverConfig > > m;
+ auto & c = m[ file ];
+ if( ! c ) {
+  c.reset( dynamic_cast< BlockSolverConfig * >(
+				     Configuration::deserialize( file ) ) );
+  if( ! c )
+   throw( std::invalid_argument( "bsc: cannot read " + file ) );
+  }
+ return( c.get() );
  }
 
-void set_dbl( Solver * s , const std::string & name , double value )
+/// the Solver registered to the Block, the relaxation ones not exact
+
+std::vector< Slv > registered( Block * b )
 {
- s->set_par( s->dbl_par_str2idx( name ) , value );
+ std::vector< Slv > v;
+ for( auto s : b->get_registered_solvers() )
+  v.push_back( { s->classname() + " " + std::to_string( v.size() + 1 ) , s ,
+		 ! dynamic_cast< RelaxationSolver * >( s ) } );
+ return( v );
  }
 
 /// every Solver of the module, registered to the Block
+/** BSPar-relax.txt holds the Solver that need no integer weights,
+ * BSPar-exact.txt those that do, and BSPar-RECORD.txt and BSPar-COMBO.txt
+ * the external Solver, applied only if their sources were given. */
 
 std::vector< Slv > attach( BinaryKnapsackBlock * b , bool integer = true )
 {
- std::vector< Slv > v;
- auto add = [ & ]( const std::string & name , const std::string & cls ,
-                   bool exact ) -> Solver * {
-  auto s = Solver::new_Solver( cls );
-  assert( s );
-  b->register_Solver( s );
-  v.push_back( { name , s , exact } );
-  return( s );
-  };
-
- // the DP ones need integer weights, the relaxation ones do not
+ bsc( "BSPar-relax.txt" )->apply( b );
  if( integer ) {
-  add( "DP" , "DPBinaryKnapsackSolver" , true );
-  set_dbl( add( "DP reopt 0.5" , "DPBinaryKnapsackSolver" , true ) ,
-           "dblReopt" , 0.5 );
-  set_dbl( add( "DP reopt 1" , "DPBinaryKnapsackSolver" , true ) ,
-           "dblReopt" , 1 );
-  add( "ParallelDP auto" , "ParallelDPBinaryKnapsackSolver" , true );
-  for( int e = 0 ; e <= 3 ; ++e ) {
-   auto s = add( "ParallelDP engine " + std::to_string( e ) ,
-                 "ParallelDPBinaryKnapsackSolver" , true );
-   set_int( s , "intWhichParallel" , e );
-   set_int( s , "intMaxThread" , 2 );
-   }
-  // the core DP with all its reoptimization, and the external solvers the
-  // same way, only built if their sources were given
-  for( std::string cls : { "CoreDPBinaryKnapsackSolver" ,
-                           "RECORDBinaryKnapsackSolver" ,
-                           "COMBOBinaryKnapsackSolver" } )
-   if( Solver::has_Solver( cls ) )
-    set_int( add( cls.substr( 0 , cls.find( "Binary" ) ) , cls , true ) ,
-             "intReopt" , 3 );
+  bsc( "BSPar-exact.txt" )->apply( b );
+  for( std::string x : { "RECORD" , "COMBO" } )
+   if( Solver::has_Solver( x + "BinaryKnapsackSolver" ) )
+    bsc( "BSPar-" + x + ".txt" )->apply( b );
   }
- add( "Greedy" , "GreedyRelaxationBinaryKnapsackSolver" , false );
- add( "IncrementalGreedy" , "IncrementalGreedyRelaxationBinaryKnapsackSolver" ,
-      false );
- return( v );
+ return( registered( b ) );
  }
 
 /// a Block holding the instance
@@ -1015,6 +1008,37 @@ void test_rounding( void )
   }
  }
 
+/// the core DP with intReopt 3, 4 and 5 on the Block, as BSPar-reopt.txt
+
+std::vector< CoreDPBinaryKnapsackSolver * > reopt_levels( Block * b )
+{
+ bsc( "BSPar-reopt.txt" )->apply( b );
+ std::vector< CoreDPBinaryKnapsackSolver * > v;
+ for( auto s : b->get_registered_solvers() )
+  v.push_back( dynamic_cast< CoreDPBinaryKnapsackSolver * >( s ) );
+ return( v );
+ }
+
+/// solves with each level, and checks the optimum and what each one reused
+/** The outcome expected from intReopt 3, 4 and 5 is \p outcome[ 0 , 1 , 2 ]
+ * [see CoreDPBinaryKnapsackSolver::get_reopt_outcome()]. */
+
+void solve_levels( const std::vector< CoreDPBinaryKnapsackSolver * > & v ,
+		   double z , const std::vector< int > & outcome ,
+		   const std::string & what )
+{
+ for( auto s : v ) {
+  const int level = s->get_int_par( s->int_par_str2idx( "intReopt" ) );
+  const std::string at = "reopt: intReopt " + std::to_string( level ) +
+                         ", " + what;
+  check( s->compute() == Solver::kOK , at + " fails" );
+  check( std::abs( s->get_var_value() - z ) < 1e-9 ,
+	 at + " gives a wrong optimum" );
+  check( s->get_reopt_outcome() == outcome[ level - 3 ] ,
+	 at + " reuses the wrong amount" );
+  }
+ }
+
 /// what each kind of change lets the core DP reuse of the previous solve
 
 void test_reopt_outcome( void )
@@ -1027,35 +1051,28 @@ void test_reopt_outcome( void )
  in.I.assign( 3 , true );
  in.fxd.assign( 3 , 0 );
  auto b = build( in );
- auto s = dynamic_cast< CoreDPBinaryKnapsackSolver * >(
-			   Solver::new_Solver( "CoreDPBinaryKnapsackSolver" ) );
- b->register_Solver( s );
- set_int( s , "intReopt" , 3 );
- check( s->compute() == Solver::kOK , "reopt: the first solve fails" );
- check( s->get_reopt_outcome() == 0 , "reopt: the first solve is warm" );
+ auto slv = reopt_levels( b );
+ solve_levels( slv , 20 , { 0 , 0 , 0 } , "the first solve" );
 
  // a taken item gains profit: no solve at all, no suspect item
- auto chg = [ & ]( Index i , double p , double z , int outcome ,
+ auto chg = [ & ]( Index i , double p , double z ,
+		   const std::vector< int > & outcome ,
 		   const std::string & what ) {
   std::vector< double > P = { b->get_Profit( 0 ) , b->get_Profit( 1 ) ,
 			      b->get_Profit( 2 ) };
   P[ i ] = p;
   b->chg_profits( Block::MF_dbl_sp( P ) , Block::Range( 0 , 3 ) );
-  check( s->compute() == Solver::kOK , "reopt: " + what + " fails" );
-  check( std::abs( s->get_var_value() - z ) < 1e-9 ,
-	 "reopt: " + what + " gives a wrong optimum" );
-  check( s->get_reopt_outcome() == outcome ,
-	 "reopt: " + what + " reuses the wrong amount" );
+  solve_levels( slv , z , outcome , what );
   };
- chg( 0 , 11 , 21 , 2 , "a taken item gaining profit" );
+ chg( 0 , 11 , 21 , { 2 , 2 , 2 } , "a taken item gaining profit" );
 
  // the third item gains a little: a suspect, which the Lagrangian bound
  // with the multiplier of the break item clears (it stays at 21)
- chg( 2 , 2 , 21 , 3 , "an untaken item gaining a little" );
+ chg( 2 , 2 , 21 , { 3 , 3 , 3 } , "an untaken item gaining a little" );
 
  // the third item gains a lot: the bound cannot clear it, and the optimum
  // becomes the third item alone
- chg( 2 , 30 , 30 , 1 , "an untaken item gaining enough to enter" );
+ chg( 2 , 30 , 30 , { 1 , 1 , 1 } , "an untaken item gaining enough to enter" );
 
  b->unregister_Solvers( true );
  delete b;
@@ -1065,23 +1082,16 @@ void test_reopt_outcome( void )
  in.C = 3;
  in.P = { 10 , 10 , 1 };
  b = build( in );
- s = dynamic_cast< CoreDPBinaryKnapsackSolver * >(
-			   Solver::new_Solver( "CoreDPBinaryKnapsackSolver" ) );
- b->register_Solver( s );
- set_int( s , "intReopt" , 3 );
- check( s->compute() == Solver::kOK , "reopt: the first solve fails" );
- auto cap = [ & ]( double C , double z , int outcome ,
+ slv = reopt_levels( b );
+ solve_levels( slv , 20 , { 0 , 0 , 0 } , "the first solve" );
+ auto cap = [ & ]( double C , double z , const std::vector< int > & outcome ,
 		   const std::string & what ) {
   b->chg_capacity( C );
-  check( s->compute() == Solver::kOK , "reopt: " + what + " fails" );
-  check( std::abs( s->get_var_value() - z ) < 1e-9 ,
-	 "reopt: " + what + " gives a wrong optimum" );
-  check( s->get_reopt_outcome() == outcome ,
-	 "reopt: " + what + " reuses the wrong amount" );
+  solve_levels( slv , z , outcome , what );
   };
- cap( 2 , 20 , 2 , "a smaller capacity the solution fits" );
- cap( 1 , 10 , 1 , "a capacity the solution does not fit" );
- cap( 3 , 20 , 1 , "a larger capacity" );
+ cap( 2 , 20 , { 2 , 2 , 2 } , "a smaller capacity the solution fits" );
+ cap( 1 , 10 , { 1 , 1 , 1 } , "a capacity the solution does not fit" );
+ cap( 3 , 20 , { 1 , 1 , 1 } , "a larger capacity" );
 
  b->unregister_Solvers( true );
  delete b;
@@ -1092,63 +1102,72 @@ void test_reopt_outcome( void )
  in.C = 3;
  in.W = { 1 , 1 , 3 };
  b = build( in );
- s = dynamic_cast< CoreDPBinaryKnapsackSolver * >(
-			   Solver::new_Solver( "CoreDPBinaryKnapsackSolver" ) );
- b->register_Solver( s );
- set_int( s , "intReopt" , 3 );
- check( s->compute() == Solver::kOK , "reopt: the first solve fails" );
- auto wgt = [ & ]( Index i , double w , double z , int outcome ,
+ slv = reopt_levels( b );
+ solve_levels( slv , 20 , { 0 , 0 , 0 } , "the first solve" );
+ auto wgt = [ & ]( Index i , double w , double z ,
+		   const std::vector< int > & outcome ,
 		   const std::string & what ) {
   std::vector< double > W = { b->get_Weight( 0 ) , b->get_Weight( 1 ) ,
 			      b->get_Weight( 2 ) };
   W[ i ] = w;
   b->chg_weights( Block::MF_dbl_sp( W ) , Block::Range( 0 , 3 ) );
-  check( s->compute() == Solver::kOK , "reopt: " + what + " fails" );
-  check( std::abs( s->get_var_value() - z ) < 1e-9 ,
-	 "reopt: " + what + " gives a wrong optimum" );
-  check( s->get_reopt_outcome() == outcome ,
-	 "reopt: " + what + " reuses the wrong amount" );
+  solve_levels( slv , z , outcome , what );
   };
- wgt( 2 , 2 , 20 , 3 , "an untaken item losing a little weight" );
- wgt( 0 , 2 , 20 , 2 , "a taken item gaining weight, still fitting" );
- wgt( 2 , 1 , 20 , 3 , "an untaken item losing more weight" );
- wgt( 0 , 1 , 21 , 1 , "a taken item losing weight" );
+ wgt( 2 , 2 , 20 , { 3 , 3 , 3 } , "an untaken item losing a little weight" );
+ wgt( 0 , 2 , 20 , { 2 , 2 , 2 } ,
+      "a taken item gaining weight, still fitting" );
+ wgt( 2 , 1 , 20 , { 3 , 3 , 3 } , "an untaken item losing more weight" );
+ wgt( 0 , 1 , 21 , { 1 , 1 , 1 } , "a taken item losing weight" );
 
  b->unregister_Solvers( true );
  delete b;
 
- // the Martello-Toth bound of intReopt 4: the optimum takes the last three
- // items (21), the first one gains profit, and the Lagrangian bound with it
- // taken (25) cannot clear it while the Martello-Toth one (21) can; with
- // more profit it enters the optimum, and neither bound may clear it
+ // the Martello-Toth bound of intReopt 4 and 5: the optimum takes the last
+ // three items (21), the first one gains profit, and the Lagrangian bound
+ // with it taken (25) cannot clear it while the Martello-Toth one (21) can;
+ // with more profit it enters the optimum, and neither bound may clear it
  in.C = 10;
  in.W = { 5 , 5 , 2 , 2 };
  in.P = { 8 , 11 , 8 , 2 };
  in.I.assign( 4 , true );
  in.fxd.assign( 4 , 0 );
- for( int level : { 3 , 4 } ) {
-  b = build( in );
-  s = dynamic_cast< CoreDPBinaryKnapsackSolver * >(
-			   Solver::new_Solver( "CoreDPBinaryKnapsackSolver" ) );
-  b->register_Solver( s );
-  set_int( s , "intReopt" , level );
-  check( s->compute() == Solver::kOK , "reopt: the first solve fails" );
-  const std::string lv = "intReopt " + std::to_string( level ) + ", ";
-  auto mt = [ & ]( double p , double z , int outcome ,
-		   const std::string & what ) {
-   std::vector< double > P = { p , 11 , 8 , 2 };
-   b->chg_profits( Block::MF_dbl_sp( P ) , Block::Range( 0 , 4 ) );
-   check( s->compute() == Solver::kOK , "reopt: " + lv + what + " fails" );
-   check( std::abs( s->get_var_value() - z ) < 1e-9 ,
-	  "reopt: " + lv + what + " gives a wrong optimum" );
-   check( s->get_reopt_outcome() == outcome ,
-	  "reopt: " + lv + what + " reuses the wrong amount" );
-   };
-  mt( 10 , 21 , level == 4 ? 4 : 1 , "an item only Martello-Toth clears" );
-  mt( 14 , 25 , 1 , "an item no bound may clear" );
-  b->unregister_Solvers( true );
-  delete b;
-  }
+ b = build( in );
+ slv = reopt_levels( b );
+ solve_levels( slv , 21 , { 0 , 0 , 0 } , "the first solve" );
+ auto mt = [ & ]( double p , double z , const std::vector< int > & outcome ,
+		  const std::string & what ) {
+  std::vector< double > P = { p , 11 , 8 , 2 };
+  b->chg_profits( Block::MF_dbl_sp( P ) , Block::Range( 0 , 4 ) );
+  solve_levels( slv , z , outcome , what );
+  };
+ mt( 10 , 21 , { 1 , 4 , 4 } , "an item only Martello-Toth clears" );
+ mt( 14 , 25 , { 1 , 1 , 1 } , "an item no bound may clear" );
+
+ b->unregister_Solvers( true );
+ delete b;
+
+ // the fixings, as at the nodes of a branch-and-bound: the second item fixed
+ // at its value in the optimum (21) changes the core but not the optimum,
+ // unfixed it is a suspect item that the Lagrangian bound clears, fixed
+ // against the optimum it makes it infeasible (18); intReopt 3 and 4, which
+ // need the same core, solve each time, while 5 certifies the first two
+ b = build( in );
+ slv = reopt_levels( b );
+ solve_levels( slv , 21 , { 0 , 0 , 0 } , "the first solve" );
+ auto fx = [ & ]( int how , double z , const std::vector< int > & outcome ,
+		  const std::string & what ) {
+  if( how < 0 )
+   b->unfix_x( 1 );
+  else
+   b->fix_x( how == 1 , 1 );
+  solve_levels( slv , z , outcome , what );
+  };
+ fx( 1 , 21 , { 1 , 1 , 2 } , "an item fixed at its optimal value" );
+ fx( -1 , 21 , { 1 , 1 , 3 } , "the item unfixed" );
+ fx( 0 , 18 , { 1 , 1 , 1 } , "an item fixed against the optimum" );
+
+ b->unregister_Solvers( true );
+ delete b;
  }
 
 /// the two children of branch() cover the relaxation, then undo
