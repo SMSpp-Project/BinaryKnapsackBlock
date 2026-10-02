@@ -2,16 +2,16 @@
 ################################ makefile ####################################
 ##############################################################################
 #                                                                            #
-#   makefile of bkbench                                                      #
+#   makefile of test (for BinaryKnapsackBlock)                               #
 #                                                                            #
-#                              Antonio Frangioni                             #
+#                                Donato Meoli                                #
 #                          Dipartimento di Informatica                       #
 #                              Universita' di Pisa                           #
 #                                                                            #
 ##############################################################################
 
 # module name
-NAME = bkbench
+NAME = BinaryKnapsackBlock_unit_test
 
 # basic directory
 DIR = .
@@ -22,7 +22,7 @@ COMMON_SW = -std=c++20 -ferror-limit=1
 # debug switches
 SW_DEBUG = -g -glldb -fno-inline $(COMMON_SW)
 # debug switches with address sanitizer and extra pedantic warning
-SW_DEBUG_ASAN = -g3 -glldb -fno-inline $(COMMON_SW) -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer -Wpedantic -Wextra -Wno-unused-parameter -Wno-enum-compare
+SW_DEBUG_ASAN = -g3 -glldb -fno-inline $(COMMON_SW) -fsanitize=undefined -fsanitize=address -fno-omit-frame-pointer -Wpedantic -Wextra -Wno-unused-parameter
 # production switches
 SW_RELEASE = -O3 $(COMMON_SW) -DNDEBUG
 
@@ -31,32 +31,27 @@ CC = clang++
 
 # default target- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-BUILD_MODE = release
-
-default: $(BUILD_MODE)
+default: release
 
 # debug target- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 debug: SW = $(SW_DEBUG)
-debug: BUILD_MODE = debug
-debug: $(NAME)
+debug: $(DIR)/$(NAME)
 
-# debug_asan target- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# debug_asan target - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 debug_asan: SW = $(SW_DEBUG_ASAN)
-debug_asan: BUILD_MODE = debug
-debug_asan: $(NAME)
+debug_asan: $(DIR)/$(NAME)
 
 # release target- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 release: SW = $(SW_RELEASE)
-release: BUILD_MODE = release
-release: $(NAME)
+release: $(DIR)/$(NAME)
 
 # clean target- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 clean::
-	rm -f $(DIR)/*.o $(DIR)/*~ $(NAME)
+	rm -f $(DIR)/*.o $(DIR)/*~ $(DIR)/$(NAME)
 
 # define & include the necessary modules- - - - - - - - - - - - - - - - - - -
 # if a module is not used in the current configuration, just comment out the
@@ -79,8 +74,8 @@ MOBJ =  $(BKBkOBJ)
 # libraries
 MLIB =  $(BKBkLIB)
 
-$(NAME): $(MOBJ) $(DIR)/$(NAME).o
-	$(CC) -o $(NAME) $(DIR)/$(NAME).o $(MOBJ) $(MLIB) $(SW)
+$(DIR)/$(NAME): $(MOBJ) $(DIR)/test.o
+	$(CC) -o $(DIR)/$(NAME) $(DIR)/test.o $(MOBJ) $(MLIB) $(SW)
 
 # dependencies: every .o from its .cpp + every recursively included .h- - - -
 
@@ -92,24 +87,8 @@ MH =    $(BKBkH)
 
 # compile command
 
-$(DIR)/$(NAME).o: $(DIR)/$(NAME).cpp $(MH)
+$(DIR)/test.o: $(DIR)/test.cpp $(MH)
 	$(CC) -c $*.cpp -o $@ $(MINC) $(SW)
-
-# install/uninstall - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-# check if the user is in the sudoers file
-ifeq ($(shell id -u),0)
-    prefix = /opt/smspp-project
-else
-    prefix = $(HOME)/smspp-project
-endif
-bindir = $(prefix)/$(BUILD_MODE)/bin
-
-install: $(NAME)
-	install -s -D $(NAME) $(DESTDIR)$(bindir)/$(NAME)
-
-uninstall:
-	rm -f $(DESTDIR)$(bindir)/$(NAME)
 
 # distclean target- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -117,6 +96,6 @@ distclean: clean
 
 # phony targets - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-.PHONY: debug debug_asan release install uninstall clean distclean
+.PHONY: debug debug_asan release clean distclean
 
 ############################ End of makefile #################################

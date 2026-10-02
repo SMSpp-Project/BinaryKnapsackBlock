@@ -325,6 +325,20 @@ public:
  void get_var_solution( Configuration * solc = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/
+ /// returns the current solution as a BinaryKnapsackSolution
+ /** Returns the current solution as a BinaryKnapsackSolution [see
+  * BinaryKnapsackBlock.h], reconstructed out of the dynamic programming
+  * table exactly as get_var_solution() does, but written straight into the
+  * Solution rather than into the Variable of the BinaryKnapsackBlock: no
+  * abstract representation is therefore required to exist, and the
+  * BinaryKnapsackBlock is not written into at all, hence it is not
+  * lock()-ed and any number of Solver attached to it can produce their own
+  * Solution at the same time. */
+
+ [[nodiscard]] Solution * get_Solution( Configuration * solc = nullptr )
+  override;
+
+/*--------------------------------------------------------------------------*/
 /// return the value of the (current) solution
 /** Return the value of the current solution.
  * Since the implemented DP algorithm always solves the maximization problem,
@@ -438,6 +452,15 @@ protected:
  /// Dynamic Programming to solve the integer knapsack
 
  virtual void dynamic_programming( Index C );
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// reconstructs the optimal solution into v_x out of the DP table
+ /** Reconstructs the optimal solution out of the dynamic programming table
+  * into v_x, which is what both get_var_solution() and get_Solution() need;
+  * \p method is the name of the caller, for the exception thrown if
+  * compute() has not been called first. */
+
+ void reconstruct_x( const std::string & method );
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PROTECTED FIELDS ----------------------------*/

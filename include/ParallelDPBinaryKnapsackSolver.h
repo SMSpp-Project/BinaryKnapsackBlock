@@ -106,12 +106,11 @@ public:
 
 /*--------------------------------------------------------------------------*/
  /// constructor
+ // defined in the .cpp, as the destructor is, since it destroys the pimpl'd
+ // ff::ParallelFor if anything throws, and the type is complete only there
 
  ParallelDPBinaryKnapsackSolver( Index maxthread = 0 ,
-                                 int whichparallel = -1 ) :
-                                 DPBinaryKnapsackSolver() ,
-                                 f_max_thread( maxthread ) ,
-                                 f_which_parallel( whichparallel ) {}
+                                 int whichparallel = -1 );
 
 /*--------------------------------------------------------------------------*/
  /// destructor

@@ -44,7 +44,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # This creates an ENABLE_TESTING option (default: ON) and enables the testing
 # using the ctest executable.
 # See: https://cmake.org/cmake/help/latest/manual/ctest.1.html
-#include(CTest)
+include(CTest)
 
 # Sets the default build type (if none was specified).
 # See: https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html
@@ -63,14 +63,60 @@ find_package(OpenMP)
 # This will generate a *Config.h header in the build directory.
 configure_file(cmake/${modName}Config.h.in ${modName}Config.h)
 
+# ----- RPATH --------------------------------------------------------------- #
+# The installed libraries and executables look for the libraries of the same
+# installation relative to their own location, so that the installed tree can
+# be moved as a whole; the directories of the external libraries are kept.
+include(GNUInstallDirs)
+if (NOT CMAKE_INSTALL_RPATH)
+    if (APPLE)
+        set(rpathOrigin "@loader_path")
+    else ()
+        set(rpathOrigin "$ORIGIN")
+    endif ()
+    file(RELATIVE_PATH binToLib ${CMAKE_INSTALL_FULL_BINDIR}
+            ${CMAKE_INSTALL_FULL_LIBDIR})
+    set(CMAKE_INSTALL_RPATH "${rpathOrigin}" "${rpathOrigin}/${binToLib}")
+endif ()
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 # ----- Library ------------------------------------------------------------- #
 # With the BUILD_SHARED_LIBS variable we can specify if the library will
 # be STATIC or SHARED, so no reason to do it now.
 add_library(${modName})
-target_compile_features(${modName} PUBLIC cxx_std_17)
+target_compile_features(${modName} PUBLIC cxx_std_20)
 
-if (MSVC AND BUILD_SHARED_LIBS)
-    target_link_options(${modName} INTERFACE "/INCLUDE:SMSpp_force_load_${modName}")
+# The name of the shared library carries the version of its binary interface,
+# which any minor release may change while the major version is 0, and then
+# any major release.
+if (PROJECT_VERSION_MAJOR EQUAL 0)
+    set(soVersion ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+else ()
+    set(soVersion ${PROJECT_VERSION_MAJOR})
+endif ()
+set_target_properties(${modName} PROPERTIES
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${soVersion})
+
+# The classes of the module register themselves in the factory from a static
+# initialiser, and a linker that drops what looks unused takes the
+# registration away with it: the target tells whoever links it to keep the
+# symbol that forces the module in, or the library as a whole where naming
+# the symbol is not enough.
+if (BUILD_SHARED_LIBS)
+    if (MSVC)
+        target_link_options(${modName} INTERFACE
+                "/INCLUDE:SMSpp_force_load_${modName}")
+    elseif (UNIX AND (NOT APPLE))
+        # the ELF linker decides by the symbols a regular object asks for, so
+        # naming the symbol is not enough and the library has to be kept
+        target_link_options(${modName} INTERFACE "LINKER:--no-as-needed")
+    elseif (APPLE)
+        # ld64 keeps a dylib that provides a symbol to the link, one asked
+        # for by -u included, even under -dead_strip_dylibs
+        target_link_options(${modName} INTERFACE
+                "LINKER:-u,_SMSpp_force_load_${modName}")
+    endif ()
 endif ()
 
 # When adding source files with target_sources(), PRIVATE means that the files
@@ -87,6 +133,80 @@ target_sources(${modName} PRIVATE
         src/CoreDPBinaryKnapsackSolver.cpp
         src/GreedyRelaxationBinaryKnapsackSolver.cpp
         src/IncrementalGreedyRelaxationBinaryKnapsackSolver.cpp)
+
+# ----- RECORD (optional) --------------------------------------------------- #
+# RECORDBinaryKnapsackSolver hands the integer core to RECORD
+# (gitlab.com/renanfernandofranco/record), which is distributed as a single
+# source file with a main(): given a checkout in RECORD_ROOT, the file is
+# copied at configure time into record-shim/RECORD.hpp with the main() cut
+# away (the main() of the distributed source ignores the multiplicity it
+# reads and solves a bounded knapsack; the 0-1 problem is set up by the
+# bridge instead), and compiled alone in src/RECORDBridge.cpp, the only file
+# that sees its global names. Without a RECORD_ROOT, the checkout is looked
+# for in the environment variable of the same name and where INSTALL.sh puts
+# it; RECORD uses POSIX clocks, which MSVC does not have.
+find_path(RECORD_ROOT NAMES source/RECORD.cpp
+        HINTS ENV RECORD_ROOT PATHS /opt/record /Library/record
+        DOC "Checkout of RECORD (optional)" NO_DEFAULT_PATH)
+if (RECORD_ROOT AND EXISTS ${RECORD_ROOT}/source/RECORD.cpp AND NOT MSVC)
+    file(READ ${RECORD_ROOT}/source/RECORD.cpp _recordSrc)
+    string(FIND "${_recordSrc}" "int main (" _recordMain)
+    if (_recordMain GREATER -1)
+        string(SUBSTRING "${_recordSrc}" 0 ${_recordMain} _recordSrc)
+    endif ()
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/record-shim/RECORD.hpp
+            "${_recordSrc}")
+    target_sources(${modName} PRIVATE
+            src/RECORDBridge.cpp
+            src/RECORDBinaryKnapsackSolver.cpp)
+    set_source_files_properties(src/RECORDBridge.cpp PROPERTIES
+            INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/record-shim)
+    if (NOT MSVC)               # its simd pragmas
+        set_source_files_properties(src/RECORDBridge.cpp PROPERTIES
+                COMPILE_OPTIONS "-fopenmp-simd")
+    endif ()
+    message(STATUS "${modName}: RECORD found in ${RECORD_ROOT}.")
+endif ()
+
+# ----- COMBO (optional) ---------------------------------------------------- #
+# COMBOBinaryKnapsackSolver hands the integer core to COMBO, which is
+# distributed by its authors as combo.c and combo.h, for academic or
+# non-commercial use only: given a directory holding them in COMBO_ROOT,
+# combo.c is copied at configure time into combo-shim/ with its product type
+# widened from double to a 128-bit integer (exact determinants of profits
+# and weights), and compiled alone in src/COMBOGuard.c, which turns the
+# exit() of COMBO on an internal error into an error code. Without a
+# COMBO_ROOT, the directory is looked for in the environment variable of the
+# same name and in /opt/combo or /Library/combo. The 128-bit integer is not
+# available with MSVC.
+find_path(COMBO_ROOT NAMES combo.c
+        HINTS ENV COMBO_ROOT PATHS /opt/combo /Library/combo
+        DOC "Directory with combo.c and combo.h (optional)" NO_DEFAULT_PATH)
+if (COMBO_ROOT AND EXISTS ${COMBO_ROOT}/combo.c AND
+        EXISTS ${COMBO_ROOT}/combo.h AND NOT MSVC)
+    file(READ ${COMBO_ROOT}/combo.c _comboSrc)
+    string(REGEX REPLACE "typedef[ \t]+double[ \t]+prod;"
+            "typedef __int128 prod;" _comboWide "${_comboSrc}")
+    if (_comboWide STREQUAL _comboSrc)
+        message(WARNING "${modName}: the type prod of ${COMBO_ROOT}/combo.c "
+                "is not the expected double, COMBO is not built.")
+    else ()
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/combo-shim/combo.c
+                "${_comboWide}")
+        configure_file(${COMBO_ROOT}/combo.h
+                ${CMAKE_CURRENT_BINARY_DIR}/combo-shim/combo.h COPYONLY)
+        target_sources(${modName} PRIVATE
+                src/COMBOGuard.c
+                src/COMBOBridge.cpp
+                src/COMBOBinaryKnapsackSolver.cpp)
+        set_source_files_properties(src/COMBOGuard.c src/COMBOBridge.cpp
+                PROPERTIES INCLUDE_DIRECTORIES
+                ${CMAKE_CURRENT_BINARY_DIR}/combo-shim)
+        set_source_files_properties(src/COMBOGuard.c PROPERTIES
+                COMPILE_OPTIONS "-w")    # its K&R-era code
+        message(STATUS "${modName}: COMBO found in ${COMBO_ROOT}.")
+    endif ()
+endif ()
 
 # When using target_include_directories(), PUBLIC means that any targets
 # that link to this target also need that include directory.
@@ -122,6 +242,10 @@ add_library(${modNamespace}::${modName} ALIAS ${modName})
 
 # ----- Subdirectories ------------------------------------------------------ #
 add_subdirectory(tools)
+
+if (BUILD_TESTING)
+    add_subdirectory(test)
+endif ()
 
 # ----- Install instructions ------------------------------------------------ #
 # The following commands are used when installing the library
@@ -210,13 +334,38 @@ endif ()
 # Registry and extract it. The archive carries, per instance, the raw .csv that
 # embeds the published optimum z, which the tests read directly (no further
 # conversion): the fetch_bk_data target is the test fixture's only dependency.
+
+# The version of the archive in the Package Registry. A published version is
+# never replaced: new data go out under a new version, written here first [see
+# data/upload-txt], and the archive and the marker of its extraction carry it
+# in their name, so that a tree holding the data of an older version (a cache
+# of the CI, or a clone that has been extracted before) downloads and extracts
+# again instead of taking them for the current ones.
+set(DATA_VERSION 2026-06-24)
+
 # Download txt.tgz from GitLab Package Registry if it doesn't exist
-set(TXT_URL "https://gitlab.com/api/v4/projects/24425718/packages/generic/txt/latest/txt.tgz")
-set(TXT_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/data/txt.tgz)
+set(TXT_URL "https://gitlab.com/api/v4/projects/24425718/packages/generic/txt/${DATA_VERSION}/txt.tgz")
+set(TXT_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/data/txt-${DATA_VERSION}.tgz)
+set(DATA_MARKER ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted-${DATA_VERSION})
 set(TXT_SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/download_bk_txt.cmake)
 
 file(WRITE ${TXT_SCRIPT} "
-file(DOWNLOAD \"${TXT_URL}\" \"${TXT_ARCHIVE}\" SHOW_PROGRESS)
+file(DOWNLOAD \"${TXT_URL}\" \"${TXT_ARCHIVE}\" SHOW_PROGRESS STATUS _status)
+list(GET _status 0 _code)
+list(GET _status 1 _message)
+if(NOT _code EQUAL 0)
+  # what is on disk is whatever the server answered with, and leaving it there
+  # would let the build take it for the archive: the next attempt has to
+  # download again rather than fail while extracting it
+  file(REMOVE \"${TXT_ARCHIVE}\")
+  message(FATAL_ERROR \"cannot download ${TXT_URL}: \${_message}\")
+endif()
+file(SIZE \"${TXT_ARCHIVE}\" _size)
+if(_size LESS 1024)
+  file(REMOVE \"${TXT_ARCHIVE}\")
+  message(FATAL_ERROR \"${TXT_ARCHIVE} came down with \${_size} bytes, so the \
+server answered but not with the archive: try again later\")
+endif()
 ")
 
 add_custom_command(
@@ -229,17 +378,12 @@ add_custom_command(
 add_custom_target(download_bk_txt
         DEPENDS ${TXT_ARCHIVE})
 
-# Custom command to extract the txt.tgz archive if the .extracted file does not exist
-if (UNIX)
-    set(TAR_FLAGS --warning=no-unknown-keyword -xzf)
-elseif (WIN32)
-    set(TAR_FLAGS xzf)
-endif ()
-
+# Custom command to extract the txt.tgz archive if the marker of this version
+# does not exist
 add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted
-        COMMAND tar ${TAR_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/data/txt.tgz
-        COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted
+        OUTPUT ${DATA_MARKER}
+        COMMAND ${CMAKE_COMMAND} -E tar xzf ${TXT_ARCHIVE}
+        COMMAND echo > ${DATA_MARKER}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
         COMMENT "Extracting txt.tgz"
         VERBATIM
@@ -248,10 +392,40 @@ add_custom_command(
 # The raw .csv are ready as soon as the archive is extracted: this is the
 # terminal target the tests depend on (see tests/BinaryKnapsackBlock).
 add_custom_target(fetch_bk_data
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted)
+        DEPENDS ${DATA_MARKER})
 
 # Ensure that the extraction is executed after the download
 add_dependencies(fetch_bk_data download_bk_txt)
+
+# A handful of the textual instances written as netCDF files, which is what a
+# tester that reads a Block from a file needs: tools/batch says which ones and
+# why, the tests of the module building their own instances instead.
+if (UNIX)
+    add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
+            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
+            COMMENT "Running bk2nc4"
+            VERBATIM
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${DATA_MARKER})
+elseif (WIN32)
+    add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            # using Git for Windows that includes Git Bash
+            COMMAND "C:/Program Files/Git/bin/bash.exe"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/batch" "$<TARGET_FILE:bk2nc4>"
+            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
+            COMMENT "Running bk2nc4"
+            VERBATIM
+            DEPENDS $<TARGET_FILE:bk2nc4> ${DATA_MARKER})
+endif ()
+
+add_custom_target(run_bk2nc4
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated)
+
+add_dependencies(run_bk2nc4 bk2nc4 fetch_bk_data)
 
 # Hard-instance benchmark sources, curated on demand into data/ (gitignored).
 # data/fetch-jooken pulls a curated subset of the Jooken-Leyman-De Causmaecker

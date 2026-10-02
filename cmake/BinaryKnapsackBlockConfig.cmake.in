@@ -19,6 +19,10 @@ include(CMakeFindDependencyMacro)
 # ----- Requirements -------------------------------------------------------- #
 find_dependency(SMS++)
 
+if (@OpenMP_CXX_FOUND@)
+    find_dependency(OpenMP)
+endif ()
+
 # ----- Import target ------------------------------------------------------- #
 if (NOT TARGET @modNamespace@::@modName@)
     include("${@modName@_CMAKE_DIR}/@modName@Targets.cmake")

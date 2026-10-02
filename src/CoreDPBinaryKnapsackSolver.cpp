@@ -30,9 +30,13 @@
 /*--------------------------------------------------------------------------*/
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <numeric>
+#include <type_traits>
 
 #include "CoreDPBinaryKnapsackSolver.h"
 
@@ -40,34 +44,16 @@
 /*------------------------------- MACROS -----------------------------------*/
 /*--------------------------------------------------------------------------*/
 
-#ifndef SURROGATE_BOUND
-#define SURROGATE_BOUND 1
-#endif
-/* A2 surrogate / cardinality bound: tightens the global ceiling on
- * forced-cardinality (correlated) instances. Validated vs :MILPSolver and the
- * Pisinger reference optima. */
-
-#ifndef SURROGATE_SOLVE
-#define SURROGATE_SOLVE 1
-#endif
-/* COMBO surrogate-solve: solve the surrogate subproblem exactly to (possibly)
- * raise the incumbent. Requires SURROGATE_BOUND. Set to 0 to A/B against the
- * bound-only behaviour. */
-
-#ifndef CORE_B2
-#define CORE_B2 1                // guarded DP-extension (read-only check)
-#endif
-#ifndef CORE_B3
-#define CORE_B3 1                // fixing-by-dominance
-#endif
-#ifndef CORE_B4
-#define CORE_B4 1                // WB Dembo-Hammer per-item fixing
-#endif
-#ifndef CORE_B5
-#define CORE_B5 1                // primal heuristics (PH/TPH/SSPH/SPH/GCH)
-#endif
 #ifndef CORE_STATS
 #define CORE_STATS 0             // stderr counters per solve (dev only)
+#endif
+
+#if CORE_STATS
+static std::size_t core_rec_states = 0;  // states of the recursive calls
+static std::size_t cs_merge , cs_nogrow , cs_cand , cs_b2 , cs_b3 , cs_b4;
+#define CSTAT( x ) ( x )
+#else
+#define CSTAT( x )
 #endif
 
 /*--------------------------------------------------------------------------*/
@@ -75,6 +61,70 @@
 /*--------------------------------------------------------------------------*/
 
 using namespace SMSpp_di_unipi_it;
+
+/*--------------------------------------------------------------------------*/
+/*------------------------------ FUNCTIONS ---------------------------------*/
+/*--------------------------------------------------------------------------*/
+
+namespace {
+
+// length of the longest prefix of v, in the order `before`, whose sum stays
+// <= limit: quickselect halving (expected linear) instead of a full sort,
+// only the last few elements are sorted; v is permuted
+template< class T , class Before >
+int prefix_fit( std::vector< T > & v , Before before , T limit )
+{
+ int lo = 0 , hi = int( v.size() ) , k = 0;
+ while( hi - lo > 16 ) {
+  const int mid = lo + ( hi - lo ) / 2;
+  std::nth_element( v.begin() + lo , v.begin() + mid , v.begin() + hi ,
+                    before );
+  T s = 0;
+  for( int i = lo ; i < mid ; ++i )
+   s += v[ i ];
+  if( s <= limit ) { limit -= s; k += mid - lo; lo = mid; }
+  else hi = mid;
+  }
+ std::sort( v.begin() + lo , v.begin() + hi , before );
+ while( ( lo < hi ) && ( v[ lo ] <= limit ) )
+  { limit -= v[ lo++ ]; ++k; }
+ return( k );
+ }
+
+// a value computed in floating point which is mathematically an integer can
+// land just below or just above it, and rounding it would then lose a whole
+// unit: bounds are rounded past a relative tolerance (well above the
+// machine precision, well below one unit for values up to 1e12), in the
+// direction that can only loosen them (a looser bound is still valid, a
+// tighter one not)
+inline double floor_safe( double x )
+{
+ return( std::floor( x + 1e-12 * std::max( 1.0 , std::abs( x ) ) ) );
+ }
+
+inline double ceil_safe( double x )
+{
+ return( std::ceil( x - 1e-12 * std::max( 1.0 , std::abs( x ) ) ) );
+ }
+
+// an allocator that default-initialises: on a vector of a trivial type,
+// resize() then leaves the new elements as they are instead of zeroing them
+// (for buffers that are written before being read)
+template< class T >
+struct NoInit : std::allocator< T > {
+ template< class U > struct rebind { using other = NoInit< U >; };
+ NoInit( void ) = default;
+ template< class U > NoInit( const NoInit< U > & ) {}
+ template< class U , class... A >
+ void construct( U * q , A &&... a ) {
+  if constexpr( sizeof...( A ) == 0 )
+   ::new( static_cast< void * >( q ) ) U;
+  else
+   ::new( static_cast< void * >( q ) ) U( std::forward< A >( a )... );
+  }
+ };
+
+}  // end( unnamed namespace )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- FACTORY REGISTRATION -------------------------*/
@@ -99,7 +149,16 @@ int CoreDPBinaryKnapsackSolver::compute( bool changedvars )
   return( kInfeasible );
   }
 
- enumerate_states();
+ try {
+  enumerate_states();
+  }
+ catch( ... ) {                // an external solver gave up: not left locked
+  unlock();
+  throw;
+  }
+
+ v_prev_x = f_x;               // the seed of the next (warm started) solve
+ f_prev_valid = true;
 
  unlock();
  return( kOK );
@@ -126,7 +185,7 @@ void CoreDPBinaryKnapsackSolver::extract_instance( void )
 
  // the core enumeration requires integer weights
  auto to_long = []( double w ) -> long {
-  const long l = std::lround( w );
+  const long l = long( w >= 0 ? w + 0.5 : w - 0.5 );   // nearest integer
   if( std::abs( double( l ) - w ) > WeightIntegrality )
    throw( std::invalid_argument(
     "CoreDPBinaryKnapsackSolver::extract_instance: weights must be integers"
@@ -163,10 +222,24 @@ void CoreDPBinaryKnapsackSolver::enumerate_states( void )
  // with continuous variables the Pareto-frontier + fractional-fill scheme
  f_obj = f_base;
  std::vector< char > in;
- if( v_cw.empty() )
-  f_obj += solve_integer_core( in );
+ if( v_cw.empty() ) {
+  double z = - Inf< double >();
+  f_outcome = ( f_reopt && f_prev_valid ) ? 1 : 0;
+  if( ( f_reopt >= 2 ) && f_prev_valid )
+   z = last_still_optimal( in );
+  if( z == - Inf< double >() )
+   z = solve_integer_core( in );
+  f_obj += z;
+  if( f_reopt >= 2 ) {         // the core and solution the next solve checks
+   f_last_C = f_C;
+   v_last_w = v_w;  v_last_p = v_p;
+   v_last_orig = v_orig;  v_last_comp = v_comp;
+   v_last_in = in;
+   }
+  }
  else {
   std::vector< double > cx;
+  f_outcome = 0;                // not warm started (see intReopt)
   f_obj += solve_with_continuous( in , cx );
   for( std::size_t j = 0 ; j < v_cw.size() ; ++j )
    f_x[ v_corig[ j ] ] = v_ccomp[ j ] ? ( 1.0 - cx[ j ] ) : cx[ j ];
@@ -182,13 +255,387 @@ void CoreDPBinaryKnapsackSolver::enumerate_states( void )
 double CoreDPBinaryKnapsackSolver::solve_integer_core(
                                                     std::vector< char > & in )
 {
- // the extracted integer core, solved by the full break-item core enumeration
- return( core_enumerate( v_w , v_p , f_C , in , - Inf< double >() , false ) );
+ // the extracted integer core, solved by the full break-item core enumeration;
+ // when warm started, the repaired previous solution floors the incumbent and
+ // is itself the answer if nothing strictly beats it
+ if( ! ( f_reopt && f_prev_valid ) )
+  return( core_enumerate( v_w , v_p , f_C , in , - Inf< double >() , false ) );
+
+ std::vector< char > win;
+ const double lb = warm_incumbent( win );
+ const double z = core_enumerate( v_w , v_p , f_C , in , lb , false );
+ if( ( z == - Inf< double >() ) && ( lb > - Inf< double >() ) ) {
+  in.swap( win );
+  return( lb );
+  }
+ return( z );
+ }
+
+/*--------------------------------------------------------------------------*/
+
+double CoreDPBinaryKnapsackSolver::last_still_optimal(
+                                            std::vector< char > & in ) const
+{
+ // the last solution y is optimal for the last core; with the same items, a
+ // capacity no larger and no weight of a taken item decreased, y is feasible
+ // if it still fits, and every new feasible z that takes no untaken item
+ // whose weight decreased is feasible for the last core as well. For such a
+ // z, p'z - p'y = ( pz - py ) + sum_k ( p'_k - p_k )( z_k - y_k ), where the
+ // first term is <= 0 and so is every term of the sum but those of the items
+ // with y_k = 0 and p'_k > p_k, or y_k = 1 and p'_k < p_k, with z_k != y_k.
+ // Hence, a z beating y flips some suspect item: one of those, or an untaken
+ // item whose weight decreased. With none, y is optimal; with intReopt 3, it
+ // is also when, for each suspect item k, a Lagrangian bound of the new core
+ // with x_k = 1 - y_k cannot beat p'y
+ const std::size_t m = v_w.size();
+ if( ( f_C > f_last_C ) || ( m != v_last_w.size() ) ||
+     ( v_last_in.size() != m ) ) {
+  f_lambda = -1;
+  return( - Inf< double >() );
+  }
+ if( f_C != f_last_C )         // the break item moves with the capacity
+  f_lambda = -1;
+
+ double z = 0;
+ long wy = 0;
+ bool wchg = false;
+ std::vector< std::size_t > sus;
+ for( std::size_t k = 0 ; k < m ; ++k ) {
+  if( ( v_orig[ k ] != v_last_orig[ k ] ) ||
+      ( v_comp[ k ] != v_last_comp[ k ] ) ) {
+   f_lambda = -1;
+   return( - Inf< double >() );
+   }
+  if( v_w[ k ] != v_last_w[ k ] )
+   wchg = true;
+  if( v_last_in[ k ] ) {
+   if( v_w[ k ] < v_last_w[ k ] ) {
+    f_lambda = -1;
+    return( - Inf< double >() );
+    }
+   if( v_p[ k ] < v_last_p[ k ] )
+    sus.push_back( k );
+   z += v_p[ k ];
+   wy += v_w[ k ];
+   }
+  else
+   if( ( v_p[ k ] > v_last_p[ k ] ) || ( v_w[ k ] < v_last_w[ k ] ) )
+    sus.push_back( k );
+  }
+ if( wchg )                     // the break item moves with the weights
+  f_lambda = -1;
+ if( wy > f_C )                 // y does not fit the new data
+  return( - Inf< double >() );
+
+ if( ! sus.empty() ) {
+  if( f_reopt < 3 )
+   return( - Inf< double >() );
+  if( f_cert_wait > 0 ) {        // backing off after consecutive failures
+   --f_cert_wait;
+   return( - Inf< double >() );
+   }
+#if CORE_STATS
+  fprintf( stderr , "CERT try sus=%zu m=%zu\n" , sus.size() , m );
+#endif
+
+  // the multiplier lambda of the Lagrangian relaxation of the capacity, any
+  // lambda >= 0 giving the valid bound U = lambda C + sum_j max( 0 , r_j ),
+  // r_j = p_j - lambda w_j, and fixing x_k to v costing max( 0 , r_k ) -
+  // v r_k more. The best lambda is the efficiency of the break item, found
+  // by quickselect (as in core_enumerate()) on the first check and kept
+  // while the capacity and the items stay: a stale one is still valid
+  if( f_lambda < 0 ) {
+   auto more_eff = [ this ]( std::size_t a , std::size_t b ) {
+    return( v_p[ a ] * double( v_w[ b ] ) > v_p[ b ] * double( v_w[ a ] ) );
+    };
+   std::vector< std::size_t > ord( m );
+   std::iota( ord.begin() , ord.end() , 0 );
+   std::size_t lo = 0 , hi = m;
+   long c = f_C;
+   while( hi - lo > 16 ) {
+    const std::size_t mid = lo + ( hi - lo ) / 2;
+    std::nth_element( ord.begin() + lo , ord.begin() + mid ,
+                      ord.begin() + hi , more_eff );
+    long sw = 0;
+    for( std::size_t t = lo ; t < mid ; ++t )
+     sw += v_w[ ord[ t ] ];
+    if( sw <= c ) { c -= sw; lo = mid; }
+    else hi = mid;
+    }
+   std::sort( ord.begin() + lo , ord.begin() + hi , more_eff );
+   while( ( lo < hi ) && ( v_w[ ord[ lo ] ] <= c ) )
+    c -= v_w[ ord[ lo++ ] ];
+   f_lambda = lo < m ? v_p[ ord[ lo ] ] / double( v_w[ ord[ lo ] ] ) : 0;
+   }
+
+  bool intp = true;
+  double u = f_lambda * double( f_C );
+  for( std::size_t k = 0 ; k < m ; ++k ) {
+   if( v_p[ k ] < 0 )            // (the bound needs p >= 0)
+    return( - Inf< double >() );
+   if( intp && ( v_p[ k ] != double( long( v_p[ k ] ) ) ) )
+    intp = false;
+   u += std::max( 0.0 , v_p[ k ] - f_lambda * double( v_w[ k ] ) );
+   }
+
+  const double tol = 1e-12 * std::max( 1.0 , std::abs( z ) );
+  for( auto k : sus ) {
+   const double r = v_p[ k ] - f_lambda * double( v_w[ k ] );
+   const double uk = u - ( v_last_in[ k ] ? std::max( 0.0 , r )
+                                          : std::max( 0.0 , r ) - r );
+   if( intp ? ( floor_safe( uk ) > z ) : ( uk > z + tol ) ) {
+#if CORE_STATS
+    fprintf( stderr , "CERT fail sus=%zu m=%zu\n" , sus.size() , m );
+#endif
+    // from the 4th failure in a row, the next 1, 3, 7, ..., 127 checks are
+    // skipped: where it never succeeds, its O(m) cost goes away
+    if( ++f_cert_fail >= 4 )
+     f_cert_wait = ( 1 << std::min( f_cert_fail - 3 , 7 ) ) - 1;
+    return( - Inf< double >() );
+    }
+   }
+  }
+
+#if CORE_STATS
+ fprintf( stderr , "CERT ok sus=%zu m=%zu\n" , sus.size() , m );
+#endif
+ f_cert_fail = 0;
+ f_outcome = sus.empty() ? 2 : 3;
+ in = v_last_in;
+ return( z );
+ }
+
+/*--------------------------------------------------------------------------*/
+
+double CoreDPBinaryKnapsackSolver::warm_incumbent( std::vector< char > & in )
+ const
+{
+ // the items outside the core are decided by the fixings and the sign-based
+ // pre-fixing of the current data, so only the core image of the previous
+ // solution matters: y = x, or y = 1 - x for a complemented item, rounded
+ // down (a continuous variable may have become integer)
+ const std::size_t m = v_w.size();
+ in.assign( m , 0 );
+ if( v_prev_x.size() != f_N )
+  return( - Inf< double >() );
+
+ long wsum = 0;
+ double psum = 0;
+ for( std::size_t k = 0 ; k < m ; ++k ) {
+  const double x = v_prev_x[ v_orig[ k ] ];
+  const double y = v_comp[ k ] ? 1.0 - x : x;
+  if( y > 1.0 - 1e-9 ) {
+   in[ k ] = 1;
+   wsum += v_w[ k ];
+   psum += v_p[ k ];
+   }
+  }
+
+ // repair: drop the least efficient taken items until the capacity holds
+ if( wsum > f_C ) {
+  std::vector< std::size_t > tk;
+  for( std::size_t k = 0 ; k < m ; ++k )
+   if( in[ k ] )
+    tk.push_back( k );
+  std::sort( tk.begin() , tk.end() ,
+             [ this ]( std::size_t a , std::size_t b ) {
+              return( v_p[ a ] * double( v_w[ b ] ) <
+                      v_p[ b ] * double( v_w[ a ] ) );
+              } );
+  for( auto k : tk ) {
+   if( wsum <= f_C )
+    break;
+   in[ k ] = 0;
+   wsum -= v_w[ k ];
+   psum -= v_p[ k ];
+   }
+  }
+
+ return( psum );
  }
 
 /*--------------------------------------------------------------------------*/
 
 double CoreDPBinaryKnapsackSolver::core_enumerate(
+                       const std::vector< long > & iw ,
+                       const std::vector< double > & ip , long C ,
+                       std::vector< char > & in , double lb , bool relx )
+{
+ const int m = int( iw.size() );
+ if( ( ! f_lazy_core ) || ( m < 64 ) || relx )   // (not in the surrogate)
+  return( core_enumerate_full( iw , ip , C , in , lb , relx ) );
+
+ // the break item by quickselect on the efficiencies (Balas-Zemel): after the
+ // halving, key[ 0 , b ) are the b most efficient items, which all fit, and
+ // key[ b ] the most efficient of the others (the break item)
+ struct Key { double e; long w; double p; int i; };
+ std::vector< Key > key( m );
+ double emin = Inf< double >() , emax = - Inf< double >();
+ for( int i = 0 ; i < m ; ++i ) {
+  key[ i ] = Key{ ip[ i ] / double( iw[ i ] ) , iw[ i ] , ip[ i ] , i };
+  emin = std::min( emin , key[ i ].e );
+  emax = std::max( emax , key[ i ].e );
+  }
+ if( emin == emax )            // all equally efficient: nothing can be fixed
+  return( core_enumerate_full( iw , ip , C , in , lb , relx ) );
+ const auto before = []( const Key & a , const Key & c ) {
+  return( a.e > c.e );
+  };
+ long rc = C;
+ int lo = 0 , hi = m;
+ while( hi - lo > 16 ) {
+  const int mid = lo + ( hi - lo ) / 2;
+  std::nth_element( key.begin() + lo , key.begin() + mid , key.begin() + hi ,
+                    before );
+  long wh = 0;
+  for( int i = lo ; i < mid ; ++i )
+   wh += key[ i ].w;
+  if( wh <= rc ) { rc -= wh; lo = mid; }
+  else hi = mid;
+  }
+ std::sort( key.begin() + lo , key.begin() + hi , before );
+ while( ( lo < hi ) && ( key[ lo ].w <= rc ) )
+  rc -= key[ lo++ ].w;
+ const int b = lo;
+
+ in.assign( m , 0 );
+ long wsumb = 0;
+ double psumb = 0;
+ for( int i = 0 ; i < b ; ++i )
+  { wsumb += key[ i ].w; psumb += key[ i ].p; }
+ if( b >= m ) {                // everything fits
+  for( int i = 0 ; i < m ; ++i )
+   in[ i ] = 1;
+  return( psumb > lb ? psumb : - Inf< double >() );
+  }
+
+ // the break efficiency, the Dantzig bound and the pruning margin of an
+ // improving solution (integer profits: it must gain at least 1), before
+ // the selections below move the break item from its place
+ bool intp = true;
+ for( int i = 0 ; ( i < m ) && intp ; ++i )
+  if( key[ i ].p != std::floor( key[ i ].p ) )
+   intp = false;
+ const double eb = key[ b ].e;
+ const double base = psumb + double( C - wsumb ) * eb;
+ const double ztol = 1e-12 * std::max( 1.0 , std::abs( base ) );
+ const double margin = intp ? ( 1 - ztol ) : ztol;
+
+ // stage 1, a primal heuristic: the small core of the (up to) 32 least
+ // efficient items of the break solution and the 32 most efficient of the
+ // others, key[ b - kl , b + kr ), solved exactly with every other item at
+ // its break value. Its optimum is feasible for the whole instance and
+ // usually close to the optimum: it floors both the fixing and the
+ // enumeration of stage 2
+ const int kl = std::min( 32 , b ) , kr = std::min( 32 , m - b );
+ if( kl < b )
+  std::nth_element( key.begin() , key.begin() + ( b - kl ) ,
+                    key.begin() + b , before );
+ if( kr < m - b )
+  std::nth_element( key.begin() + b , key.begin() + ( b + kr ) , key.end() ,
+                    before );
+ const int s0 = b - kl , s1 = b + kr;
+ long offw = 0;
+ double offp = 0;
+ for( int i = 0 ; i < s0 ; ++i )
+  { offw += key[ i ].w; offp += key[ i ].p; }
+ std::vector< long > cw( s1 - s0 );
+ std::vector< double > cp( s1 - s0 );
+ for( int i = s0 ; i < s1 ; ++i )
+  { cw[ i - s0 ] = key[ i ].w; cp[ i - s0 ] = key[ i ].p; }
+ // (on a budget of 4 m states: on the hardest instances even this small
+ // core is hard, and then its best solution found is taken)
+ std::vector< char > cin;
+ const long cap0 = f_state_cap;
+ f_state_cap = 4 * long( m );
+ const double z1 = offp + core_enumerate_full( cw , cp , C - offw , cin ,
+                                               - Inf< double >() , relx );
+ f_state_cap = cap0;
+ // the stage-1 solution, on the input indices: the answer if nothing better
+ auto stage1 = [ & ]( void ) -> double {
+  if( z1 <= lb )
+   return( - Inf< double >() );
+  in.assign( m , 0 );
+  for( int i = 0 ; i < s0 ; ++i )
+   in[ key[ i ].i ] = 1;
+  for( int i = s0 ; i < s1 ; ++i )
+   in[ key[ i ].i ] = cin[ i - s0 ];
+  return( z1 );
+  };
+ const double z0 = std::max( z1 , lb );
+
+ // stage 2, the fixed core: the stage-1 solution is feasible for the
+ // problem restricted to any core containing the small one, so the core
+ // optimum is at least z0; an item whose Dembo-Hammer bound (the LP bound
+ // with the item flipped, linearised at the break efficiency) stays below z0
+ // plus the improving margin can then be fixed at its break value, and the
+ // core is made of all the others and of the small core. A core larger than
+ // half of the instance saves nothing: the whole of it is solved instead
+ // (and as soon as this is clear), still floored at z0
+ std::vector< int > core;
+ offw = 0;
+ offp = 0;
+ for( int i = 0 ; i < m ; ++i ) {
+  const double U = ( i < b ) ? base - key[ i ].p + double( key[ i ].w ) * eb
+                             : base + key[ i ].p - double( key[ i ].w ) * eb;
+  if( ( U >= z0 + margin ) || ( ( i >= s0 ) && ( i < s1 ) ) ) {
+   core.push_back( i );
+   if( 2 * core.size() > std::size_t( m ) ) {
+    std::vector< char > fin;
+    const double zf = core_enumerate_full( iw , ip , C , fin , z0 , relx );
+    if( zf == - Inf< double >() )
+     return( stage1() );
+    in.swap( fin );
+    return( zf );
+    }
+   }
+  else
+   if( i < b )
+    { offw += key[ i ].w; offp += key[ i ].p; }
+  }
+
+ const int mc = int( core.size() );
+ cw.resize( mc );
+ cp.resize( mc );
+ for( int k = 0 ; k < mc ; ++k )
+  { cw[ k ] = key[ core[ k ] ].w; cp[ k ] = key[ core[ k ] ].p; }
+ std::vector< char > fin;
+ const double zc = core_enumerate_full( cw , cp , C - offw , fin , z0 - offp ,
+                                        relx );
+ if( zc == - Inf< double >() )
+  return( stage1() );
+ in.assign( m , 0 );
+ for( int i = 0 ; i < b ; ++i )         // fixed break items, the core ones
+  in[ key[ i ].i ] = 1;                 // overwritten below
+ for( int k = 0 ; k < mc ; ++k )
+  in[ key[ core[ k ] ].i ] = fin[ k ];
+ return( offp + zc );
+ }
+
+/*--------------------------------------------------------------------------*/
+
+double CoreDPBinaryKnapsackSolver::core_enumerate_full(
+                       const std::vector< long > & iw ,
+                       const std::vector< double > & ip , long C ,
+                       std::vector< char > & in , double lb , bool relx )
+{
+ // integer state profits when all the profits are integers whose sum a
+ // double holds exactly
+ double ps = 0;
+ bool intp = true;
+ for( std::size_t i = 0 ; ( i < ip.size() ) && intp ; ++i ) {
+  intp = ( ip[ i ] == std::floor( ip[ i ] ) );
+  ps += std::abs( ip[ i ] );
+  }
+ if( intp && ( ps < 9e15 ) )
+  return( core_enumerate_engine< long >( iw , ip , C , in , lb , relx ) );
+ return( core_enumerate_engine< double >( iw , ip , C , in , lb , relx ) );
+ }
+
+/*--------------------------------------------------------------------------*/
+
+template< class PT >
+double CoreDPBinaryKnapsackSolver::core_enumerate_engine(
                        const std::vector< long > & iw ,
                        const std::vector< double > & ip , long C ,
                        std::vector< char > & in , double lb , bool relx )
@@ -209,6 +656,10 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
  // call, which must not recurse further.
 
  const int m = int( iw.size() );
+#if CORE_STATS
+ if( ! relx )
+  cs_merge = cs_nogrow = cs_cand = cs_b2 = cs_b3 = cs_b4 = 0;
+#endif
  in.assign( m , 0 );
  if( m == 0 )                  // no free item to decide
   return( 0 > lb ? 0.0 : - Inf< double >() );
@@ -217,13 +668,32 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
  // with a multiplicity. Duplicates are found by grouping a ( w , p )-sorted
  // permutation - no hashing and no per-item containers, the group's input
  // indices are the byk[ mstart , mstart + mcount ) span
+ // (with small weights, a counting sort on them and a sort by profit inside
+ // each weight, which then has few items, in place of the full sort)
  std::vector< int > byk( m );
- for( int i = 0 ; i < m ; ++i )
-  byk[ i ] = i;
- std::sort( byk.begin() , byk.end() , [ & ]( int a , int b ) {
-  return( ( iw[ a ] != iw[ b ] ) ? ( iw[ a ] < iw[ b ] )
-                                 : ( ip[ a ] < ip[ b ] ) );
-  } );
+ const auto byp = [ & ]( int a , int b ) { return( ip[ a ] < ip[ b ] ); };
+ const auto [ wlo , whi ] = std::minmax_element( iw.begin() , iw.end() );
+ const long wspan = *whi - *wlo + 1;
+ if( wspan <= 4 * long( m ) ) {
+  std::vector< int > start( wspan + 1 , 0 );
+  for( int i = 0 ; i < m ; ++i )
+   ++start[ iw[ i ] - *wlo + 1 ];
+  for( long v = 0 ; v < wspan ; ++v )
+   start[ v + 1 ] += start[ v ];
+  for( int i = 0 ; i < m ; ++i )
+   byk[ start[ iw[ i ] - *wlo ]++ ] = i;
+  // start[ v ] is now the end of the bucket of weight *wlo + v
+  for( long v = 0 , b0 = 0 ; v < wspan ; b0 = start[ v++ ] )
+   if( start[ v ] - b0 > 1 )
+    std::sort( byk.begin() + b0 , byk.begin() + start[ v ] , byp );
+  }
+ else {
+  for( int i = 0 ; i < m ; ++i )
+   byk[ i ] = i;
+  std::sort( byk.begin() , byk.end() , [ & ]( int a , int b ) {
+   return( ( iw[ a ] != iw[ b ] ) ? ( iw[ a ] < iw[ b ] ) : byp( a , b ) );
+   } );
+  }
 
  struct Agg {
   long w;
@@ -342,10 +812,22 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
   if( gp < 1 )
    gp = 1;
   }
- const double zmargin = intp ? ( double( gp ) - 1e-9 ) : 1e-9;
+ // the margin allows for the rounding errors of the bounds, which are of
+ // the order of the machine precision times the value of the solutions: a
+ // relative tolerance on an upper bound of the latter, the least of the sum
+ // of the profits and of the capacity filled at the highest efficiency
+ // (items by non-increasing efficiency: the first one)
+ double ptot = 0;
+ for( int i = 0 ; i < mA ; ++i )
+  ptot += std::abs( p[ i ] ) * double( d[ i ] );
+ if( mA > 0 )
+  ptot = std::min( ptot ,
+                   double( C ) * std::abs( p[ 0 ] ) / double( w[ 0 ] ) );
+ const double ztol = 1e-12 * std::max( 1.0 , ptot );
+ const double zmargin = intp ? ( double( gp ) - ztol ) : ztol;
  auto snap = [ intp , gp ]( double ub ) -> double {
   return( ( intp && ( gp > 1 ) )
-          ? std::floor( ub / double( gp ) ) * double( gp ) : ub );
+          ? floor_safe( ub / double( gp ) ) * double( gp ) : ub );
   };
 
  // A3: divisibility-reduced effective capacity (equals C when gcd == 1); all
@@ -368,6 +850,19 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
  for( int u = 0 ; u < bE ; ++u )
   ++cntb[ uitem( u ) ];
 
+ // completion data: prem[ j ] is the profit of the copies of the items
+ // j , j + 1 , ... still out of the break solution, wrem[ j + 1 ] the weight
+ // of those of the items 0 , ... , j still in it; a state can gain at most
+ // the former from the unprocessed right items, and can shed at most the
+ // latter by dropping the unprocessed left ones (fixed items included: the
+ // bounds are only looser for it)
+ std::vector< double > prem( mA + 1 , 0 );
+ std::vector< long > wrem( mA + 1 , 0 );
+ for( int j = mA - 1 ; j >= 0 ; --j )
+  prem[ j ] = prem[ j + 1 ] + p[ j ] * double( d[ j ] - cntb[ j ] );
+ for( int j = 0 ; j < mA ; ++j )
+  wrem[ j + 1 ] = wrem[ j ] + w[ j ] * cntb[ j ];
+
  // A2: global upper bound used as an early-exit ceiling. The Martello-Toth U2
  // bound (break item wholly in or out) is provably <= the plain Dantzig bound,
  // so it is always valid and usually tighter.
@@ -388,19 +883,26 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
    ++best_in[ uitem( u ) ];
  bool beat = ( z0 > lb );
  double z = std::max( z0 , lb );
+#if CORE_STATS
+ const double cs_z0 = z;
+ std::size_t cs_zstep = 0 , cs_zimp = 0;   // last improvement, improvements
+#endif
 
-#if SURROGATE_BOUND
+
  // the surrogate / cardinality bound is computed lazily, only once the Pareto
- // frontier grows past SURR_TRIGGER (i.e. the instance is actually hard,
+ // frontier grows past intSurrTrigger (i.e. the instance is actually hard,
  // COMBO's MINSET gate): this keeps it off the easy instances where it would
  // only add sorting overhead. It uses the (by then larger) incumbent z for
  // the N_min side and for the exact-solve pruning, so one retry is allowed
  // when the incumbent has improved after the first attempt (a stronger z can
- // turn a truncated solve into a certifying one)
+ // turn a truncated solve into a certifying one). A solve that ran out of
+ // its budget (bit 1 of intSurrAdapt) is retried, without counting as a try,
+ // once the enumeration has doubled the states it had generated at the time
+ // (surr_redo): each retry has a budget twice as large, so a certifying solve
+ // is eventually let through at a geometrically bounded total cost
  int surr_tries = 2;
  double surr_z = - Inf< double >();
- constexpr int SURR_TRIGGER = 2000;
-#endif
+ std::size_t surr_redo = std::numeric_limits< std::size_t >::max();
 
  // B4 (WB item-fixing): the break efficiency is the fill rate of the
  // Dembo-Hammer reduction bound WB( i , 1 )
@@ -408,16 +910,30 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
 
  // states are deviations from the break solution: unprocessed left copies are
  // implicitly in, unprocessed right copies implicitly out (so the initial
- // weight is wsumb). steps[ k ] is the Pareto frontier after k expansions,
- // sorted by ascending weight; each State keeps its parent index in
- // steps[ k - 1 ], and step_item[ k ] / step_mult[ k ] the toggled item and
- // its signed copy count (binary-decomposed batch, < 0 = dropped left copies)
- std::vector< std::vector< State > > steps;
- std::vector< int > step_item;
- std::vector< long > step_mult;
- steps.push_back( { State{ wsumb , psumb , -1 , false } } );
- step_item.push_back( -1 );
- step_mult.push_back( 0 );
+ // weight is wsumb). `front` is the current Pareto frontier, sorted by
+ // strictly ascending weight, and `cur` the buffer the next one is merged
+ // into (the two are swapped, never reallocated once large enough);
+ // step_item[ k ] / step_mult[ k ] are the item toggled by the k-th stored
+ // step and its signed copy count (binary-decomposed batch, < 0 = dropped
+ // left copies). For the backtracking each state carries the decisions of
+ // the steps since the last checkpoint, one bit each (bit k - C - 1 for the
+ // step k > C, C the largest multiple of 64 below k), and the frontier of
+ // every checkpoint C > 0 is kept as the step C + 1 read it (chk[ C / 64 -
+ // 1 ]): from a state, its mask gives the last decisions, undoing them the
+ // weight of its ancestor at the checkpoint, which the weight identifies in
+ // that frontier, and so on back to the break state. This replaces a
+ // per-state history of every step with one copy of the frontier every 64
+ struct WP { long wsum; PT psum; std::uint64_t mask; };
+ using WPvec = std::vector< WP , NoInit< WP > >;   // resize() writes nothing
+ WPvec front( 1 , WP{ wsumb , PT( psumb ) , 0 } );
+ std::vector< PT > pt( mA );   // the item profits, as state profits
+ for( int j = 0 ; j < mA ; ++j )
+  pt[ j ] = PT( p[ j ] );
+ WPvec cur;
+ std::vector< WPvec > chk;
+ std::vector< int > step_item( 1 , -1 );
+ std::vector< long > step_mult( 1 , 0 );
+ std::size_t nstates = 1;      // states of all the stored steps
 
  // record an improving incumbent: rebuild the achieving per-item copy counts
  // by walking the parent chain through the (already final) earlier steps. The
@@ -430,6 +946,7 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
                                 const int * xs , int nx ) {
   z = psum;
   beat = true;
+  CSTAT( ( cs_zstep = nstates , ++cs_zimp ) );
   best_in = cntb;
   if( delta )
    best_in[ item ] += delta;
@@ -437,11 +954,25 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
    const int j = std::abs( xs[ e ] ) - 1;
    best_in[ j ] += ( xs[ e ] > 0 ) ? 1 : -1;
    }
-  for( int kk = int( steps.size() ) - 1 ; kk >= 1 ; --kk ) {
-   const State & ps = steps[ kk ][ pos ];
-   if( ps.took )
-    best_in[ step_item[ kk ] ] += step_mult[ kk ];
-   pos = ps.parent;
+  long sw = front[ pos ].wsum;
+  std::uint64_t mask = front[ pos ].mask;
+  for( std::size_t S = step_item.size() - 1 ; S > 0 ; ) {
+   const std::size_t C = ( ( S - 1 ) / 64 ) * 64;   // checkpoint below S
+   for( std::size_t k = S ; k > C ; --k )
+    if( ( mask >> ( k - C - 1 ) ) & 1u ) {
+     best_in[ step_item[ k ] ] += step_mult[ k ];
+     sw -= step_mult[ k ] * w[ step_item[ k ] ];
+     }
+   if( C == 0 )
+    break;
+   const auto & f = chk[ C / 64 - 1 ];    // the ancestor, by its weight
+   const auto at = std::lower_bound( f.begin() , f.end() , sw ,
+                                     []( const WP & a , long v ) {
+                                      return( a.wsum < v );
+                                      } );
+   assert( ( at != f.end() ) && ( at->wsum == sw ) );
+   mask = at->mask;
+   S = C;
    }
   };
 
@@ -454,14 +985,20 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
  int roSkipR = 0 , roSkipL = 0;
 
  // B3 (fixing-by-dominance) per-side reference: the last item whose expansion
- // generated no new state (valid when the profit is >= 0)
+ // generated no new state (valid when the profit is >= 0); with
+ // intDominanceFix = 2 every such item instead marks at once all the still
+ // unprocessed items of its side that it dominates
  long   domRw = 0 , domLw = 0;
  double domRp = -1 , domLp = -1;
+ std::vector< char > domfix( f_dom_fix > 1 ? mA : 0 , 0 );
 
- // B5 (pairing heuristics) state: the PH/TPH/SSPH trigger is a frontier size
- // threshold doubled per call; SPH runs after every expansion and uses a
- // deterministic xorshift32 (reproducible solves) to sample one item per block
+ // B5 (pairing heuristics) state: the PH/TPH/SSPH trigger is a threshold
+ // on the states generated since the last call, doubled per call (so that
+ // they run early, while the incumbent decides how much is pruned); SPH runs
+ // after every expansion and uses a deterministic xorshift32 (reproducible
+ // solves) to sample one item per block
  std::size_t ph_thresh = 10 * std::size_t( m );
+ std::size_t ph_work = 0;
  unsigned rng = 0x9E3779B9u;
  auto rnd = [ & ]( unsigned k ) -> unsigned {
   rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5;
@@ -470,7 +1007,7 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
 
  // best frontier state under a weight cap: the frontier is sorted by weight
  // with profit increasing along it, so it is the last state below the cap
- auto best_under = [ & ]( const std::vector< State > & f , long wcap ) -> int {
+ auto best_under = [ & ]( const WPvec & f , long wcap ) -> int {
   int lo = 0 , hi = int( f.size() ) - 1 , res = -1;
   while( lo <= hi ) {
    const int mid = ( lo + hi ) / 2;
@@ -488,6 +1025,64 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
   ++t;
  bool goRight = true;
  bool dead = false;            // the frontier emptied: certified, stop all
+
+ // the items fixed at their break value before being reached: fixd[ j ] is
+ // set by the reduction below as the incumbent grows, or by dominance;
+ // wfixU / pfixU are the weight (left items) and the profit (right items)
+ // of those still to be reached, which the completion bounds must not count
+ std::vector< char > fixd( mA , 0 );
+ long wfixU = 0;
+ double pfixU = 0;
+ auto fix_item = [ & ]( int j , bool right ) {
+  if( fixd[ j ] )
+   return;
+  fixd[ j ] = 1;
+  if( right )
+   pfixU += p[ j ] * double( d[ j ] - cntb[ j ] );
+  else
+   wfixU += w[ j ] * cntb[ j ];
+  };
+
+ // reduction: whenever the incumbent has grown, every item still to be
+ // reached whose Dembo-Hammer bound (see B4 below) cannot beat it is fixed
+ // at once, rather than when its turn comes
+ double z_reduced = - Inf< double >();
+
+ // the check of the dominance after an expansion that grew the frontier
+ // (see below) is amortised over 10 m generated states
+ std::size_t dom_work = 0;
+ const std::size_t dom_thresh = 10 * std::size_t( m );
+ auto reduce = [ & ]( void ) {
+  if( ( ! f_red_fix ) || ( z <= z_reduced ) )
+   return;
+  z_reduced = z;
+  for( int j = s ; j >= 0 ; --j )
+   if( cntb[ j ] && ( ! fixd[ j ] ) &&
+       ( psumb - p[ j ] + double( Ceff - wsumb + w[ j ] ) * eb <
+         z + zmargin ) )
+    fix_item( j , false );
+  for( int j = t ; j < mA ; ++j )
+   if( ( d[ j ] > cntb[ j ] ) && ( ! fixd[ j ] ) &&
+       ( psumb + p[ j ] + double( Ceff - wsumb - w[ j ] ) * eb <
+         z + zmargin ) )
+    fix_item( j , true );
+  };
+
+ // the frontier is closed under one more copy of `i` (and stays so under any
+ // later expansion), so is it under any item that `i` dominates: mark all
+ // those still to be processed on the side of `i`
+ auto mark_dominated = [ & ]( int i , bool right ) {
+  if( right ) {
+   for( int j = t ; j < mA ; ++j )
+    if( ( w[ j ] >= w[ i ] ) &&
+        ( p[ j ] <= p[ i ] * double( w[ j ] / w[ i ] ) ) )
+     { domfix[ j ] = 1; fix_item( j , true ); }
+   }
+  else
+   for( int j = s ; j >= 0 ; --j )
+    if( ( w[ j ] <= w[ i ] ) && ( p[ j ] >= p[ i ] ) )
+     { domfix[ j ] = 1; fix_item( j , false ); }
+  };
  while( ( ( s >= 0 ) || ( t < mA ) ) && ( z < dantzig - 1e-9 ) && ! dead ) {
 
   // pick the next item to expand, alternating right / left; its copies still
@@ -505,41 +1100,57 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
    }
   goRight = ! goRight;
 
-#if CORE_B4
+  reduce();
+  if( fixd[ it ] ) {           // fixed before its turn: no longer pending
+   if( isRight )
+    pfixU -= p[ it ] * double( avail );
+   else
+    wfixU -= w[ it ] * avail;
+   CSTAT( ++cs_b4 );
+   continue;
+   }
+
   // B4: Dembo-Hammer reduction bound. WB( it , 1 ) bounds the value of any
   // solution deviating on `it` (the LP value function is concave with slope
   // <= eb past the break point); if it cannot beat the incumbent the item is
   // fixed at its break-side value and never expanded
-  {
+  if( f_red_fix ) {
    const double WB = isRight
     ? psumb + p[ it ] + double( Ceff - wsumb - w[ it ] ) * eb
     : psumb - p[ it ] + double( Ceff - wsumb + w[ it ] ) * eb;
    if( WB < z + zmargin )
-    continue;
+    { CSTAT( ++cs_b4 ); continue; }
    }
-#endif
 
-#if CORE_B3
   // B3: fixing-by-dominance. once expanding item i gave no new state, any
   // heavier right item with p' <= p_i * floor( w' / w_i ) (resp. lighter left
   // item with p' >= p_i) cannot yield an improved solution either - floor(
   // w' / w_i ) copies of i dominate it state-wise - so skip it outright
-  if( isRight ) {
-   if( ( domRp >= 0 ) && ( w[ it ] >= domRw ) &&
-       ( p[ it ] <= domRp * double( w[ it ] / domRw ) ) )
-    continue;
+  if( ( f_dom_fix > 1 ) && domfix[ it ] )
+   { CSTAT( ++cs_b3 ); continue; }
+  if( f_dom_fix == 1 ) {
+   if( isRight ) {
+    if( ( domRp >= 0 ) && ( w[ it ] >= domRw ) &&
+        ( p[ it ] <= domRp * double( w[ it ] / domRw ) ) )
+     { CSTAT( ++cs_b3 ); continue; }
+    }
+   else
+    if( ( domLp >= 0 ) && ( w[ it ] <= domLw ) && ( p[ it ] >= domLp ) )
+     { CSTAT( ++cs_b3 ); continue; }
    }
-  else
-   if( ( domLp >= 0 ) && ( w[ it ] <= domLw ) && ( p[ it ] >= domLp ) )
-    continue;
-#endif
 
   // LP bound fill rates of the still-unprocessed units. While copies of the
   // current item remain uncommitted they are themselves the most efficient
   // addable (resp. the least efficient droppable) units, so until the last
   // batch the bound must use the current item's own efficiency
-  const double eff_t  = ( t < mA ) ? ( p[ t ] / double( w[ t ] ) ) : 0.0;
-  const double eff_s  = ( s >= 0 ) ? ( p[ s ] / double( w[ s ] ) ) : 0.0;
+  // (the next items not fixed: the fixed ones will never move)
+  int tn = t , sn = s;
+  while( ( tn < mA ) && ( fixd[ tn ] || ( d[ tn ] == cntb[ tn ] ) ) )
+   ++tn;
+  while( ( sn >= 0 ) && ( fixd[ sn ] || ( cntb[ sn ] == 0 ) ) )
+   --sn;
+  const double eff_t  = ( tn < mA ) ? ( p[ tn ] / double( w[ tn ] ) ) : 0.0;
+  const double eff_s  = ( sn >= 0 ) ? ( p[ sn ] / double( w[ sn ] ) ) : 0.0;
   const double eff_it = p[ it ] / double( w[ it ] );
 
   int & nonew  = isRight ? nonewR  : nonewL;
@@ -560,37 +1171,48 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
    bool hasL;
    if( isRight ) {
     eff_nr = lastB ? eff_t : eff_it;
-    hasL = ( s >= 0 );
+    hasL = ( sn >= 0 );
     eff_nl = eff_s;
     }
    else {
     eff_nr = eff_t;
-    hasL = ( ! lastB ) || ( s >= 0 );
+    hasL = ( ! lastB ) || ( sn >= 0 );
     eff_nl = lastB ? eff_s : eff_it;
     }
 
-   const std::vector< State > & prev = steps.back();
+   const WPvec & prev = front;
    const int np = int( prev.size() );
    const long   dmul = isRight ? mult : - mult;
    const long   dw = dmul * w[ it ];
-   const double dp = double( dmul ) * p[ it ];
+   const PT dp = PT( dmul ) * pt[ it ];
+
+   // what is left after this batch: the profit the right items can still
+   // add, the weight the left ones can still shed
+   const long   rest = avail - mdone - mult;
+   const double pleft = prem[ t ] - pfixU +
+                        ( isRight ? p[ it ] * double( rest ) : 0 );
+   const long   wleft = wrem[ s + 1 ] - wfixU +
+                        ( isRight ? 0 : w[ it ] * rest );
 
    // the per-state survival test: not bound-pruned (fractional fill for
-   // feasible states, fractional removal for over-capacity ones)
+   // feasible states, fractional removal for over-capacity ones, each capped
+   // by what the unprocessed items can still give: the completion bounds)
    auto survives = [ & ]( long nw , double npp ) -> bool {
-    const double B = ( nw <= Ceff )
-     ? npp + double( Ceff - nw ) * eff_nr
-     : ( hasL ? npp - double( nw - Ceff ) * eff_nl : - Inf< double >() );
+    double B;
+    if( nw <= Ceff )
+     B = std::min( npp + double( Ceff - nw ) * eff_nr , npp + pleft );
+    else
+     B = ( hasL && ( nw - Ceff <= wleft ) )
+         ? npp - double( nw - Ceff ) * eff_nl : - Inf< double >();
     return( B >= z + zmargin );
     };
 
-#if CORE_B2
    // B2: after `guard` consecutive no-new-state expansions on this side, run
    // a read-only check (a scan of the would-be merge that writes nothing): if
    // no toggled state would survive, skip the whole item. A wasteful check (a
    // survivor exists) doubles the threshold; 40 consecutive skips force an
    // expansion so that the state pruning still operates periodically
-   if( ( ! mdone ) && ( nonew > guard ) && ( roSkip < 40 ) ) {
+   if( f_dp_ext && ( ! mdone ) && ( nonew > guard ) && ( roSkip < 40 ) ) {
     bool wouldAdd = false;
     double maxp = - Inf< double >();      // max untoggled profit at <= weight
     for( int ia = 0 , ib = 0 ; ib < np ; ) {
@@ -604,214 +1226,358 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
      }
     if( ! wouldAdd ) {
      ++roSkip;
+     CSTAT( ++cs_b2 );
      break;
      }
     guard *= 2;
     }
    roSkip = 0;
-#endif
 
    // expansion: linear merge of the frontier with its ( +dw , +dp ) translate
    // (both sorted by ascending weight), keeping the merged Pareto frontier;
    // candidates with equal weight are merged higher-profit-first
-   std::vector< State > cur;
-   cur.reserve( 2 * np );
-   double frontier = - Inf< double >();
+   // the output is sized for the worst case and filled by index, then cut
+   // to the `nc` states kept; the decision of this step goes in the bit
+   // K mod 64 of the masks (K the step of prev), which restart at 0 after a
+   // checkpoint
+   // (cur holds nothing worth keeping: emptied before growing, so that a
+   // reallocation copies nothing, and grown geometrically, so that it is
+   // rare and the freed blocks are reused rather than handed back)
+   const long wdead = Ceff + ( hasL ? wleft : 0 );
+   cur.clear();
+   if( cur.capacity() < 2 * std::size_t( np ) )
+    cur.reserve( 4 * std::size_t( np ) );
+   cur.resize( 2 * std::size_t( np ) );
+   const std::size_t K = step_item.size() - 1;
+   const unsigned bit = unsigned( K % 64 );
+   const std::uint64_t keep_mask = ( bit == 0 ) ? 0 : ~std::uint64_t( 0 );
+   std::size_t nc = 0;
+   // with integer profits the completion bound is folded in the dominance
+   // test: a candidate is dropped unless it beats the profit that, plus all
+   // the right ones still to add, reaches the improving threshold (taken at
+   // the start of the merge, i.e., a weaker but valid one; such a candidate
+   // cannot improve the incumbent either), and is left to survives_m() the
+   // continuous bound only
+   PT frontier = std::numeric_limits< PT >::lowest();
+   if constexpr( std::is_integral_v< PT > )
+    frontier = PT( ceil_safe( z + zmargin - pleft ) ) - 1;
+   // the threshold of the bounds and, with integer profits, the incumbent
+   // as a state profit, refreshed when the incumbent improves
+   double zthr = z + zmargin;
+   PT zst = std::numeric_limits< PT >::lowest();
+   if constexpr( std::is_integral_v< PT > )
+    if( z > double( std::numeric_limits< PT >::lowest() ) )
+     zst = PT( std::floor( z ) );
+   const auto survives_m = [ & ]( long nw , double npp ) -> bool {
+    if constexpr( std::is_integral_v< PT > ) {
+     const double B = ( nw <= Ceff )
+      ? npp + double( Ceff - nw ) * eff_nr
+      : ( ( hasL && ( nw - Ceff <= wleft ) )
+          ? npp - double( nw - Ceff ) * eff_nl : - Inf< double >() );
+     return( B >= zthr );
+     }
+    else
+     return( survives( nw , npp ) );
+    };
    int newStates = 0;
    bool improved = false;
 
    int ia = 0 , ib = 0;
-   while( ( ia < np ) || ( ib < np ) ) {
-    bool tog;
-    if( ia >= np )
-     tog = true;
-    else if( ib >= np )
-     tog = false;
-    else {
-     const long wa = prev[ ia ].wsum , wb = prev[ ib ].wsum + dw;
-     tog = ( wb < wa ) ||
-           ( ( wb == wa ) && ( prev[ ib ].psum + dp > prev[ ia ].psum ) );
-     }
-    long nw; double npp; int par; bool took;
-    if( tog )
-     { nw = prev[ ib ].wsum + dw; npp = prev[ ib ].psum + dp;
-       par = ib; took = true; ++ib; }
-    else
-     { nw = prev[ ia ].wsum; npp = prev[ ia ].psum;
-       par = ia; took = false; ++ia; }
-
+   CSTAT( ( ++cs_merge , cs_cand += 2 * std::size_t( np ) ) );
+   // one candidate, by ascending weight: false once one is too heavy to be
+   // brought back under the capacity by the left items still to drop (then
+   // so are all the others)
+   const auto take = [ & ]( long nw , PT npp , int par , unsigned took ,
+                            std::uint64_t pmask ) -> void {
     if( npp <= frontier )       // Pareto-dominated (weight already >=)
-     continue;
+     return;
     frontier = npp;
 
     // update the incumbent from feasible states, recording the achieving
-    // solution now (the state may be bound-pruned right after)
-    if( ( nw <= Ceff ) && ( npp > z ) ) {
-     record_incumbent( npp , par , it , took ? dmul : 0 , nullptr , 0 );
+    // solution now (the state may be bound-pruned right after); with
+    // integer profits a feasible improving state beats z by a whole g_p,
+    // so its bound passes the threshold and it is enough to look among the
+    // surviving states, in integers
+    const auto improve = [ & ]( void ) {
+     record_incumbent( double( npp ) , par , it , took ? dmul : 0 , nullptr ,
+                       0 );
      improved = true;
+     zthr = z + zmargin;
+     if constexpr( std::is_integral_v< PT > )
+      zst = PT( std::floor( z ) );
+     };
+    if constexpr( ! std::is_integral_v< PT > )
+     if( ( nw <= Ceff ) && ( double( npp ) > z ) )
+      improve();
+
+    if( survives_m( nw , double( npp ) ) ) {
+     if constexpr( std::is_integral_v< PT > )
+      if( ( nw <= Ceff ) && ( npp > zst ) )
+       improve();
+     cur[ nc++ ] = WP{ nw , npp , ( pmask & keep_mask ) |
+                                  ( std::uint64_t( took ) << bit ) };
+     newStates += int( took );
      }
+    };
 
-    if( ! survives( nw , npp ) )
-     continue;
-
-    cur.push_back( State{ nw , npp , par , took } );
-    if( took )
-     ++newStates;
-    }
+   // both streams, then the rest of either, with no index check in the loop;
+   // the candidates come by ascending weight, so once one is too heavy to be
+   // brought back under the capacity by the left items still to drop, so
+   // are all the others: the merge stops there
+   [ & ]( void ) {
+    while( ( ia < np ) && ( ib < np ) ) {
+     const WP & a = prev[ ia ];
+     const WP & b = prev[ ib ];
+     const long wb = b.wsum + dw;
+     const PT   pb = b.psum + dp;
+     if( ( wb < a.wsum ) || ( ( wb == a.wsum ) && ( pb > a.psum ) ) ) {
+      if( wb > wdead )
+       return;
+      take( wb , pb , ib , 1 , b.mask );
+      ++ib;
+      }
+     else {
+      if( a.wsum > wdead )
+       return;
+      take( a.wsum , a.psum , ia , 0 , a.mask );
+      ++ia;
+      }
+     }
+    for( ; ( ia < np ) && ( prev[ ia ].wsum <= wdead ) ; ++ia )
+     take( prev[ ia ].wsum , prev[ ia ].psum , ia , 0 , prev[ ia ].mask );
+    for( ; ( ib < np ) && ( prev[ ib ].wsum + dw <= wdead ) ; ++ib )
+     take( prev[ ib ].wsum + dw , prev[ ib ].psum + dp , ib , 1 ,
+           prev[ ib ].mask );
+    }();
+   cur.resize( nc );
 
    bool grown;
    if( newStates ) {
-    steps.push_back( std::move( cur ) );
+    if( ( bit == 0 ) && ( K > 0 ) )      // prev is the checkpoint K
+     chk.push_back( front );
+    std::swap( front , cur );
+    nstates += nc;
     step_item.push_back( it );
     step_mult.push_back( dmul );
     nonew = 0;
     grown = true;
+
+    // dominance after an expansion that grew the frontier: the items still
+    // to be reached that `it` dominates are fixed if the frontier is closed
+    // under one more copy of `it`, and otherwise (right side) those that,
+    // added to the lightest state from which `it` still yields a surviving
+    // state, would be too heavy to ever come back under the capacity
+    if( ( f_dom_fix > 1 ) && ( ! mdone ) && ( p[ it ] >= 0 ) &&
+        ( ( dom_work += front.size() ) >= dom_thresh ) ) {
+     dom_work = 0;
+     std::vector< int > dom;
+     if( isRight ) {
+      for( int j = t ; j < mA ; ++j )
+       if( ( ! fixd[ j ] ) && ( w[ j ] >= w[ it ] ) &&
+           ( p[ j ] <= p[ it ] * double( w[ j ] / w[ it ] ) ) )
+        dom.push_back( j );
+      }
+     else
+      for( int j = s ; j >= 0 ; --j )
+       if( ( ! fixd[ j ] ) && ( w[ j ] <= w[ it ] ) && ( p[ j ] >= p[ it ] ) )
+        dom.push_back( j );
+     if( dom.size() > 2 ) {
+      // read-only scan of the merge with one more copy of `it`: the weight
+      // of the first state that still yields something (-1: none)
+      long min_req = -1;
+      const int nf = int( front.size() );
+      PT maxp = std::numeric_limits< PT >::lowest();
+      for( int ia = 0 , ib = 0 ; ib < nf ; ) {
+       if( ( ia < nf ) && ( front[ ia ].wsum <= front[ ib ].wsum + dw ) )
+        { maxp = front[ ia ].psum; ++ia; continue; }
+       const long nw = front[ ib ].wsum + dw;
+       const PT npp = front[ ib ].psum + dp;
+       if( ( npp > maxp ) && survives( nw , double( npp ) ) )
+        { min_req = front[ ib ].wsum; break; }
+       ++ib;
+       }
+      if( min_req < 0 )
+       for( int j : dom )
+        fix_item( j , isRight );
+      else
+       if( isRight )
+        for( int j : dom )
+         if( min_req + w[ j ] - ( w[ j ] / w[ it ] - 1 ) * w[ it ] > wdead )
+          fix_item( j , true );
+      }
+     }
+    if( relx ) {               // the surrogate recursion runs on a budget
+     f_rec_left -= long( front.size() );
+     if( f_rec_left < 0 )      // exhausted: give up, the caller knows
+      return( Inf< double >() );
+     }
+    if( ( f_state_cap >= 0 ) && ( long( nstates ) > f_state_cap ) ) {
+     dead = true;              // capped: stop with the best solution so far
+     break;
+     }
     }
    else {
     // the frontier did not grow: do not store a step (nothing to backtrack
-    // through), just compact the last one in place under the current bound
-    // (parents of its entries are untouched); on a first-batch failure also
-    // remember the item as the dominance reference (B3)
+    // through), the merged frontier is the last one pruned under the current
+    // bound (a state dropped as dominated by a pruned translate would have
+    // been pruned too, being heavier and worth less) and takes its place,
+    // the masks of its states untouched - but where they restart (a
+    // checkpoint) the last one is compacted instead; on a first-batch
+    // failure also remember the item as the dominance reference (B3)
     ++nonew;
-    auto & last = steps.back();
-    last.erase( std::remove_if( last.begin() , last.end() ,
-                                [ & ]( const State & st ) {
-                                 return( ! survives( st.wsum , st.psum ) );
-                                 } ) , last.end() );
+    CSTAT( ++cs_nogrow );
+    if( bit != 0 ) {
+     nstates -= front.size() - nc;
+     std::swap( front , cur );
+     }
+    else {
+     std::size_t kept = 0;
+     for( std::size_t i = 0 ; i < front.size() ; ++i )
+      if( survives( front[ i ].wsum , front[ i ].psum ) )
+       front[ kept++ ] = front[ i ];
+     nstates -= front.size() - kept;
+     front.resize( kept );
+     }
     if( ! mdone ) {
      if( isRight ) { domRw = w[ it ]; domRp = p[ it ]; }
      else          { domLw = w[ it ]; domLp = p[ it ]; }
+     // the frontier is closed under one more copy of `it` (and stays so
+     // under any later expansion), so is it under any item that `it`
+     // dominates: mark all those still to be processed on this side
+     if( ( f_dom_fix > 1 ) && ( p[ it ] >= 0 ) )
+      mark_dominated( it , isRight );
      }
     grown = false;
     }
 
-   if( steps.back().empty() ) {
+   if( front.empty() ) {
     dead = true;
     break;
     }
 
-#if CORE_B5
-   // B5 (GCH): a new incumbent may leave slack capacity; greedily complete it
-   // with any still-unselected copies that fit (always feasible)
-   if( improved ) {
-    long wcur = 0;
-    for( int i = 0 ; i < mA ; ++i )
-     wcur += best_in[ i ] * w[ i ];
-    for( int i = 0 ; ( i < mA ) && ( wcur < Ceff ) ; ++i )
-     while( ( best_in[ i ] < d[ i ] ) && ( wcur + w[ i ] <= Ceff ) )
-      { ++best_in[ i ]; wcur += w[ i ]; z += p[ i ]; }
-    }
+   if( f_heur ) {
+    // B5 (GCH): a new incumbent may leave slack capacity; greedily complete it
+    // with any still-unselected copies that fit (always feasible)
+    if( improved ) {
+     long wcur = 0;
+     for( int i = 0 ; i < mA ; ++i )
+      wcur += best_in[ i ] * w[ i ];
+     for( int i = 0 ; ( i < mA ) && ( wcur < Ceff ) ; ++i )
+      while( ( best_in[ i ] < d[ i ] ) && ( wcur + w[ i ] <= Ceff ) )
+       { ++best_in[ i ]; wcur += w[ i ]; z += p[ i ]; }
+     }
 
-   // B5 (SPH): after every expansion, pair a sparse sample of the unprocessed
-   // items with the frontier: one random item per block of size gamma on each
-   // side, for ~ beta = ceil( |S| / 50 ) pairings in all - much cheaper than
-   // the O( |S| ) expansion itself, so it runs unconditionally
-   {
-    const std::vector< State > & f = steps.back();
-    const long beta = long( f.size() / 50 ) + 1;
-    const long gamma = std::max( 1L , long( mA ) / beta );
-    const long gl = std::min( long( s + 1 ) , gamma );
-    const long gr = std::min( long( mA - t ) , gamma );
-    if( gl >= 3 )
-     for( long st0 = 0 ; st0 <= s ; st0 += gl ) {
-      const int i = int( st0 + rnd( unsigned(
-                           std::min( gl , long( s + 1 ) - st0 ) ) ) );
-      const int j = best_under( f , Ceff + w[ i ] );
-      if( ( j >= 0 ) && ( f[ j ].psum - p[ i ] > z ) ) {
-       const int xs[ 1 ] = { - ( i + 1 ) };
-       record_incumbent( f[ j ].psum - p[ i ] , j , -1 , 0 , xs , 1 );
+    // B5 (SPH): after every expansion, pair a sparse sample of the unprocessed
+    // items with the frontier: one random item per block of size gamma on each
+    // side, for ~ beta = ceil( |S| / 50 ) pairings in all - much cheaper than
+    // the O( |S| ) expansion itself, so it runs unconditionally
+    {
+     const WPvec & f = front;
+     const long beta = long( f.size() / 50 ) + 1;
+     const long gamma = std::max( 1L , long( mA ) / beta );
+     const long gl = std::min( long( s + 1 ) , gamma );
+     const long gr = std::min( long( mA - t ) , gamma );
+     if( gl >= 3 )
+      for( long st0 = 0 ; st0 <= s ; st0 += gl ) {
+       const int i = int( st0 + rnd( unsigned(
+                            std::min( gl , long( s + 1 ) - st0 ) ) ) );
+       const int j = best_under( f , Ceff + w[ i ] );
+       if( ( j >= 0 ) && ( f[ j ].psum - p[ i ] > z ) ) {
+        const int xs[ 1 ] = { - ( i + 1 ) };
+        record_incumbent( f[ j ].psum - p[ i ] , j , -1 , 0 , xs , 1 );
+        }
        }
-      }
-    if( gr >= 3 )
-     for( long st0 = t ; st0 < mA ; st0 += gr ) {
-      const int i = int( st0 + rnd( unsigned(
-                           std::min( gr , long( mA ) - st0 ) ) ) );
+     if( gr >= 3 )
+      for( long st0 = t ; st0 < mA ; st0 += gr ) {
+       const int i = int( st0 + rnd( unsigned(
+                            std::min( gr , long( mA ) - st0 ) ) ) );
+       const int j = best_under( f , Ceff - w[ i ] );
+       if( ( j >= 0 ) && ( f[ j ].psum + p[ i ] > z ) ) {
+        const int xs[ 1 ] = { i + 1 };
+        record_incumbent( f[ j ].psum + p[ i ] , j , -1 , 0 , xs , 1 );
+        }
+       }
+     }
+
+    // B5 (PH / TPH / SSPH): when the states generated since the last call
+    // have passed the (doubling) threshold, pair every still-unprocessed item
+    // with its best frontier state via binary search; if the number of
+    // ( left , right ) pairs is small wrt |S| / log2 |S| also try every pair
+    // (TPH); on huge frontiers additionally enumerate all subsets of k
+    // random unprocessed items with alpha k 2^k <= |S| , alpha = 20 (SSPH)
+    if( ( ph_work += front.size() ) >= ph_thresh ) {
+     ph_thresh *= 2;
+     ph_work = 0;
+     const WPvec & f = front;
+     for( int i = t ; i < mA ; ++i ) {      // pair with an unprocessed right
       const int j = best_under( f , Ceff - w[ i ] );
       if( ( j >= 0 ) && ( f[ j ].psum + p[ i ] > z ) ) {
        const int xs[ 1 ] = { i + 1 };
        record_incumbent( f[ j ].psum + p[ i ] , j , -1 , 0 , xs , 1 );
        }
       }
-    }
-
-   // B5 (PH / TPH / SSPH): when the frontier has grown past the (doubling)
-   // threshold, pair every still-unprocessed item with its best frontier
-   // state via binary search; if the number of ( left , right ) pairs is
-   // small wrt |S| / log2 |S| also try every pair (TPH); on huge frontiers
-   // additionally enumerate all subsets of k random unprocessed items with
-   // alpha k 2^k <= |S| , alpha = 20 (SSPH)
-   if( steps.back().size() >= ph_thresh ) {
-    ph_thresh *= 2;
-    const std::vector< State > & f = steps.back();
-    for( int i = t ; i < mA ; ++i ) {      // pair with an unprocessed right
-     const int j = best_under( f , Ceff - w[ i ] );
-     if( ( j >= 0 ) && ( f[ j ].psum + p[ i ] > z ) ) {
-      const int xs[ 1 ] = { i + 1 };
-      record_incumbent( f[ j ].psum + p[ i ] , j , -1 , 0 , xs , 1 );
-      }
-     }
-    for( int i = s ; i >= 0 ; --i ) {      // pair with an unprocessed left
-     const int j = best_under( f , Ceff + w[ i ] );
-     if( ( j >= 0 ) && ( f[ j ].psum - p[ i ] > z ) ) {
-      const int xs[ 1 ] = { - ( i + 1 ) };
-      record_incumbent( f[ j ].psum - p[ i ] , j , -1 , 0 , xs , 1 );
-      }
-     }
-
-    // TPH: drop an unprocessed left item AND add an unprocessed right one
-    const double l2 = std::log2( double( f.size() ) + 2 );
-    if( double( s + 1 ) * double( mA - t ) < double( f.size() ) / l2 )
-     for( int il = 0 ; il <= s ; ++il )
-      for( int ir = t ; ir < mA ; ++ir ) {
-       const int j = best_under( f , Ceff + w[ il ] - w[ ir ] );
-       const double v = ( j >= 0 ) ? f[ j ].psum - p[ il ] + p[ ir ]
-                                   : - Inf< double >();
-       if( v > z ) {
-        const int xs[ 2 ] = { - ( il + 1 ) , ir + 1 };
-        record_incumbent( v , j , -1 , 0 , xs , 2 );
-        }
+     for( int i = s ; i >= 0 ; --i ) {      // pair with an unprocessed left
+      const int j = best_under( f , Ceff + w[ i ] );
+      if( ( j >= 0 ) && ( f[ j ].psum - p[ i ] > z ) ) {
+       const int xs[ 1 ] = { - ( i + 1 ) };
+       record_incumbent( f[ j ].psum - p[ i ] , j , -1 , 0 , xs , 1 );
        }
-
-    // SSPH: largest k with alpha k 2^k <= |S|; k random unprocessed items,
-    // all their non-singleton subsets paired with the frontier
-    constexpr long alpha = 20;
-    int k = 0;
-    while( ( k + 1 <= 24 ) &&
-           ( alpha * long( k + 1 ) * ( 1L << ( k + 1 ) ) <=
-             long( f.size() ) ) )
-     ++k;
-    const int navail = ( s + 1 ) + ( mA - t );
-    if( ( k >= 2 ) && ( navail >= k ) ) {
-     std::vector< int > pick( k );
-     for( int e = 0 ; e < k ; ++e ) {
-      const int r = int( rnd( unsigned( navail ) ) );
-      pick[ e ] = ( r <= s ) ? r : ( t + ( r - s - 1 ) );
       }
-     // duplicates would unbalance the ( dw , dp ) sums vs the count toggles
-     std::sort( pick.begin() , pick.end() );
-     pick.erase( std::unique( pick.begin() , pick.end() ) , pick.end() );
-     k = int( pick.size() );
-     std::vector< int > xs;
-     for( unsigned msk = 1 ; ( k >= 2 ) && ( msk < ( 1u << k ) ) ; ++msk ) {
-      if( ! ( msk & ( msk - 1 ) ) )        // singletons: PH already did them
-       continue;
-      long dw2 = 0; double dp2 = 0;
-      xs.clear();
-      for( int e = 0 ; e < k ; ++e )
-       if( msk & ( 1u << e ) ) {
-        const int i = pick[ e ];
-        if( i <= s )
-         { dw2 -= w[ i ]; dp2 -= p[ i ]; xs.push_back( -( i + 1 ) ); }
-        else         { dw2 += w[ i ]; dp2 += p[ i ]; xs.push_back( i + 1 ); }
+
+     // TPH: drop an unprocessed left item AND add an unprocessed right one
+     const double l2 = std::log2( double( f.size() ) + 2 );
+     if( double( s + 1 ) * double( mA - t ) < double( f.size() ) / l2 )
+      for( int il = 0 ; il <= s ; ++il )
+       for( int ir = t ; ir < mA ; ++ir ) {
+        const int j = best_under( f , Ceff + w[ il ] - w[ ir ] );
+        const double v = ( j >= 0 ) ? f[ j ].psum - p[ il ] + p[ ir ]
+                                    : - Inf< double >();
+        if( v > z ) {
+         const int xs[ 2 ] = { - ( il + 1 ) , ir + 1 };
+         record_incumbent( v , j , -1 , 0 , xs , 2 );
+         }
         }
-      const int j = best_under( f , Ceff - dw2 );
-      if( ( j >= 0 ) && ( f[ j ].psum + dp2 > z ) )
-       record_incumbent( f[ j ].psum + dp2 , j , -1 , 0 , xs.data() ,
-                         int( xs.size() ) );
+
+     // SSPH: largest k with alpha k 2^k <= |S|; k random unprocessed items,
+     // all their non-singleton subsets paired with the frontier
+     constexpr long alpha = 20;
+     int k = 0;
+     while( ( k + 1 <= 24 ) &&
+            ( alpha * long( k + 1 ) * ( 1L << ( k + 1 ) ) <=
+              long( f.size() ) ) )
+      ++k;
+     const int navail = ( s + 1 ) + ( mA - t );
+     if( ( k >= 2 ) && ( navail >= k ) ) {
+      std::vector< int > pick( k );
+      for( int e = 0 ; e < k ; ++e ) {
+       const int r = int( rnd( unsigned( navail ) ) );
+       pick[ e ] = ( r <= s ) ? r : ( t + ( r - s - 1 ) );
+       }
+      // duplicates would unbalance the ( dw , dp ) sums vs the count toggles
+      std::sort( pick.begin() , pick.end() );
+      pick.erase( std::unique( pick.begin() , pick.end() ) , pick.end() );
+      k = int( pick.size() );
+      std::vector< int > xs;
+      for( unsigned msk = 1 ; ( k >= 2 ) && ( msk < ( 1u << k ) ) ; ++msk ) {
+       if( ! ( msk & ( msk - 1 ) ) )        // singletons: PH already did them
+        continue;
+       long dw2 = 0; double dp2 = 0;
+       xs.clear();
+       for( int e = 0 ; e < k ; ++e )
+        if( msk & ( 1u << e ) ) {
+         const int i = pick[ e ];
+         if( i <= s )
+          { dw2 -= w[ i ]; dp2 -= p[ i ]; xs.push_back( -( i + 1 ) ); }
+         else         { dw2 += w[ i ]; dp2 += p[ i ]; xs.push_back( i + 1 ); }
+         }
+       const int j = best_under( f , Ceff - dw2 );
+       if( ( j >= 0 ) && ( f[ j ].psum + dp2 > z ) )
+        record_incumbent( f[ j ].psum + dp2 , j , -1 , 0 , xs.data() ,
+                          int( xs.size() ) );
+       }
       }
      }
     }
-#endif
 
    if( ! grown )               // L10 / T11: close the item early
     break;
@@ -820,46 +1586,77 @@ double CoreDPBinaryKnapsackSolver::core_enumerate(
   if( dead )
    break;
 
-#if SURROGATE_BOUND
   // hard instance detected: tighten the ceiling with the surrogate bound,
-  // computed on the per-unit expanded view; with SURROGATE_SOLVE the exact
+  // computed on the per-unit expanded view; with intSurrogate = 2 the exact
   // optimum of the surrogate subproblem both certifies and (when it attains
   // the forced cardinality) raises the incumbent
-  if( ( ! relx ) && surr_tries &&
-      ( int( steps.back().size() ) > SURR_TRIGGER ) && ( z > surr_z ) ) {
-#if SURROGATE_SOLVE
-   const double zb4 = z;
-   std::fill( selE.begin() , selE.end() , 0 );
-   const double su = surrogate_solve( wE , pE , mE , bE , Ceff , z , selE );
-   if( z > zb4 ) {             // improved: fold the unit selection to counts
-    beat = true;
-    std::fill( best_in.begin() , best_in.end() , 0 );
-    for( int u = 0 ; u < mE ; ++u )
-     if( selE[ u ] )
-      ++best_in[ uitem( u ) ];
-    }
-   dantzig = std::min( dantzig , snap( su ) );
-#else
-   dantzig = std::min( dantzig ,
-                       snap( surrogate_bound( wE , pE , mE , bE , Ceff ,
-                                              z ) ) );
+  if( ( f_surrogate > 0 ) && ( ! relx ) && surr_tries &&
+      ( int( front.size() ) > f_surr_trigger ) &&
+      ( ( z > surr_z ) || ( nstates >= surr_redo ) ) ) {
+   // with bit 1 of intSurrAdapt the recursion of the exact surrogate solve
+   // may generate at most twice the states of the enumeration so far: a
+   // solve that certifies does it well within that, one that does not would
+   // otherwise cost up to orders of magnitude more than the whole solve
+   const std::size_t mainst = nstates;
+   f_rec_left = ( f_surr_adapt & 2 ) ? 2 * long( mainst )
+                                     : std::numeric_limits< long >::max();
+#if CORE_STATS
+   const double dbef = dantzig;
+   core_rec_states = 0;
 #endif
-   --surr_tries;
+   if( f_surrogate > 1 ) {
+    const double zb4 = z;
+    std::fill( selE.begin() , selE.end() , 0 );
+    const double su = surrogate_solve( wE , pE , mE , bE , Ceff , z , selE );
+    if( z > zb4 ) {            // improved: fold the unit selection to counts
+     beat = true;
+     std::fill( best_in.begin() , best_in.end() , 0 );
+     for( int u = 0 ; u < mE ; ++u )
+      if( selE[ u ] )
+       ++best_in[ uitem( u ) ];
+     }
+    dantzig = std::min( dantzig , snap( su ) );
+    }
+   else
+    dantzig = std::min( dantzig ,
+                        snap( surrogate_bound( wE , pE , mE , bE , Ceff ,
+                                               z ) ) );
+#if CORE_STATS
+   fprintf( stderr , "SURRTRY front=%zu step=%zu z=%.0f before=%.0f "
+            "bound=%.0f mainst=%zu recst=%zu\n" , front.size() ,
+            step_item.size() , z , dbef , dantzig , mainst ,
+            core_rec_states );
+#endif
+   if( ( f_surr_adapt & 2 ) && ( f_rec_left < 0 ) )
+    surr_redo = 2 * mainst;    // out of budget: retry at twice the work
+   else {
+    --surr_tries;
+    surr_redo = std::numeric_limits< std::size_t >::max();
+    }
    surr_z = z;
    }
-#endif
   }
 
 #if CORE_STATS
  {
-  std::size_t mxf = 0 , totf = 0;
-  for( const auto & st : steps )
-   { mxf = std::max( mxf , st.size() ); totf += st.size(); }
+  std::size_t mxf = front.size() , totf = nstates;
+  for( const auto & f : chk )
+   mxf = std::max( mxf , f.size() );
+  if( relx )
+   core_rec_states += totf;
   fprintf( stderr ,
            "CORE_STATS m=%d mA=%d mE=%d bE=%d steps=%zu maxfront=%zu "
            "totstates=%zu z=%.0f dantzig=%.0f closed=%s left=%d right=%d\n" ,
-           m , mA , mE , bE , steps.size() , mxf , totf , z , dantzig ,
+           m , mA , mE , bE , step_item.size() , mxf , totf , z , dantzig ,
            ( z >= dantzig - 1e-9 ) ? "bound" : "exhaust" , s + 1 , mA - t );
+  if( ! relx )
+   fprintf( stderr , "CORE_INC z0=%.0f z=%.0f improvements=%zu "
+            "at_states=%zu of %zu\n" , cs_z0 , z , cs_zimp , cs_zstep ,
+            nstates );
+  if( ! relx )
+   fprintf( stderr , "CORE_EXP merges=%zu nogrow=%zu cand=%zu skipB2=%zu "
+            "skipB3=%zu skipB4=%zu\n" , cs_merge , cs_nogrow , cs_cand ,
+            cs_b2 , cs_b3 , cs_b4 );
   }
 #endif
 
@@ -986,7 +1783,7 @@ double CoreDPBinaryKnapsackSolver::upper_bound_u2(
  double Uex = psumb;
  if( b + 1 < m ) {
   const double add = double( r ) * ( p[ b + 1 ] / double( w[ b + 1 ] ) );
-  Uex += intp ? std::floor( add ) : add;
+  Uex += intp ? floor_safe( add ) : add;
   }
 
  // U'' : the break item b is taken; ( w[ b ] - r ) of weight must be removed
@@ -995,7 +1792,7 @@ double CoreDPBinaryKnapsackSolver::upper_bound_u2(
  if( b >= 1 ) {
   const double rem = double( w[ b ] - r ) *
                      ( p[ b - 1 ] / double( w[ b - 1 ] ) );
-  Uin -= intp ? std::ceil( rem ) : rem;
+  Uin -= intp ? ceil_safe( rem ) : rem;
   }
 
  // both U' and U'' are <= the plain Dantzig bound, so their max is a valid,
@@ -1017,13 +1814,26 @@ double CoreDPBinaryKnapsackSolver::surrogate_card_bound(
  // minimised over the integer multiplier s in [ slo , shi ]: the surrogate
  // problem is max sum p_i x_i s.t. sum (w_i + s) x_i <= C + s*card, x in [0,1];
  // ANY s in the valid sign range gives a valid upper bound, so the min is too.
- // combo.c surbin's gradient binary search is used to locate the minimiser.
+ // combo.c surbin's gradient binary search is used to locate the minimiser;
+ // with bit 0 of intSurrAdapt it first probes the end of the range next to
+ // s = 0, where the surrogate is the plain continuous relaxation: when the
+ // gradient points to that end the search is over in one or two steps
+ bool probe = ( f_surr_adapt & 1 ) && ( ( slo == 0 ) || ( shi == 0 ) );
  double best = Inf< double >();
  long bestsur = 0;
  std::vector< int > ord( m );
+#if CORE_STATS
+ const long slo0 = slo;
+ int evals = 0;
+#endif
 
  while( slo <= shi ) {
-  const long s = slo + ( shi - slo ) / 2;     // floor towards slo (>=0 step)
+  const long s = probe ? ( ( slo == 0 ) ? 0 : std::max( slo , -1L ) )
+                       : slo + ( shi - slo ) / 2;  // floor towards slo
+  probe = false;
+#if CORE_STATS
+  ++evals;
+#endif
 
   long csur = C + s * ( long ) card;
   if( csur < 0 ) csur = 0;
@@ -1038,15 +1848,29 @@ double CoreDPBinaryKnapsackSolver::surrogate_card_bound(
    if( ww <= 0 ) { psum += p[ i ]; cap -= double( ww ); }
    else ord.push_back( i );
    }
-  std::sort( ord.begin() , ord.end() , [ & ]( int a , int c ) {
+  const auto before = [ & ]( int a , int c ) {
    return( p[ a ] * double( w[ c ] + s ) > p[ c ] * double( w[ a ] + s ) );
-   } );
+   };
 
-  // greedy fractional fill of the surrogate capacity
+  // greedy fractional fill of the surrogate capacity; the critical item is
+  // located by quickselect on the efficiencies (Balas-Zemel), each halving
+  // taking whole the upper half when it fits, so only a short tail is sorted
   int d = int( m - ord.size() );               // items already taken (ww <= 0)
   double r = cap;
   int bi = -1;
-  for( int t = 0 ; t < int( ord.size() ) ; ++t ) {
+  int lo = 0 , hi = int( ord.size() );
+  while( hi - lo > 16 ) {
+   const int mid = lo + ( hi - lo ) / 2;
+   std::nth_element( ord.begin() + lo , ord.begin() + mid ,
+                     ord.begin() + hi , before );
+   double wh = 0 , ph = 0;
+   for( int t = lo ; t < mid ; ++t )
+    { wh += double( w[ ord[ t ] ] + s ); ph += p[ ord[ t ] ]; }
+   if( wh <= r ) { psum += ph; r -= wh; d += mid - lo; lo = mid; }
+   else hi = mid;
+   }
+  std::sort( ord.begin() + lo , ord.begin() + hi , before );
+  for( int t = lo ; t < hi ; ++t ) {
    const double ww = double( w[ ord[ t ] ] + s );
    if( ww <= r ) { psum += p[ ord[ t ] ]; r -= ww; ++d; }
    else { bi = ord[ t ]; break; }
@@ -1069,6 +1893,10 @@ double CoreDPBinaryKnapsackSolver::surrogate_card_bound(
   if( gr > 0 ) shi = s - 1; else slo = s + 1;
   }
 
+#if CORE_STATS
+ fprintf( stderr , "SURCARD card=%d range=%s evals=%d sur=%ld best=%.0f\n" ,
+          card , ( slo0 < 0 ) ? "neg" : "pos" , evals , bestsur , best );
+#endif
  if( out_sur )
   *out_sur = bestsur;
  return( best );
@@ -1094,16 +1922,12 @@ double CoreDPBinaryKnapsackSolver::surrogate_bound(
 
  // card1 = N_max: largest k with the k smallest weights fitting C
  std::vector< long > ws( w );
- std::sort( ws.begin() , ws.end() );
- int card1 = 0; long acc = 0;
- while( ( card1 < m ) && ( acc + ws[ card1 ] <= C ) )
-  { acc += ws[ card1 ]; ++card1; }
+ const int card1 = prefix_fit( ws , std::less< long >() , C );
 
  // card2 = N_min: smallest k with the k largest profits exceeding z
  std::vector< double > ps( p );
- std::sort( ps.begin() , ps.end() , std::greater< double >() );
- int card2 = 0; double pacc = 0;
- while( ( card2 < m ) && ( pacc <= z ) ) { pacc += ps[ card2 ]; ++card2; }
+ const int card2 = ( z < 0 ) ? 0 :
+  std::min( prefix_fit( ps , std::greater< double >() , z ) + 1 , m );
 
  // apply the surrogate only for a forced cardinality (combo.c surrelax order);
  // a cardinality dichotomy at b is a complete, always-valid case split
@@ -1149,14 +1973,11 @@ double CoreDPBinaryKnapsackSolver::surrogate_solve(
  // card1 = N_max: largest k with the k smallest weights fitting C, so every
  // feasible solution has <= card1 items; card2 = N_min: smallest k with the k
  // largest profits exceeding z, so every IMPROVING solution has >= card2 items
- int card1 = 0; long acc = 0;
- { std::vector< long > ws( w ); std::sort( ws.begin() , ws.end() );
-   while( ( card1 < m ) && ( acc + ws[ card1 ] <= C ) )
-  { acc += ws[ card1 ]; ++card1; } }
- int card2 = 0; double pacc = 0;
- { std::vector< double > ps( p );
-   std::sort( ps.begin() , ps.end() , std::greater< double >() );
-   while( ( card2 < m ) && ( pacc <= z ) ) { pacc += ps[ card2 ]; ++card2; } }
+ std::vector< long > ws( w );
+ const int card1 = prefix_fit( ws , std::less< long >() , C );
+ std::vector< double > ps( p );
+ const int card2 = ( z < 0 ) ? 0 :
+  std::min( prefix_fit( ps , std::greater< double >() , z ) + 1 , m );
 
  // upper bound on every solution of one forced-cardinality case: the tightest
  // surrogate fractional bound, improved to the EXACT optimum of the surrogate
@@ -1190,6 +2011,8 @@ double CoreDPBinaryKnapsackSolver::surrogate_solve(
 
   std::vector< char > sub;
   const double val = core_enumerate( mw , mp , csur , sub , z - ps , true );
+  if( val == Inf< double >() )         // out of budget: the fractional bound
+   return( uf );
   if( val == - Inf< double >() )       // proved: nothing in the case beats z
    return( z );
 

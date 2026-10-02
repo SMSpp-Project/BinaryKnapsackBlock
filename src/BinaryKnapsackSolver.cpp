@@ -194,10 +194,12 @@ void BinaryKnapsackSolver::normalize_instance( void )
  f_base = 0;
  f_Cd = f_Cap;
 
- n_w.resize( f_N );
- n_p.resize( f_N );
- n_comp.resize( f_N );
- n_in.assign( f_N , 0 );
+ if( f_relax_data ) {
+  n_w.resize( f_N );
+  n_p.resize( f_N );
+  n_comp.resize( f_N );
+  n_in.assign( f_N , 0 );
+  }
 
  for( Index i = 0 ; i < f_N ; ++i ) {
 
@@ -207,10 +209,12 @@ void BinaryKnapsackSolver::normalize_instance( void )
 
   // per-item normalized data for the cached efficiency order; for items
   // not entering the relaxation (n_in == 0) the values are immaterial
-  const bool cmp = ( w < 0 ) && ( p < 0 );
-  n_w[ i ] = cmp ? -w : w;
-  n_p[ i ] = cmp ? -p : p;
-  n_comp[ i ] = cmp;
+  if( f_relax_data ) {
+   const bool cmp = ( w < 0 ) && ( p < 0 );
+   n_w[ i ] = cmp ? -w : w;
+   n_p[ i ] = cmp ? -p : p;
+   n_comp[ i ] = cmp;
+   }
 
   // fixed variables: honour the fixing, fold into base profit / capacity
   if( v_fxd[ i ] == 1 ) {
@@ -230,7 +234,8 @@ void BinaryKnapsackSolver::normalize_instance( void )
 
   if( ( w < 0 ) && ( p < 0 ) ) {                 // complement: tentatively
    f_base += p; f_Cd -= w;                       //  take it, the core toggle
-   n_in[ i ] = 1;                                //  undoes it ( x = 1 - y )
+   if( f_relax_data )                            //  undoes it ( x = 1 - y )
+    n_in[ i ] = 1;
    if( v_I[ i ] )
     { c_w.push_back( -w ); c_p.push_back( -p );
       c_orig.push_back( i ); c_comp.push_back( 1 ); }
@@ -241,7 +246,8 @@ void BinaryKnapsackSolver::normalize_instance( void )
    }
 
   // genuine free item with positive weight and profit
-  n_in[ i ] = 1;
+  if( f_relax_data )
+   n_in[ i ] = 1;
   if( v_I[ i ] )
    { c_w.push_back( w ); c_p.push_back( p );
      c_orig.push_back( i ); c_comp.push_back( 0 ); }
@@ -330,6 +336,34 @@ Change * BinaryKnapsackSolver::apply_to_mirror(
 
 /*--------------------------------------------------------------------------*/
 
+void BinaryKnapsackSolver::build_efficiency_order( void )
+{
+ v_ord.resize( f_N );
+ std::iota( v_ord.begin() , v_ord.end() , 0 );
+
+ // the efficiency order is that of p / w, compared by cross-multiplication
+ // to avoid the divisions; this compares the ratios only if both weights are
+ // positive, which is why the items that can never enter the relaxation (the
+ // ones the signs alone fix, whose normalized weight is <= 0, see
+ // normalize_instance()) are kept apart in index order rather than being
+ // compared: with a negative weight the cross-multiplication flips, the
+ // comparator stops being a strict weak ordering, and std::sort then has
+ // undefined behaviour - which scrambles the order of the good items as well
+ std::sort( v_ord.begin() , v_ord.end() , [ & ]( int a , int b ) {
+  const bool ain = ( n_w[ a ] > 0 ) , bin = ( n_w[ b ] > 0 );
+  if( ain != bin )
+   return( ain );
+  if( ! ain )
+   return( a < b );
+  return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
+  } );
+
+ f_ord_valid = true;
+
+ }  // end( BinaryKnapsackSolver::build_efficiency_order )
+
+/*--------------------------------------------------------------------------*/
+
 double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
 {
  // the relaxation makes no difference between integer and continuous items:
@@ -337,14 +371,8 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
  // cached efficiency order, which only has to be (re)computed when profits,
  // weights or the objective sense change (see update_instance() / load()),
  // NOT when the fixings do: re-solves under different fixings are O( n )
- if( ! f_ord_valid ) {
-  v_ord.resize( f_N );
-  std::iota( v_ord.begin() , v_ord.end() , 0 );
-  std::sort( v_ord.begin() , v_ord.end() , [ & ]( int a , int b ) {
-   return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
-   } );
-  f_ord_valid = true;
-  }
+ if( ! f_ord_valid )
+  build_efficiency_order();
 
  fi = FracInfo{ -1 , 1 , false , false , 0 , 0 };
 

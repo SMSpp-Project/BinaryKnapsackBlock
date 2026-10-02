@@ -102,8 +102,8 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  BinaryKnapsackSolver() : Solver() , f_sense( true ) , f_N( 0 ) , f_Cap( 0 ) ,
                           f_changed( true ) , f_ord_valid( false ) ,
-                          f_norm_valid( false ) , f_Cd( 0 ) ,
-                          f_base( 0 ) {}
+                          f_norm_valid( false ) , f_relax_data( true ) ,
+                          f_Cd( 0 ) , f_base( 0 ) {}
 
  ~BinaryKnapsackSolver() override = default;
 
@@ -114,6 +114,38 @@ class BinaryKnapsackSolver : public virtual Solver {
  /// set the (pointer to the) Block: loads the raw mirror of the instance
 
  void set_Block( Block * block ) override;
+
+/*--------------------------------------------------------------------------*/
+/*--------------------- METHODS FOR READING THE SOLUTION -------------------*/
+/*--------------------------------------------------------------------------*/
+
+ /// returns the current solution as a BinaryKnapsackSolution
+ /** Returns the current solution as a BinaryKnapsackSolution [see
+  * BinaryKnapsackBlock.h], built out of the data structures of the Solver
+  * rather than by writing it in the Variable of the BinaryKnapsackBlock and
+  * having it read back from there: no abstract representation is therefore
+  * required to exist, and the BinaryKnapsackBlock is not written into at
+  * all, hence it is not lock()-ed and any number of Solver attached to it
+  * can produce their own Solution at the same time.
+  *
+  * The solution is the one over *all* the items, i.e., the very same one
+  * that get_var_solution() would write into the Variable; nullptr is
+  * returned if none is available. */
+
+ [[nodiscard]] Solution * get_Solution( Configuration * solc = nullptr )
+  override {
+  if( f_x.empty() )
+   return( nullptr );
+
+  return( new BinaryKnapsackSolution( std::vector< double >( f_x ) ) );
+  }
+
+/*--------------------------------------------------------------------------*/
+ /// the Solution comes from the data of the Solver, not from the Variable
+
+ [[nodiscard]] bool is_get_Solution_physical( void ) const override {
+  return( true );
+  }
 
 /*--------------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
@@ -191,6 +223,18 @@ class BinaryKnapsackSolver : public virtual Solver {
  void refresh_fixings( void );
 
 /*--------------------------------------------------------------------------*/
+ /// (re)build the cached efficiency order of the items
+ /** Fills #v_ord with the items sorted by non-increasing efficiency
+  * \f$ p_i / w_i \f$ of the normalized instance [see
+  * normalize_instance()], which is the order the greedy fill of the
+  * continuous relaxation follows. The order only depends on the profits,
+  * the weights and the sense of the Objective, NOT on the fixings, hence it
+  * survives a re-solve under different fixings and is only rebuilt when
+  * #f_ord_valid says so. */
+
+ void build_efficiency_order( void );
+
+/*--------------------------------------------------------------------------*/
  /// apply an (un)fixing Change to the internal mirror of the instance
  /** Applies an (un)fixing BinaryKnapsackBlockChange (its type() must be
   * eFixX or eUnfixX) to the internal mirror of the instance, NOT to the
@@ -262,6 +306,10 @@ class BinaryKnapsackSolver : public virtual Solver {
  bool f_ord_valid;                ///< if v_ord matches profits / weights
  bool f_norm_valid;               ///< if the normalization matches the
                                   ///< current profits / weights / sense
+ bool f_relax_data;               ///< if normalize_instance() fills n_w,
+                                  ///< n_p, n_comp and n_in (the relaxation
+                                  ///< data), false in the Solvers not using
+                                  ///< fractional_relaxation()
  std::vector< double > n_w;       ///< normalized (complemented) weights
  std::vector< double > n_p;       ///< normalized (complemented) profits
  std::vector< char >   n_in;      ///< 1 if the item enters the relaxation

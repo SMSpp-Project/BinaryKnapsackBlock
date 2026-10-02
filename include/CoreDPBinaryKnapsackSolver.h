@@ -97,14 +97,166 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
 
  static constexpr double WeightIntegrality = 1e-06;
 
+ /// public enum for the int algorithmic parameters
+
+ enum int_par_type_CDPBKSlv {
+  intReopt = intLastAlgPar ,     ///< reoptimization level
+  intSurrogate ,                 ///< surrogate relaxation: off / bound / solve
+  intSurrTrigger ,               ///< frontier size that triggers it
+  intSurrAdapt ,                 ///< adaptive rules of the surrogate
+  intDPExtension ,               ///< guarded DP extension on / off
+  intDominanceFix ,              ///< fixing by dominance on / off
+  intReductionFix ,              ///< Dembo-Hammer reduction fixing on / off
+  intPrimalHeur ,                ///< primal heuristics during the enumeration
+  intLazyCore ,                  ///< fixed core around the break item
+  intLastCDPBKSlvPar             ///< first allowed new int par for derived
+  };
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
 /*--------------------------------------------------------------------------*/
 
  CoreDPBinaryKnapsackSolver() : BinaryKnapsackSolver() , f_C( 0 ) ,
-                                f_obj( - Inf< double >() ) {}
+                                f_obj( - Inf< double >() ) , f_reopt( 0 ) ,
+                                f_surrogate( 2 ) , f_surr_trigger( 2000 ) ,
+                                f_surr_adapt( 1 ) , f_rec_left( 0 ) ,
+                                f_state_cap( -1 ) , f_dp_ext( 1 ) ,
+                                f_dom_fix( 2 ) , f_red_fix( 1 ) , f_heur( 1 ) ,
+                                f_lazy_core( 1 ) , f_prev_valid( false )
+  { f_relax_data = false; }
 
  ~CoreDPBinaryKnapsackSolver() override = default;
+
+/*--------------------------------------------------------------------------*/
+/*-------------------------- OTHER INITIALIZATIONS -------------------------*/
+/*--------------------------------------------------------------------------*/
+
+ using BinaryKnapsackSolver::set_par;  // keep the other set_par() visible
+
+ /// set the int parameters of CoreDPBinaryKnapsackSolver
+ /** Set the int parameters specific of CoreDPBinaryKnapsackSolver:
+  *
+  * - intReopt [0]: how much of the previous solve is reused by the next one
+  *   after a change of the data. 0 = none, every solve starts from scratch;
+  *   1 = the previous optimal solution \f$ \bar{x} \f$, repaired to the new
+  *   data (fixings enforced, the items whose sign makes them never or always
+  *   profitable set accordingly, and the least efficient taken items dropped
+  *   until \f$ \sum_i w_i \bar{x}_i \leq C \f$), seeds the incumbent of the
+  *   core enumeration: every state whose bound cannot beat
+  *   \f$ \sum_i p_i \bar{x}_i \f$ is pruned from the start, and
+  *   \f$ \bar{x} \f$ itself is returned when nothing beats it; 2 = as 1,
+  *   and moreover no solve at all when the changes since the last solve
+  *   cannot have made any other solution better than \f$ \bar{x} \f$: same
+  *   core items, a capacity no larger, no weight smaller, \f$ \bar{x} \f$
+  *   still fitting, no taken item with less profit and no other one with
+  *   more; 3 = as 2, and moreover no solve also when some taken item lost
+  *   profit, or some other one gained profit or lost weight, if for each such
+  *   item \f$ k \f$ the Lagrangian bound of the new data (capacity relaxed,
+  *   multiplier the efficiency of the break item) with
+  *   \f$ x_k = 1 - \bar{x}_k \f$ cannot beat \f$ \bar{x} \f$ (any better
+  *   solution must flip one of them); after a few failures in a row this
+  *   test is skipped for a number of solves that doubles with each further
+  *   failure. Only the pure 0-1 case (no continuous variable) is warm
+  *   started.
+  *
+  * The following ones switch the components of the core enumeration, all
+  * exact (they change the running time, never the optimum), so that the
+  * choice can be made per instance:
+  *
+  * - intSurrogate [2]: the surrogate relaxation with a cardinality
+  *   constraint; 0 = never, 1 = as a fractional bound, 2 = solved exactly
+  *   by recursion, so that its optimum certifies and possibly raises the
+  *   incumbent;
+  *
+  * - intSurrTrigger [2000]: the size of the Pareto frontier past which the
+  *   surrogate relaxation is computed (below it the instance is easy and the
+  *   relaxation would only add overhead);
+  *
+  * - intSurrAdapt [1]: the adaptive rules of the surrogate relaxation, a bit
+  *   mask; bit 0 (+1) = the multiplier search starts from the end of its
+  *   range where the surrogate reduces to the continuous relaxation, and
+  *   stops there when the gradient says that the minimiser is that end (so
+  *   that a surrogate adding nothing to the bound costs one or two
+  *   evaluations instead of a whole binary search); bit 1 (+2) = the exact
+  *   solve of the surrogate (intSurrogate = 2) runs on a budget of twice the
+  *   states generated by the enumeration up to that point, falling back to
+  *   the fractional surrogate bound when it runs out and retrying once the
+  *   enumeration has doubled its states (off by default: a solve that would
+  *   certify can need more than the budget, and the retries then cost more
+  *   than they save);
+  *
+  * - intDPExtension [1]: the guarded DP extension, i.e., the read-only check
+  *   that skips an item whose expansion could not produce any state;
+  *
+  * - intDominanceFix [2]: the fixing by dominance of the items that a copy
+  *   of an already useless item dominates; 0 = never, 1 = each item is
+  *   checked against the last useless item of its side, 2 = every useless
+  *   item marks at once all the items still to be processed on its side
+  *   that it dominates;
+  *
+  * - intReductionFix [1]: the Dembo-Hammer fixing of the items whose
+  *   reduction bound cannot beat the incumbent;
+  *
+  * - intPrimalHeur [1]: the primal heuristics run during the enumeration
+  *   (pairing, subset sampling and greedy completion);
+  *
+  * - intLazyCore [1]: the fixed core, on (1) or off (0). When on, the
+  *   break item is found by quickselect instead of sorting the instance, and
+  *   every item whose Dembo-Hammer bound cannot beat the break solution (or
+  *   the given lower bound) is fixed at its break value; the core
+  *   enumeration then runs on the remaining items only, or on the whole
+  *   instance if they are more than half of it. This spares the sorting of
+  *   the whole instance, which dominates the solve of the easy ones. */
+
+ void set_par( idx_type par , int value ) override {
+  if( ( par >= intReopt ) && ( par < intLastCDPBKSlvPar ) )
+   *int_par_ptr( par ) = value;
+  else
+   BinaryKnapsackSolver::set_par( par , value );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ [[nodiscard]] idx_type get_num_int_par( void ) const override {
+  return( idx_type( intLastCDPBKSlvPar ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ [[nodiscard]] int get_int_par( idx_type par ) const override {
+  if( ( par >= intReopt ) && ( par < intLastCDPBKSlvPar ) )
+   return( *const_cast< CoreDPBinaryKnapsackSolver * >( this )->int_par_ptr(
+                                                                     par ) );
+  return( BinaryKnapsackSolver::get_int_par( par ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ [[nodiscard]] int get_dflt_int_par( idx_type par ) const override {
+  static constexpr int dflt[] = { 0 , 2 , 2000 , 1 , 1 , 2 , 1 , 1 , 1 };
+  if( ( par >= intReopt ) && ( par < intLastCDPBKSlvPar ) )
+   return( dflt[ par - intReopt ] );
+  return( BinaryKnapsackSolver::get_dflt_int_par( par ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ [[nodiscard]] idx_type int_par_str2idx( const std::string & name )
+  const override {
+  for( idx_type i = intReopt ; i < intLastCDPBKSlvPar ; ++i )
+   if( name == par_names()[ i - intReopt ] )
+    return( i );
+  return( BinaryKnapsackSolver::int_par_str2idx( name ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ [[nodiscard]] const std::string & int_par_idx2str( idx_type idx )
+  const override {
+  if( ( idx >= intReopt ) && ( idx < intLastCDPBKSlvPar ) )
+   return( par_names()[ idx - intReopt ] );
+  return( BinaryKnapsackSolver::int_par_idx2str( idx ) );
+  }
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
@@ -129,6 +281,15 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
  /// write the current solution into the variables of the BinaryKnapsackBlock
 
  void get_var_solution( Configuration * solc = nullptr ) override;
+
+ /// how much of the previous solve the last one reused [see intReopt]
+ /** Returns 0 if the last compute() solved the instance from scratch, 1 if
+  * it started from the previous solution as the incumbent, 2 if it
+  * returned the previous solution with no solve because the changes could
+  * not have made it suboptimal, and 3 if it did so because a Lagrangian
+  * bound showed it. */
+
+ [[nodiscard]] int get_reopt_outcome( void ) const { return( f_outcome ); }
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
@@ -180,9 +341,11 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   *   s_p-(s_w-C)\,\dfrac{p_{nl}}{w_{nl}}, & s_w> C
   *   \end{cases}\qquad\text{prune if } B(s)<z+1, \f]
   * where \f$ nr \f$ / \f$ nl \f$ are the next unprocessed right / left items.
-  * Returns the optimal core profit and fills @p in with the chosen items. */
+  * Returns the optimal core profit and fills @p in with the chosen items.
+  * Virtual so that a derived Solver can bring its own engine for the integer
+  * core while keeping all the rest (see RECORDBinaryKnapsackSolver). */
 
- double solve_integer_core( std::vector< char > & in );
+ virtual double solve_integer_core( std::vector< char > & in );
 
  /// trivial divisibility bound: effective (reduced) capacity.
  /** With \f$ g=\gcd_i w_i \f$ every reachable weight is a multiple of
@@ -309,6 +472,28 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
                         const std::vector< double > & ip , long C ,
                         std::vector< char > & in , double lb , bool relx );
 
+ /// the core enumeration on the whole of the given instance
+ /** The engine behind core_enumerate() (same arguments and result), which
+  * calls it either on the whole instance or, with intLazyCore > 0, on a
+  * fixed core around the break item (see set_par()). */
+
+ double core_enumerate_full( const std::vector< long > & iw ,
+                             const std::vector< double > & ip , long C ,
+                             std::vector< char > & in , double lb ,
+                             bool relx );
+
+ /// the engine of core_enumerate_full(), with state profits of type PT
+ /** core_enumerate_full() calls it with PT = long when all the profits are
+  * integers (and their sum is exactly representable as a double), so that
+  * the per-state arithmetic of the enumeration is integer, with PT = double
+  * otherwise. */
+
+ template< class PT >
+ double core_enumerate_engine( const std::vector< long > & iw ,
+                               const std::vector< double > & ip , long C ,
+                               std::vector< char > & in , double lb ,
+                               bool relx );
+
  /// combine the integer Pareto frontier with the fractional fill of the
  /// continuous variables; returns the optimal core profit, fills @p in (over
  /// the integer core items) and @p cx (over the continuous core items)
@@ -344,6 +529,80 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
  /* solution - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  double f_obj;                    ///< optimal value (maximisation sense)
+
+ /* reoptimization - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+ int f_reopt;                     ///< the intReopt parameter
+ int f_surrogate;                 ///< the intSurrogate parameter
+ int f_surr_trigger;              ///< the intSurrTrigger parameter
+ int f_surr_adapt;                ///< the intSurrAdapt parameter
+ long f_rec_left;                 ///< states left to the surrogate recursion
+                                  ///< (set before each surrogate solve)
+ long f_state_cap;                ///< if >= 0, core_enumerate_full() stops
+                                  ///< past this many states and returns the
+                                  ///< best solution found (a heuristic)
+ int f_dp_ext;                    ///< the intDPExtension parameter
+ int f_dom_fix;                   ///< the intDominanceFix parameter
+ int f_red_fix;                   ///< the intReductionFix parameter
+ int f_heur;                      ///< the intPrimalHeur parameter
+ int f_lazy_core;                 ///< the intLazyCore parameter
+
+ /// the field holding the int parameter @p par of this class
+
+ int * int_par_ptr( idx_type par ) {
+  int * const f[] = { & f_reopt , & f_surrogate , & f_surr_trigger ,
+                      & f_surr_adapt , & f_dp_ext , & f_dom_fix ,
+                      & f_red_fix , & f_heur , & f_lazy_core };
+  return( f[ par - intReopt ] );
+  }
+
+ /// the names of the int parameters of this class, in enum order
+
+ static const std::vector< std::string > & par_names( void ) {
+  static const std::vector< std::string > n = { "intReopt" , "intSurrogate" ,
+   "intSurrTrigger" , "intSurrAdapt" , "intDPExtension" ,
+   "intDominanceFix" , "intReductionFix" , "intPrimalHeur" , "intLazyCore" };
+  return( n );
+  }
+ bool f_prev_valid;               ///< v_prev_x holds the last optimal solution
+ std::vector< double > v_prev_x;  ///< last optimal solution (original items)
+
+ /// the previous solution repaired to the current data, as a core incumbent
+ /** Repairs v_prev_x to the current mirror (see intReopt) and, if the result
+  * is a 0-1 feasible solution, writes in @p in its core image and returns its
+  * value in the core (i.e., net of f_base); returns -Inf otherwise. */
+
+ double warm_incumbent( std::vector< char > & in ) const;
+
+ /// the core of the last solve and its optimal solution (intReopt 2)
+
+ long f_last_C = -1;
+ std::vector< long > v_last_w;
+ std::vector< double > v_last_p;
+ std::vector< Index > v_last_orig;
+ std::vector< char > v_last_comp;
+ std::vector< char > v_last_in;
+
+ /// if the last core solution is still optimal for the current core (see
+ /// intReopt 2 and 3), write it in @p in and return its value, else return
+ /// -Inf
+
+ double last_still_optimal( std::vector< char > & in ) const;
+
+ /// the multiplier of the Lagrangian bound of last_still_optimal(), < 0 if
+ /// it is to be recomputed
+
+ mutable double f_lambda = -1;
+
+ /// the consecutive failures of the bound test of last_still_optimal(), and
+ /// the calls still to skip before trying it again
+
+ mutable int f_cert_fail = 0;
+ mutable int f_cert_wait = 0;
+
+ /// what get_reopt_outcome() returns
+
+ mutable int f_outcome = 0;
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/

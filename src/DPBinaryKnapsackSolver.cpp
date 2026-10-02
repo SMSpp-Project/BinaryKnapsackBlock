@@ -389,15 +389,12 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
 /*---------------------- METHODS FOR READING RESULTS -----------------------*/
 /*--------------------------------------------------------------------------*/
 
-void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
- 
- auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+void DPBinaryKnapsackSolver::reconstruct_x( const std::string & method ) {
 
  // check if compute has been called before
  if( start_item != Inf< int >() )
-  throw( std::invalid_argument(
-   "DPBinaryKnapsackSolver::get_var_solution: compute() must be called first"
-   ) );
+  throw( std::invalid_argument( method + ": compute() must be called first"
+                                ) );
 
  // reconstruct the optimal solution - - - - - - - - - - - - - - - - - - - - -
  // for each item check if it is fixed (because the corresponding variable is
@@ -430,11 +427,30 @@ void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
    v_x[ i ] = 1 - v_x[ i ];
   }  
  
- // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
- 
+ }  // end( DPBinaryKnapsackSolver::reconstruct_x )
+
+/*--------------------------------------------------------------------------*/
+
+void DPBinaryKnapsackSolver::get_var_solution( Configuration * solc ) {
+
+ reconstruct_x( "DPBinaryKnapsackSolver::get_var_solution" );
+
+ auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
  BKB->set_x( v_x.begin() );  // write the solution in BinaryKnapsackBlock
 
  }  // end( DPBinaryKnapsackSolver::get_var_solution )
+
+/*--------------------------------------------------------------------------*/
+
+Solution * DPBinaryKnapsackSolver::get_Solution( Configuration * solc ) {
+
+ reconstruct_x( "DPBinaryKnapsackSolver::get_Solution" );
+
+ // the solution goes straight into the Solution, the BinaryKnapsackBlock is
+ // not written into and no Variable is required to exist
+ return( new BinaryKnapsackSolution( std::vector< double >( v_x ) ) );
+
+ }  // end( DPBinaryKnapsackSolver::get_Solution )
  
 /*--------------------------------------------------------------------------*/
 /*------------------- METHODS FOR HANDLING THE PARAMETERS ------------------*/
