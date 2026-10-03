@@ -2,9 +2,10 @@
 # - - - - - - - - - - - - - - - BSPar-relax.txt - - - - - - - - - - - - - - -
 #
 # The BlockSolverConfig of the relaxation Solver of the module test, which
-# need no integer weights and are therefore attached to every Block. It is
-# additive, so that it can be applied before or after BSPar-exact.txt; the
-# Solver keep their default parameters.
+# need no integer weights and are therefore attached to every Block: the
+# greedy relaxation solved from scratch at each solve and the one kept
+# across the Changes (intIncremental). It is additive, so that it can be
+# applied before or after BSPar-exact.txt.
 #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -16,13 +17,53 @@ BlockSolverConfig     # exact type of the Configuration object
 2  # number of (the names of) Solver in this BlockSolverConfig
 
 # now all the names of the Solver - - - - - - - - - - - - - - - - - - - - - -
-GreedyRelaxationBinaryKnapsackSolver             # 1st: greedy
-IncrementalGreedyRelaxationBinaryKnapsackSolver  # 2nd: incremental greedy
+GreedyRelaxationBinaryKnapsackSolver  # 1st: greedy, from scratch
+GreedyRelaxationBinaryKnapsackSolver  # 2nd: greedy, kept across the Changes
 
-0  # number of ComputeConfig in this BlockSolverConfig
+2  # number of ComputeConfig in this BlockSolverConfig
 
 # now all the ComputeConfig - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# 1: the greedy relaxation from scratch, default parameters
+* # [none]
+
+# 2: the greedy fill kept across the Changes
+ComputeConfig # exact type of the ComputeConfig object
+
+1  # f_diff == 1 ==> all non-provided parameters are not changed
+
+1  # number of integer parameters
+
+# now all the integer parameters
+intIncremental 1  # the greedy fill kept across the Changes
+
+0  # number of double parameters
+
+# now all the double parameters
 # [none]
+
+0  # number of string parameters
+
+# now all the string parameters
+# [none]
+
+0  # number of vector-of-int parameters
+
+# now all the vector-of-int parameters
+# [none]
+
+0  # number of vector-of-double parameters
+
+# now all the vector-of-double parameters
+# [none]
+
+0  # number of vector-of-string parameters
+
+# now all the vector-of-string parameters
+# [none]
+
+# pointer to the "extra" Configuration
+* # [none]
 
 # end of BlockSolverConfig- - - - - - - - - - - - - - - - - - - - - - - - - -
 

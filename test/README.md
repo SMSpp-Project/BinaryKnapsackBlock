@@ -11,7 +11,8 @@ exact Solvers (`DPBinaryKnapsackSolver`, also with the reoptimization on,
 `ParallelDPBinaryKnapsackSolver` with each of its engines and
 `CoreDPBinaryKnapsackSolver`) have to find the optimum, with a feasible
 `Solution` worth it, or say that the instance is empty; the relaxation ones
-(`GreedyRelaxationBinaryKnapsackSolver` and its incremental variant) have to
+(`GreedyRelaxationBinaryKnapsackSolver`, from scratch and kept across the
+Changes, see `intIncremental`) have to
 find the value of the relaxation, bounds on the two sides of the optimum and a
 feasible rounded `Solution` worth the bound it gives.
 

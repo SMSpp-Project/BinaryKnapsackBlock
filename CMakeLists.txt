@@ -131,8 +131,7 @@ target_sources(${modName} PRIVATE
         src/DPBinaryKnapsackSolver.cpp
         src/ParallelDPBinaryKnapsackSolver.cpp
         src/CoreDPBinaryKnapsackSolver.cpp
-        src/GreedyRelaxationBinaryKnapsackSolver.cpp
-        src/IncrementalGreedyRelaxationBinaryKnapsackSolver.cpp)
+        src/GreedyRelaxationBinaryKnapsackSolver.cpp)
 
 # ----- RECORD (optional) --------------------------------------------------- #
 # RECORDBinaryKnapsackSolver hands the integer core to RECORD

@@ -30,7 +30,9 @@ split to two different projects):
 
   - `GreedyRelaxationBinaryKnapsackSolver`, the exact greedy (Dantzig)
     solver of the continuous relaxation, providing true lower / upper bounds
-    on the integer optimum and branching on the critical item;
+    on the integer optimum and branching on the critical item, which solves
+    each relaxation from scratch or (with `intIncremental`) keeps the greedy
+    fill across the fixings of a Branch-and-Bound;
 
   the last two share the abstract base class `BinaryKnapsackSolver` (raw
   instance mirror with incremental Modification processing, normalized core,

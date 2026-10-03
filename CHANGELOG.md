@@ -224,10 +224,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `GreedyRelaxationBinaryKnapsackSolver` and
-  `IncrementalGreedyRelaxationBinaryKnapsackSolver` are ChangeSolver traits,
-  with no Block of their own, as the Branch-and-X of the core wants them;
-  GroupChange comes from Change.h
+- `GreedyRelaxationBinaryKnapsackSolver` is a ChangeSolver trait, with no
+  Block of its own, as the Branch-and-X of the core wants it; GroupChange
+  comes from Change.h
+
+- `IncrementalGreedyRelaxationBinaryKnapsackSolver` is no more a class of its
+  own: its greedy fill kept across the (un)fixing Changes, whose children
+  carry the residual capacity and the profit and whose undo brings back the
+  state of the parent, is the parameter `intIncremental` of
+  `GreedyRelaxationBinaryKnapsackSolver`, chosen in the configuration; the
+  incremental fill keeps the items heavier than the residual capacity (the
+  relaxation may take a fraction of them), rounds a complemented or
+  continuous critical item right, applies Subset and Range Changes alike,
+  copies the data of a Change instead of emptying it, sorts the items of
+  weight 0 without dividing by 0, handles an instance with no items, and
+  applies a Change that follows a Modification of the Block to the new
+  data
 
 - the version of the module is the git tag of its repository, or the
   VERSION.txt of a release tarball, and the shared library carries it: its

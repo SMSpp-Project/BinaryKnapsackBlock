@@ -58,7 +58,6 @@
 #include "CoreDPBinaryKnapsackSolver.h"
 #include "DPBinaryKnapsackSolver.h"
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
-#include "IncrementalGreedyRelaxationBinaryKnapsackSolver.h"
 #include "ParallelDPBinaryKnapsackSolver.h"
 
 // assert() checks in every build type, the Release one included, as the
@@ -1179,11 +1178,14 @@ void test_branch( void )
  in.W = { 5 , 4 , 6 , 3 , 2 };
  in.P = { 8 , 6 , 9 , 4 , 1 };
  in.I.assign( 5 , true );
- for( std::string cls : { "GreedyRelaxationBinaryKnapsackSolver" ,
-                          "IncrementalGreedyRelaxationBinaryKnapsackSolver" } ) {
+ // each greedy relaxation of BSPar-relax.txt, one at a time
+ for( Index k = 0 ; k < 2 ; ++k ) {
   auto b = build( in );
-  auto s = Solver::new_Solver( cls );
-  b->register_Solver( s );
+  bsc( "BSPar-relax.txt" )->apply( b );
+  auto s = *std::next( b->get_registered_solvers().begin() , k );
+  const std::string cls = s->classname() + " " + std::to_string( k + 1 );
+  check( s->get_int_par( s->int_par_str2idx( "intIncremental" ) ) == int( k ) ,
+         cls + ": intIncremental is not the one of BSPar-relax.txt" );
   auto rs = dynamic_cast< RelaxationSolver * >( s );
   assert( rs );
   check( s->compute() == Solver::kOK , cls + ": the root does not solve" );
