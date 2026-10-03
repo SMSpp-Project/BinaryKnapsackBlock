@@ -1,0 +1,31 @@
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - BSPar-relax.txt - - - - - - - - - - - - - - -
+#
+# The BlockSolverConfig of the relaxation Solver of the module test, which
+# need no integer weights and are therefore attached to every Block. It is
+# additive, so that it can be applied before or after BSPar-exact.txt; the
+# Solver keep their default parameters.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+BlockSolverConfig     # exact type of the Configuration object
+
+2  # the BlockSolverConfig is an "additive" one: Solver are added
+
+2  # number of (the names of) Solver in this BlockSolverConfig
+
+# now all the names of the Solver - - - - - - - - - - - - - - - - - - - - - -
+GreedyRelaxationBinaryKnapsackSolver             # 1st: greedy
+IncrementalGreedyRelaxationBinaryKnapsackSolver  # 2nd: incremental greedy
+
+0  # number of ComputeConfig in this BlockSolverConfig
+
+# now all the ComputeConfig - - - - - - - - - - - - - - - - - - - - - - - - -
+# [none]
+
+# end of BlockSolverConfig- - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - END BSPar-relax.txt - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

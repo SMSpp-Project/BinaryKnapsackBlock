@@ -1,0 +1,279 @@
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - BSPar-exact.txt - - - - - - - - - - - - - - -
+#
+# The BlockSolverConfig of the exact Solver of the module test, which need
+# integer weights and are therefore attached only to the Blocks that have
+# them: the DP with its reoptimization variants, the parallel DP with each
+# engine and the core DP with intReopt 3 and 5. It is additive, so that it
+# is applied on top of BSPar-relax.txt.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+BlockSolverConfig     # exact type of the Configuration object
+
+2  # the BlockSolverConfig is an "additive" one: Solver are added
+
+10  # number of (the names of) Solver in this BlockSolverConfig
+
+# now all the names of the Solver - - - - - - - - - - - - - - - - - - - - - -
+DPBinaryKnapsackSolver          # 1st: DP, from scratch
+DPBinaryKnapsackSolver          # 2nd: DP, reuse up to half the items
+DPBinaryKnapsackSolver          # 3rd: DP, reuse up to all the items
+ParallelDPBinaryKnapsackSolver  # 4th: parallel DP, automatic engine
+ParallelDPBinaryKnapsackSolver  # 5th: parallel DP, OpenMP
+ParallelDPBinaryKnapsackSolver  # 6th: parallel DP, FastFlow
+ParallelDPBinaryKnapsackSolver  # 7th: parallel DP, std::thread
+ParallelDPBinaryKnapsackSolver  # 8th: parallel DP, OpenMP (push)
+CoreDPBinaryKnapsackSolver      # 9th: core DP, intReopt 3
+CoreDPBinaryKnapsackSolver      # 10th: core DP, intReopt 5
+
+10  # number of ComputeConfig in this BlockSolverConfig
+
+# now all the ComputeConfig - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# 1: DP from scratch, default parameters
+* # [none]
+
+# 2: DP reusing the table up to half of the items changed
+*DPCfg.txt
+
+# 3: DP reusing the table whatever changed
+*DPCfg.txt +
+
+1  # f_diff == 1 ==> only the entries below are changed
+
+0  # number of integer parameters
+
+# now all the integer parameters
+# [none]
+
+1  # number of double parameters
+
+# now all the double parameters
+dblReopt 1  # reuse whatever changed
+
+0  # number of string parameters
+
+# now all the string parameters
+# [none]
+
+0  # number of vector-of-int parameters
+
+# now all the vector-of-int parameters
+# [none]
+
+0  # number of vector-of-double parameters
+
+# now all the vector-of-double parameters
+# [none]
+
+0  # number of vector-of-string parameters
+
+# now all the vector-of-string parameters
+# [none]
+
+# pointer to the "extra" Configuration
+* # [none]
+
+# 4: parallel DP, automatic engine, default parameters
+* # [none]
+
+# 5: parallel DP with 2 workers, engine OpenMP
+*PDPCfg.txt +
+
+1  # f_diff == 1 ==> only the entries below are changed
+
+1  # number of integer parameters
+
+# now all the integer parameters
+intWhichParallel 0  # OpenMP [see intWhichParallel]
+
+0  # number of double parameters
+
+# now all the double parameters
+# [none]
+
+0  # number of string parameters
+
+# now all the string parameters
+# [none]
+
+0  # number of vector-of-int parameters
+
+# now all the vector-of-int parameters
+# [none]
+
+0  # number of vector-of-double parameters
+
+# now all the vector-of-double parameters
+# [none]
+
+0  # number of vector-of-string parameters
+
+# now all the vector-of-string parameters
+# [none]
+
+# pointer to the "extra" Configuration
+* # [none]
+
+# 6: parallel DP with 2 workers, engine FastFlow
+*PDPCfg.txt +
+
+1  # f_diff == 1 ==> only the entries below are changed
+
+1  # number of integer parameters
+
+# now all the integer parameters
+intWhichParallel 1  # FastFlow [see intWhichParallel]
+
+0  # number of double parameters
+
+# now all the double parameters
+# [none]
+
+0  # number of string parameters
+
+# now all the string parameters
+# [none]
+
+0  # number of vector-of-int parameters
+
+# now all the vector-of-int parameters
+# [none]
+
+0  # number of vector-of-double parameters
+
+# now all the vector-of-double parameters
+# [none]
+
+0  # number of vector-of-string parameters
+
+# now all the vector-of-string parameters
+# [none]
+
+# pointer to the "extra" Configuration
+* # [none]
+
+# 7: parallel DP with 2 workers, engine std::thread
+*PDPCfg.txt +
+
+1  # f_diff == 1 ==> only the entries below are changed
+
+1  # number of integer parameters
+
+# now all the integer parameters
+intWhichParallel 2  # std::thread [see intWhichParallel]
+
+0  # number of double parameters
+
+# now all the double parameters
+# [none]
+
+0  # number of string parameters
+
+# now all the string parameters
+# [none]
+
+0  # number of vector-of-int parameters
+
+# now all the vector-of-int parameters
+# [none]
+
+0  # number of vector-of-double parameters
+
+# now all the vector-of-double parameters
+# [none]
+
+0  # number of vector-of-string parameters
+
+# now all the vector-of-string parameters
+# [none]
+
+# pointer to the "extra" Configuration
+* # [none]
+
+# 8: parallel DP with 2 workers, engine OpenMP (push)
+*PDPCfg.txt +
+
+1  # f_diff == 1 ==> only the entries below are changed
+
+1  # number of integer parameters
+
+# now all the integer parameters
+intWhichParallel 3  # OpenMP (push) [see intWhichParallel]
+
+0  # number of double parameters
+
+# now all the double parameters
+# [none]
+
+0  # number of string parameters
+
+# now all the string parameters
+# [none]
+
+0  # number of vector-of-int parameters
+
+# now all the vector-of-int parameters
+# [none]
+
+0  # number of vector-of-double parameters
+
+# now all the vector-of-double parameters
+# [none]
+
+0  # number of vector-of-string parameters
+
+# now all the vector-of-string parameters
+# [none]
+
+# pointer to the "extra" Configuration
+* # [none]
+
+# 9: core DP, intReopt 3
+*ReoptCfg.txt
+
+# 10: core DP, certificate on the original items (intReopt 5)
+*ReoptCfg.txt +
+
+1  # f_diff == 1 ==> only the entries below are changed
+
+1  # number of integer parameters
+
+# now all the integer parameters
+intReopt 5  # certificate on the original items
+
+0  # number of double parameters
+
+# now all the double parameters
+# [none]
+
+0  # number of string parameters
+
+# now all the string parameters
+# [none]
+
+0  # number of vector-of-int parameters
+
+# now all the vector-of-int parameters
+# [none]
+
+0  # number of vector-of-double parameters
+
+# now all the vector-of-double parameters
+# [none]
+
+0  # number of vector-of-string parameters
+
+# now all the vector-of-string parameters
+# [none]
+
+# pointer to the "extra" Configuration
+* # [none]
+
+# end of BlockSolverConfig- - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - END BSPar-exact.txt - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -226,7 +226,7 @@ void CoreDPBinaryKnapsackSolver::enumerate_states( void )
   double z = - Inf< double >();
   f_outcome = ( f_reopt && f_prev_valid ) ? 1 : 0;
   if( ( f_reopt >= 2 ) && f_prev_valid )
-   z = last_still_optimal( in );
+   z = f_reopt >= 5 ? still_optimal_by_items( in ) : last_still_optimal( in );
   if( z == - Inf< double >() )
    z = solve_integer_core( in );
   f_obj += z;
@@ -248,6 +248,22 @@ void CoreDPBinaryKnapsackSolver::enumerate_states( void )
  // complemented items contribute x_orig = 1 - ( chosen in the core )
  for( std::size_t i = 0 ; i < v_w.size() ; ++i )
   f_x[ v_orig[ i ] ] = v_comp[ i ] ? double( 1 - in[ i ] ) : double( in[ i ] );
+
+ // the data and the solution that intReopt 5 checks, on the original items
+ if( f_reopt >= 5 ) {
+  if( v_cw.empty() ) {
+   const double sgn = f_sense ? 1 : -1;
+   v_last_P.resize( f_N );
+   for( Index i = 0 ; i < f_N ; ++i )
+    v_last_P[ i ] = sgn * v_P[ i ];
+   v_last_W = v_W;
+   v_last_fxd = v_fxd;
+   f_last_Cap = f_Cap;
+   v_last_x = f_x;
+   }
+  else
+   v_last_x.clear();
+  }
  }
 
 /*--------------------------------------------------------------------------*/
@@ -286,7 +302,8 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
  // Hence, a z beating y flips some suspect item: one of those, or an untaken
  // item whose weight decreased. With none, y is optimal; with intReopt 3, it
  // is also when, for each suspect item k, a Lagrangian bound of the new core
- // with x_k = 1 - y_k cannot beat p'y
+ // with x_k = 1 - y_k cannot beat p'y, and with intReopt 4 when either that
+ // bound or the Martello-Toth one cannot
  const std::size_t m = v_w.size();
  if( ( f_C > f_last_C ) || ( m != v_last_w.size() ) ||
      ( v_last_in.size() != m ) ) {
@@ -327,6 +344,7 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
  if( wy > f_C )                 // y does not fit the new data
   return( - Inf< double >() );
 
+ bool by_mt = false;           // some suspect item cleared by Martello-Toth
  if( ! sus.empty() ) {
   if( f_reopt < 3 )
    return( - Inf< double >() );
@@ -337,6 +355,41 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
 #if CORE_STATS
   fprintf( stderr , "CERT try sus=%zu m=%zu\n" , sus.size() , m );
 #endif
+  const int res = clear_suspects( sus , v_last_in , z , by_mt );
+  if( res <= 0 ) {
+   if( res == 0 ) {
+#if CORE_STATS
+    fprintf( stderr , "CERT fail sus=%zu m=%zu\n" , sus.size() , m );
+#endif
+    // from the 4th failure in a row, the next 1, 3, 7, ..., 127 checks are
+    // skipped: where it never succeeds, its O(m) cost goes away
+    if( ++f_cert_fail >= 4 )
+     f_cert_wait = ( 1 << std::min( f_cert_fail - 3 , 7 ) ) - 1;
+    }
+   return( - Inf< double >() );
+   }
+  }
+
+#if CORE_STATS
+ fprintf( stderr , "CERT ok sus=%zu m=%zu\n" , sus.size() , m );
+#endif
+ f_cert_fail = 0;
+ f_outcome = sus.empty() ? 2 : ( by_mt ? 4 : 3 );
+ in = v_last_in;
+ return( z );
+ }
+
+/*--------------------------------------------------------------------------*/
+
+int CoreDPBinaryKnapsackSolver::clear_suspects(
+			       const std::vector< std::size_t > & sus ,
+			       const std::vector< char > & y , double z ,
+			       bool & by_mt ) const
+{
+ // for each suspect item k of the core, a bound of the core with
+ // x_k = 1 - y_k that cannot beat the value z of y: 1 if all are cleared,
+ // 0 if some is not, -1 if the bounds do not apply (a negative profit)
+ const std::size_t m = v_w.size();
 
   // the multiplier lambda of the Lagrangian relaxation of the capacity, any
   // lambda >= 0 giving the valid bound U = lambda C + sum_j max( 0 , r_j ),
@@ -372,36 +425,172 @@ double CoreDPBinaryKnapsackSolver::last_still_optimal(
   double u = f_lambda * double( f_C );
   for( std::size_t k = 0 ; k < m ; ++k ) {
    if( v_p[ k ] < 0 )            // (the bound needs p >= 0)
-    return( - Inf< double >() );
+    return( -1 );
    if( intp && ( v_p[ k ] != double( long( v_p[ k ] ) ) ) )
     intp = false;
    u += std::max( 0.0 , v_p[ k ] - f_lambda * double( v_w[ k ] ) );
    }
 
   const double tol = 1e-12 * std::max( 1.0 , std::abs( z ) );
+  auto beats = [ & ]( double b ) {
+   return( intp ? ( floor_safe( b ) > z ) : ( b > z + tol ) );
+   };
+
+  // with intReopt 4, a suspect item k that the Lagrangian bound does not
+  // clear gets the Martello-Toth bound with x_k = 1 - y_k: the larger of
+  // the two continuous bounds with the critical item also fixed to 0 and
+  // to 1, which, unlike any continuous bound, sees that an item (say, one
+  // as large as the capacity) is either taken whole or not at all. The
+  // items are sorted by efficiency on the first such item only
+  std::vector< std::size_t > ord;
+  auto lp = [ & ]( std::size_t a , int va , std::size_t b , int vb ,
+                   std::size_t & crit ) {
+   double cap = double( f_C ) - va * double( v_w[ a ] );
+   double val = va * v_p[ a ];
+   if( b < m ) {
+    cap -= vb * double( v_w[ b ] );
+    val += vb * v_p[ b ];
+    }
+   crit = m;
+   if( cap < 0 )
+    return( - Inf< double >() );
+   for( auto j : ord ) {
+    if( ( j == a ) || ( j == b ) )
+     continue;
+    if( double( v_w[ j ] ) <= cap ) {
+     cap -= double( v_w[ j ] );
+     val += v_p[ j ];
+     }
+    else {
+     val += v_p[ j ] * cap / double( v_w[ j ] );
+     crit = j;
+     break;
+     }
+    }
+   return( val );
+   };
+  auto mt_bound = [ & ]( std::size_t k ) {
+   if( ord.empty() ) {
+    ord.resize( m );
+    std::iota( ord.begin() , ord.end() , 0 );
+    std::sort( ord.begin() , ord.end() ,
+               [ this ]( std::size_t a , std::size_t b ) {
+                return( v_p[ a ] * double( v_w[ b ] ) >
+                        v_p[ b ] * double( v_w[ a ] ) );
+                } );
+    }
+   const int v = y[ k ] ? 0 : 1;
+   std::size_t c , c2;
+   const double l = lp( k , v , m , 0 , c );
+   if( c == m )                // the continuous solution is integer
+    return( l );
+   return( std::max( lp( k , v , c , 0 , c2 ) , lp( k , v , c , 1 , c2 ) ) );
+   };
+
   for( auto k : sus ) {
    const double r = v_p[ k ] - f_lambda * double( v_w[ k ] );
-   const double uk = u - ( v_last_in[ k ] ? std::max( 0.0 , r )
-                                          : std::max( 0.0 , r ) - r );
-   if( intp ? ( floor_safe( uk ) > z ) : ( uk > z + tol ) ) {
-#if CORE_STATS
-    fprintf( stderr , "CERT fail sus=%zu m=%zu\n" , sus.size() , m );
-#endif
-    // from the 4th failure in a row, the next 1, 3, 7, ..., 127 checks are
-    // skipped: where it never succeeds, its O(m) cost goes away
-    if( ++f_cert_fail >= 4 )
-     f_cert_wait = ( 1 << std::min( f_cert_fail - 3 , 7 ) ) - 1;
-    return( - Inf< double >() );
+   const double uk = u - ( y[ k ] ? std::max( 0.0 , r )
+                                  : std::max( 0.0 , r ) - r );
+   if( ! beats( uk ) )
+    continue;
+   if( ( f_reopt >= 4 ) && ( ! beats( mt_bound( k ) ) ) ) {
+    by_mt = true;
+    continue;
     }
+   return( 0 );
+   }
+
+ return( 1 );
+ }
+
+/*--------------------------------------------------------------------------*/
+
+double CoreDPBinaryKnapsackSolver::still_optimal_by_items(
+                                            std::vector< char > & in ) const
+{
+ // Proposition 1 on the original items rather than on the core, so that the
+ // core may change from a solve to the next (a fixing, an unfixing, a datum
+ // changing sign): with y the last solution, a capacity no larger and no
+ // item taken by y losing weight, every z feasible for the new data that
+ // agrees with y on the suspect items is feasible for the last data too,
+ // and therefore it cannot beat y. The suspect items are the free ones whose
+ // profit moved against y, the free ones not in y that lost weight and the
+ // ones that were fixed and are free now (z may flip them, which the last
+ // data forbade); an item fixed now has to be fixed at its value in y, or y
+ // is not even feasible. Then, the reduction to the core being exact, if
+ // something beats y then something beats it within the new core with the
+ // items outside it at their reduced values, which have to be those of y:
+ // it flips a suspect item of the core, and the bounds of clear_suspects()
+ // say whether one can
+ const Index n = f_N;
+ if( ( v_last_x.size() != n ) || ( f_Cap > f_last_Cap ) ) {
+  f_lambda = -1;
+  return( - Inf< double >() );
+  }
+
+ const double sgn = f_sense ? 1 : -1;
+ std::vector< char > sus_item( n , 0 );
+ for( Index i = 0 ; i < n ; ++i ) {
+  if( ! v_I[ i ] )
+   return( - Inf< double >() );
+  const bool yi = v_last_x[ i ] > 0.5;
+  const double p = sgn * v_P[ i ] , w = v_W[ i ];
+  if( yi && ( w < v_last_W[ i ] ) )  // a taken item lost weight
+   return( - Inf< double >() );
+  if( v_fxd[ i ] ) {                  // fixed: at its value in y, or else
+   if( ( v_fxd[ i ] == 2 ) != yi )
+    return( - Inf< double >() );
+   continue;
+   }
+  if( v_last_fxd[ i ] ||              // freed, or moved against y
+      ( yi ? ( p < v_last_P[ i ] )
+           : ( ( p > v_last_P[ i ] ) || ( w < v_last_W[ i ] ) ) ) )
+   sus_item[ i ] = 1;
+  }
+
+ // y on the new core, and the items outside it at their value in y
+ const std::size_t m = v_w.size();
+ std::vector< char > inside( n , 0 );
+ std::vector< char > y( m );
+ std::vector< std::size_t > sus;
+ double z = 0;
+ long wy = 0;
+ for( std::size_t k = 0 ; k < m ; ++k ) {
+  const Index i = v_orig[ k ];
+  inside[ i ] = 1;
+  const bool yi = v_last_x[ i ] > 0.5;
+  y[ k ] = v_comp[ k ] ? ! yi : yi;
+  if( y[ k ] ) {
+   z += v_p[ k ];
+   wy += v_w[ k ];
+   }
+  if( sus_item[ i ] )
+   sus.push_back( k );
+  }
+ for( Index i = 0 ; i < n ; ++i )
+  if( ( ! inside[ i ] ) && ( std::abs( f_x[ i ] - v_last_x[ i ] ) > 0.5 ) )
+   return( - Inf< double >() );
+ if( wy > f_C )                       // y does not fit the new core
+  return( - Inf< double >() );
+
+ bool by_mt = false;
+ if( ! sus.empty() ) {
+  if( f_cert_wait > 0 ) {             // backing off after consecutive failures
+   --f_cert_wait;
+   return( - Inf< double >() );
+   }
+  f_lambda = -1;                      // the core may have changed
+  const int res = clear_suspects( sus , y , z , by_mt );
+  if( res <= 0 ) {
+   if( ( res == 0 ) && ( ++f_cert_fail >= 4 ) )
+    f_cert_wait = ( 1 << std::min( f_cert_fail - 3 , 7 ) ) - 1;
+   return( - Inf< double >() );
    }
   }
 
-#if CORE_STATS
- fprintf( stderr , "CERT ok sus=%zu m=%zu\n" , sus.size() , m );
-#endif
  f_cert_fail = 0;
- f_outcome = sus.empty() ? 2 : 3;
- in = v_last_in;
+ f_outcome = sus.empty() ? 2 : ( by_mt ? 4 : 3 );
+ in = y;
  return( z );
  }
 

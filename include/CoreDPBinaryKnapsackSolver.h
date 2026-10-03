@@ -156,8 +156,22 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   *   \f$ x_k = 1 - \bar{x}_k \f$ cannot beat \f$ \bar{x} \f$ (any better
   *   solution must flip one of them); after a few failures in a row this
   *   test is skipped for a number of solves that doubles with each further
-  *   failure. Only the pure 0-1 case (no continuous variable) is warm
-  *   started.
+  *   failure; 4 = as 3, and moreover an item \f$ k \f$ whose Lagrangian
+  *   bound beats \f$ \bar{x} \f$ is tried again with the Martello-Toth
+  *   bound with \f$ x_k = 1 - \bar{x}_k \f$, i.e., the larger of the two
+  *   continuous bounds with the critical item also fixed to 0 and to 1,
+  *   which costs one sort of the items by efficiency and a pass over them
+  *   per item, but sees that an item as large as (say) the capacity is
+  *   either taken whole or not at all, as in the subproblems of the
+  *   Lagrangian relaxation of facility location problems; 5 = as 4, the
+  *   conditions being checked on the original items rather than on the
+  *   core, so that the certificate survives a change of the core: an item
+  *   fixed since the last solve has to be fixed at its value in
+  *   \f$ \bar{x} \f$, an item unfixed since is one more item whose flip
+  *   has to be excluded by the bounds, and the items outside the new core
+  *   have to take there their value in \f$ \bar{x} \f$ (as at the nodes
+  *   of a branch-and-bound, or when a datum changes sign). Only the pure
+  *   0-1 case (no continuous variable) is warm started.
   *
   * The following ones switch the components of the core enumeration, all
   * exact (they change the running time, never the optimum), so that the
@@ -286,8 +300,8 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
  /** Returns 0 if the last compute() solved the instance from scratch, 1 if
   * it started from the previous solution as the incumbent, 2 if it
   * returned the previous solution with no solve because the changes could
-  * not have made it suboptimal, and 3 if it did so because a Lagrangian
-  * bound showed it. */
+  * not have made it suboptimal, 3 if it did so because a Lagrangian bound
+  * showed it, and 4 if it needed the Martello-Toth bound for some item. */
 
  [[nodiscard]] int get_reopt_outcome( void ) const { return( f_outcome ); }
 
@@ -588,6 +602,35 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
  /// -Inf
 
  double last_still_optimal( std::vector< char > & in ) const;
+
+ /// whether the bounds clear the suspect items of the core [see intReopt]
+ /** For each suspect item k of the core (index into v_w), the Lagrangian
+  * bound of the core with x_k = 1 - y[ k ] (and, with intReopt >= 4, the
+  * Martello-Toth one where it fails) is compared with the value z of the
+  * core solution y: returns 1 if none can beat it, 0 if some can, and -1 if
+  * the bounds do not apply (some negative profit in the core); by_mt is set
+  * if the Martello-Toth bound was needed. */
+
+ int clear_suspects( const std::vector< std::size_t > & sus ,
+		     const std::vector< char > & y , double z ,
+		     bool & by_mt ) const;
+
+ /// the certificate of intReopt 5, on the original items
+ /** As last_still_optimal(), but the conditions are checked on the
+  * original items [see intReopt], so that the core may differ from the one
+  * of the last solve; returns the core value of the last solution, written
+  * in \p in, if it is still optimal, and - Inf otherwise. */
+
+ double still_optimal_by_items( std::vector< char > & in ) const;
+
+ /// the data and the solution of the last solve on the original items, the
+ /// profits in the maximization sense, that intReopt 5 checks
+
+ std::vector< double > v_last_P;
+ std::vector< double > v_last_W;
+ std::vector< unsigned char > v_last_fxd;
+ double f_last_Cap = 0;
+ std::vector< double > v_last_x;
 
  /// the multiplier of the Lagrangian bound of last_still_optimal(), < 0 if
  /// it is to be recomputed
