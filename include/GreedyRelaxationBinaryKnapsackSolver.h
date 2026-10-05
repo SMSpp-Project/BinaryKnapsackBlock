@@ -318,9 +318,11 @@ public:
   * at \f$ \bar{x}_j \f$ throughout the subtree; these fixings travel with
   * the fixing of the critical item in a GroupChange.
   *
-  * With intIncremental == 1, the data of each child carry, in their last two
-  * positions, the residual capacity and the profit of the greedy fill of
-  * the child, so that apply() picks them up without recomputing them; the
+  * With intIncremental == 1, the data of each child carry, in their last
+  * three positions, the state of the greedy fill of the child (the position
+  * from which compute() resumes, the residual capacity and the profit), so
+  * that apply() sets it without recomputing it, whatever Change came before
+  * (say, a parallel exploration re-applying the path to a node); the
   * child that fixes the critical item to 1 is not produced if the item does
   * not fit the capacity left by the fixed items. */
 
@@ -380,7 +382,8 @@ public:
   * relaxation under the new fixings. With intIncremental == 1 the undo of
   * a branching Change carries the state of the parent in its last three
   * data (the position from which compute() resumes, the residual capacity
-  * and the profit), so that undoing a child brings the parent back. A
+  * and the profit), so that undoing a child brings the parent back, as the
+  * branching Change itself carries that of the child [see branch()]. A
   * GroupChange is applied by applying its sub-Change, and its undo is the
   * GroupChange of their undo in reverse order; any other Change is
   * forwarded to the Block. */

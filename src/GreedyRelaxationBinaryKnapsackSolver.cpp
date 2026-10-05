@@ -421,12 +421,15 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
 
  std::vector< double > data = sbst ? sbst->data() : rngd->data();
 
- // the Change of a branching carries in its last two positions the residual
- // capacity and the profit of the child [see branch()], and its undo the
- // state of the parent in its last three ones: the position from which
- // compute() resumes, the residual capacity and the profit
- const bool branching = ( items.size() + 2 == data.size() );
- const bool restore = ( items.size() + 3 == data.size() );
+ // the (fixing) Change of a branching carries in its last three positions
+ // the state of the child [see branch()], and its (unfixing) undo that of
+ // the parent: the position from which compute() resumes, the residual
+ // capacity and the profit; the whole state is set, so that the Change can
+ // be applied after any other Change, not only after the compute() of the
+ // parent (say, by a worker re-applying the path to a node)
+ const bool stated = ( items.size() + 3 == data.size() );
+ const bool branching = stated && ( type == BinaryKnapsackBlockChange::eFixX );
+ const bool restore = stated && ( type == BinaryKnapsackBlockChange::eUnfixX );
  std::vector< double > parent = { double( f_ssi ) , f_iC , f_iP };
  std::vector< double > state;
  if( branching || restore )
@@ -434,8 +437,9 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
  data.resize( items.size() );
 
  if( branching ) {
-  f_iC = state[ 0 ];
-  f_iP = state[ 1 ];
+  f_ssi = Index( state[ 0 ] );
+  f_iC = state[ 1 ];
+  f_iP = state[ 2 ];
   }
 
  // the undo Change, which carries the state of the parent if this is a
@@ -478,14 +482,16 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
 								       void )
 {
  // the data of each child are the value the critical item is fixed to, the
- // residual capacity after the fixing and the profit of the child, the last
- // two being what apply() takes as the state of the child
+ // position from which compute() resumes, the residual capacity after the
+ // fixing and the profit of the child, the last three being what apply()
+ // takes as the state of the child
 
  if( f_free_cap - v_iw[ f_ci ] < 0 ) {  // only the child at 0
   std::vector< Change * > branches( 1 );
   branches[ 0 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ 0.0 , f_iC , f_iP } ,
+			   std::vector< double >{ 0.0 , double( f_ssi ) , f_iC ,
+						  f_iP } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
   return( branches );
   }
@@ -493,12 +499,14 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
  std::vector< Change * > branches( 2 );
  branches[ 0 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ 1.0 , f_iC - v_iw[ f_ci ] ,
+			   std::vector< double >{ 1.0 , double( f_ssi ) ,
+						  f_iC - v_iw[ f_ci ] ,
 						  f_iP + v_ip[ f_ci ] } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
  branches[ 1 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ 0.0 , f_iC , f_iP } ,
+			   std::vector< double >{ 0.0 , double( f_ssi ) , f_iC ,
+						  f_iP } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
  return( branches );
 
