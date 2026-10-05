@@ -144,6 +144,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   then do so, while one that is not takes the group apart and sees exactly
   what it saw before
 
+### Removed
+
+- `ParallelDPBinaryKnapsackSolver`, and with it the OpenMP the library linked:
+  its parallelism over the capacities of each item made it at best 2 to 4
+  times faster than `DPBinaryKnapsackSolver` with 8 threads on 10000 items
+  (slower on 1000), while `CoreDPBinaryKnapsackSolver` solves the same
+  instances 3 to 4 orders of magnitude faster than either
+
 ### Fixed
 
 - `CoreDPBinaryKnapsackSolver` could return the optimum less one: a bound
@@ -175,10 +183,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fix_x()` on a Subset that is not ordered gives each item the value in the
   same position, as documented: the Subset used to be sorted without the
   values, which then went to other items
-
-- `ParallelDPBinaryKnapsackSolver.h` can be included without the headers of
-  FastFlow, the constructor being defined in the .cpp as the destructor is,
-  since it destroys the `ff::ParallelFor` if anything throws
 
 - on macOS a program linking the module lost the classes the module
   registers in the factories when the linker dropped the library, as it

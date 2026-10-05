@@ -11,11 +11,6 @@ split to two different projects):
   - `DPBinaryKnapsackSolver`, the standard full-table Dynamic Programming
     approach, with reoptimization support;
 
-  - `ParallelDPBinaryKnapsackSolver`, a DPBinaryKnapsackSolver whose inner
-    (capacity) loop can run on parallel engines (OpenMP / FastFlow /
-    std::thread); opt-in and serial by default, since this fine-grained
-    parallelism does not pay off in practice;
-
   - `CoreDPBinaryKnapsackSolver`, an exact core / non-dominated-state solver
     in the MINKNAP / COMBO / RECORD line (break-item enumeration with
     dominance, LP / Martello-Toth / surrogate bounds, divisibility and

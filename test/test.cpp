@@ -18,10 +18,9 @@
  * continuous gives the continuous relaxation.
  *
  * Every exact Solver of the module (DPBinaryKnapsackSolver, also with the
- * reoptimization on, ParallelDPBinaryKnapsackSolver with each of its engines,
- * CoreDPBinaryKnapsackSolver with all its reoptimization on, and
- * RECORDBinaryKnapsackSolver and COMBOBinaryKnapsackSolver the same way when
- * the build has them) has to find that optimum, with a Solution
+ * reoptimization on, CoreDPBinaryKnapsackSolver with all its reoptimization
+ * on, and RECORDBinaryKnapsackSolver and COMBOBinaryKnapsackSolver the same
+ * way when the build has them) has to find that optimum, with a Solution
  * feasible and worth it, or say that there is none; the relaxation Solver
  * (GreedyRelaxationBinaryKnapsackSolver and its incremental variant) have to
  * find the value of the relaxation, a bound on the right side of the optimum
@@ -58,7 +57,6 @@
 #include "CoreDPBinaryKnapsackSolver.h"
 #include "DPBinaryKnapsackSolver.h"
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
-#include "ParallelDPBinaryKnapsackSolver.h"
 
 // assert() checks in every build type, the Release one included, as the
 // TestAssert.h of the core does: it comes after every header of the library,

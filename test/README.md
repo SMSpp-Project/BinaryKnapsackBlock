@@ -7,8 +7,7 @@ It builds in memory small instances of the (mixed) binary knapsack, whose
 optimum it finds by enumerating the 0-1 items and filling the continuous ones
 greedily by efficiency for each assignment of the others; the same
 enumeration with every item continuous gives the continuous relaxation. The
-exact Solvers (`DPBinaryKnapsackSolver`, also with the reoptimization on,
-`ParallelDPBinaryKnapsackSolver` with each of its engines and
+exact Solvers (`DPBinaryKnapsackSolver`, also with the reoptimization on, and
 `CoreDPBinaryKnapsackSolver`) have to find the optimum, with a feasible
 `Solution` worth it, or say that the instance is empty; the relaxation ones
 (`GreedyRelaxationBinaryKnapsackSolver`, from scratch and kept across the
@@ -37,7 +36,7 @@ ones, `BSPar-exact.txt` the exact ones, `BSPar-RECORD.txt` and
 `BSPar-COMBO.txt` the external ones when their sources were given, and
 `BSPar-reopt.txt` the core DP with `intReopt` 3, 4 and 5, whose outcomes after
 each change are checked against each other; the `ComputeConfig` fragments
-`DPCfg.txt`, `PDPCfg.txt` and `ReoptCfg.txt` hold the parameters, which the
+`DPCfg.txt` and `ReoptCfg.txt` hold the parameters, which the
 variants override. The tester therefore runs from this directory, which is
 also the one `ctest` uses.
 
