@@ -117,11 +117,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   downloads and extracts again instead of running on the old data;
   data/upload-txt publishes the archive under that version
 
-- the items fixed by one call travel as one `GroupModification`, one per call
-  and not one loose `Modification` per item, so that a Solver able to write a
-  whole set of fixings in one operation can do so, while one that is not
-  takes the group apart and sees exactly what it saw before
-
 - the makefile asks for `-O3 -DNDEBUG` and nothing else, the macro of the
   patch for `boost::any` on macOS having no reason to be there since there is
   no `boost::any` left in the core
