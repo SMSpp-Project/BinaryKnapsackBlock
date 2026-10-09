@@ -146,6 +146,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- `IncrementalGreedyRelaxationBinaryKnapsackSolver` as a class of its own:
+  its greedy fill kept across the (un)fixing Changes, whose children carry
+  the residual capacity, the profit and the position from which the search
+  of the critical item resumes, and whose undo brings back the state of the
+  parent, is the parameter `intIncremental` of
+  `GreedyRelaxationBinaryKnapsackSolver`, chosen in the configuration
+
 - `ParallelDPBinaryKnapsackSolver`, and with it the OpenMP the library linked:
   its parallelism over the capacities of each item made it at best 2 to 4
   times faster than `DPBinaryKnapsackSolver` with 8 threads on 10000 items
@@ -153,6 +160,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instances 3 to 4 orders of magnitude faster than either
 
 ### Fixed
+
+- the incremental greedy fill dropped the items heavier than the residual
+  capacity, which the relaxation may take a fraction of; it also rounded a
+  complemented or continuous critical item the wrong way, applied a Subset
+  Change differently from a Range one, emptied the data of a Change it
+  applied (so that applying it again did nothing), divided by 0 when sorting
+  the items of weight 0, failed on an instance with no items, and applied a
+  Change that follows a Modification of the Block to the old data
 
 - `CoreDPBinaryKnapsackSolver` could return the optimum less one: a bound
   computed in floating point that is mathematically an integer could land
@@ -167,7 +182,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - the data archive is extracted by `cmake -E tar`, which also works with the
   tar of macOS, where the option `--warning=no-unknown-keyword` of GNU tar
-  stopped the build.
+  stopped the build
+
 - the items fixed in `load()` are fixed in their ColVariable too, at the
   value they are fixed to: the ColVariable used to be left free and at 0, so
   that `DPBinaryKnapsackSolver`, which reads the fixings there, took an item
@@ -228,22 +244,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `GreedyRelaxationBinaryKnapsackSolver` is a ChangeSolver trait, with no
-  Block of its own, as the Branch-and-X of the core wants it; GroupChange
-  comes from Change.h
-
-- `IncrementalGreedyRelaxationBinaryKnapsackSolver` is no more a class of its
-  own: its greedy fill kept across the (un)fixing Changes, whose children
-  carry the residual capacity and the profit and whose undo brings back the
-  state of the parent, is the parameter `intIncremental` of
-  `GreedyRelaxationBinaryKnapsackSolver`, chosen in the configuration; the
-  incremental fill keeps the items heavier than the residual capacity (the
-  relaxation may take a fraction of them), rounds a complemented or
-  continuous critical item right, applies Subset and Range Changes alike,
-  copies the data of a Change instead of emptying it, sorts the items of
-  weight 0 without dividing by 0, handles an instance with no items, and
-  applies a Change that follows a Modification of the Block to the new
-  data
+- `GreedyRelaxationBinaryKnapsackSolver` and
+  `IncrementalGreedyRelaxationBinaryKnapsackSolver` are ChangeSolver traits,
+  with no Block of their own, as the Branch-and-X of the core wants them;
+  GroupChange comes from Change.h
 
 - the version of the module is the git tag of its repository, or the
   VERSION.txt of a release tarball, and the shared library carries it: its
