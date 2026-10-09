@@ -102,8 +102,8 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  BinaryKnapsackSolver() : Solver() , f_sense( true ) , f_N( 0 ) , f_Cap( 0 ) ,
                           f_changed( true ) , f_ord_valid( false ) ,
-                          f_norm_valid( false ) , f_Cd( 0 ) ,
-                          f_base( 0 ) {}
+                          f_norm_valid( false ) , f_relax_data( true ) ,
+                          f_Cd( 0 ) , f_base( 0 ) {}
 
  ~BinaryKnapsackSolver() override = default;
 
@@ -306,6 +306,10 @@ class BinaryKnapsackSolver : public virtual Solver {
  bool f_ord_valid;                ///< if v_ord matches profits / weights
  bool f_norm_valid;               ///< if the normalization matches the
                                   ///< current profits / weights / sense
+ bool f_relax_data;               ///< if normalize_instance() fills n_w,
+                                  ///< n_p, n_comp and n_in (the relaxation
+                                  ///< data), false in the Solvers not using
+                                  ///< fractional_relaxation()
  std::vector< double > n_w;       ///< normalized (complemented) weights
  std::vector< double > n_p;       ///< normalized (complemented) profits
  std::vector< char >   n_in;      ///< 1 if the item enters the relaxation

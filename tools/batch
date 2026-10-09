@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# usage: batch < bk2nc4 file >
+#
+# writes, as netCDF files, a handful of the textual Pisinger instances that
+# data/fetch-txt curates, so that whoever reads a Block rather than a knapsack
+# has some to read: the tests of the module build their own instances, the
+# ones written here are for the testers that take a Block from a file, i.e.,
+# the Frank-Wolfe decomposition of a father of K copies of a knapsack.
+#
+# They are written as minimization problems (the profits change sign, the
+# problem being the same one), that being the sense a component of a
+# decomposition of a minimization problem has to have, and only the smaller
+# classes are taken, a father of K copies of them being solved monolithically
+# as the reference.
+
+bk2nc4=${1:-./bk2nc4}
+
+DATADIR=../data/txt
+OUTDIR=../data/nc4
+
+mkdir -p "$OUTDIR"
+
+for cls in knapPI_1_50_1000 knapPI_1_100_1000 knapPI_3_50_1000 \
+           knapPI_3_100_1000; do
+  for h in 1 2 3; do
+    what=${DATADIR}/${cls}/${cls}_${h}.txt
+    [ -r "$what" ] || continue
+    "$bk2nc4" "$what" P min
+  done
+done
+
+mv ${DATADIR}/*/*.nc4 "$OUTDIR" 2>/dev/null
+
+exit 0

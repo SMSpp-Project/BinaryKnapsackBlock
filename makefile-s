@@ -48,6 +48,6 @@ BKBkOBJ := $(BKBkOBJ)
 BKBkINC := $(BKBkINC)
 
 # external libraries for BKBlock
-BKBkLIB =
+BKBkLIB = -pthread
 
 ############################ End of makefile #################################

@@ -194,10 +194,12 @@ void BinaryKnapsackSolver::normalize_instance( void )
  f_base = 0;
  f_Cd = f_Cap;
 
- n_w.resize( f_N );
- n_p.resize( f_N );
- n_comp.resize( f_N );
- n_in.assign( f_N , 0 );
+ if( f_relax_data ) {
+  n_w.resize( f_N );
+  n_p.resize( f_N );
+  n_comp.resize( f_N );
+  n_in.assign( f_N , 0 );
+  }
 
  for( Index i = 0 ; i < f_N ; ++i ) {
 
@@ -207,10 +209,12 @@ void BinaryKnapsackSolver::normalize_instance( void )
 
   // per-item normalized data for the cached efficiency order; for items
   // not entering the relaxation (n_in == 0) the values are immaterial
-  const bool cmp = ( w < 0 ) && ( p < 0 );
-  n_w[ i ] = cmp ? -w : w;
-  n_p[ i ] = cmp ? -p : p;
-  n_comp[ i ] = cmp;
+  if( f_relax_data ) {
+   const bool cmp = ( w < 0 ) && ( p < 0 );
+   n_w[ i ] = cmp ? -w : w;
+   n_p[ i ] = cmp ? -p : p;
+   n_comp[ i ] = cmp;
+   }
 
   // fixed variables: honour the fixing, fold into base profit / capacity
   if( v_fxd[ i ] == 1 ) {
@@ -230,7 +234,8 @@ void BinaryKnapsackSolver::normalize_instance( void )
 
   if( ( w < 0 ) && ( p < 0 ) ) {                 // complement: tentatively
    f_base += p; f_Cd -= w;                       //  take it, the core toggle
-   n_in[ i ] = 1;                                //  undoes it ( x = 1 - y )
+   if( f_relax_data )                            //  undoes it ( x = 1 - y )
+    n_in[ i ] = 1;
    if( v_I[ i ] )
     { c_w.push_back( -w ); c_p.push_back( -p );
       c_orig.push_back( i ); c_comp.push_back( 1 ); }
@@ -241,7 +246,8 @@ void BinaryKnapsackSolver::normalize_instance( void )
    }
 
   // genuine free item with positive weight and profit
-  n_in[ i ] = 1;
+  if( f_relax_data )
+   n_in[ i ] = 1;
   if( v_I[ i ] )
    { c_w.push_back( w ); c_p.push_back( p );
      c_orig.push_back( i ); c_comp.push_back( 0 ); }

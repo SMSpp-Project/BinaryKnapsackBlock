@@ -11,20 +11,23 @@ split to two different projects):
   - `DPBinaryKnapsackSolver`, the standard full-table Dynamic Programming
     approach, with reoptimization support;
 
-  - `ParallelDPBinaryKnapsackSolver`, a DPBinaryKnapsackSolver whose inner
-    (capacity) loop can run on parallel engines (OpenMP / FastFlow /
-    std::thread); opt-in and serial by default, since this fine-grained
-    parallelism does not pay off in practice;
-
   - `CoreDPBinaryKnapsackSolver`, an exact core / non-dominated-state solver
     in the MINKNAP / COMBO / RECORD line (break-item enumeration with
     dominance, LP / Martello-Toth / surrogate bounds, divisibility and
     aggregation reductions, primal heuristics), orders of magnitude faster
-    than the full-table DP;
+    than the full-table DP, which can reuse the previous solution after a
+    change of the data, as the incumbent or, when the change provably cannot
+    affect its optimality, as the answer;
+
+  - `RECORDBinaryKnapsackSolver` and `COMBOBinaryKnapsackSolver`, which hand
+    the integer core to the external RECORD and COMBO solvers, with the same
+    reoptimization (optional, see Requirements);
 
   - `GreedyRelaxationBinaryKnapsackSolver`, the exact greedy (Dantzig)
     solver of the continuous relaxation, providing true lower / upper bounds
-    on the integer optimum and branching on the critical item;
+    on the integer optimum and branching on the critical item, which solves
+    each relaxation from scratch or (with `intIncremental`) keeps the greedy
+    fill across the fixings of a Branch-and-Bound;
 
   the last two share the abstract base class `BinaryKnapsackSolver` (raw
   instance mirror with incremental Modification processing, normalized core,
@@ -36,10 +39,33 @@ split to two different projects):
 These instructions will let you build the `BinaryKnapsackBlock` module on
 your system.
 
+The module also comes ready-made, in any of
+
+```sh
+sudo add-apt-repository ppa:smspp-project/smspp   # Ubuntu
+sudo apt install libsmspp-bkb-dev                 # and smspp-bkb for the tool
+
+conda install -c conda-forge smspp-project        # Linux, macOS, Windows
+
+brew tap SMSpp-Project/smspp                      # macOS, Linux
+brew install smspp
+
+vcpkg install "smspp[core,bkb]"                   # from the sources
+```
+
+where apt and the port give the module alone, while conda and the tap carry
+the whole framework. What follows is about building it yourself.
+
 ### Requirements
 
 - The [SMS++ core library](https://gitlab.com/smspp/smspp) and its
   requirements.
+
+- Optionally, [RECORD](https://gitlab.com/renanfernandofranco/record), whose
+  checkout is given to CMake as `-DRECORD_ROOT=<dir>`, and COMBO, whose
+  `combo.c` and `combo.h` are given as `-DCOMBO_ROOT=<dir>` (they are
+  distributed by their authors for academic or non-commercial use only);
+  without them the corresponding Solvers are not built.
 
 ### Build and install with CMake
 

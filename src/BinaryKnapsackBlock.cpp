@@ -56,9 +56,8 @@ using c_Subset = Block::c_Subset;
 // returns true if two vectors differ, one of them being given as a base
 // vector and a subset of indices
 
-template< typename T >
-static bool is_equal( std::vector< T > & vec , c_Subset & nms ,
-                      typename std::vector< T >::const_iterator cmp ,
+template< typename T , class It >
+static bool is_equal( std::vector< T > & vec , c_Subset & nms , It cmp ,
                       Index n_max )
 {
  for( auto nm : nms ) {
@@ -74,9 +73,8 @@ static bool is_equal( std::vector< T > & vec , c_Subset & nms ,
 /*--------------------------------------------------------------------------*/
 // copys one vector to a given subset of another
 
-template< typename T >
-static void copyidx( std::vector< T > & vec , c_Subset & nms ,
-                     typename std::vector< T >::const_iterator cpy )
+template< typename T , class It >
+static void copyidx( std::vector< T > & vec , c_Subset & nms , It cpy )
 {
  for( auto nm : nms )
   vec[ nm ] = *(cpy++);
@@ -306,8 +304,19 @@ void BinaryKnapsackBlock::deserialize( const netCDF::NcGroup & group )
  
  countCont = std::count( v_I.begin() , v_I.end() , false );
 
- v_fxd.assign( n , 0 ); // all the variables are not fixed  
- 
+ // the sense of the objective, maximization unless the file says otherwise,
+ // which is what a file written before this attribute existed means
+ netCDF::NcGroupAtt s = group.getAtt( "Sense" );
+ if( s.isNull() )
+  f_sense = true;
+ else {
+  int sense;
+  s.getValues( &sense );
+  f_sense = ( sense != 0 );
+  }
+
+ v_fxd.assign( n , 0 ); // all the variables are not fixed
+
  generate_abstract_variables();
 
  // reset conditional bounds
@@ -337,6 +346,13 @@ void BinaryKnapsackBlock::generate_abstract_variables( Configuration * stvv )
    v_x[ i ].set_type( ColVariable::kBinary , eNoBlck );
   else
    v_x[ i ].set_type( ColVariable::kPosUnitary , eNoBlck ); 
+
+  // an item fixed in the data is fixed in its ColVariable too, which is
+  // where whoever reads the Block finds the value it is fixed to
+  if( v_fxd[ i ] ) {
+   v_x[ i ].set_value( v_fxd[ i ] == 2 ? 1 : 0 );
+   v_x[ i ].is_fixed( true , eNoMod );
+   }
   }
 
  add_static_variable( v_x );
@@ -431,6 +447,48 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
  return( tot_weight <= f_C );
 
  } // end( BinaryKnapsackBlock::is_feasible )
+
+/*--------------------------------------------------------------------------*/
+
+bool BinaryKnapsackBlock::is_sol_feasible( Solution * sol ,
+					   Configuration * fsbc )
+{
+ auto ksol = dynamic_cast< BinaryKnapsackSolution * >( sol );
+ if( ! ksol )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::is_sol_feasible: the "
+				"Solution is not a BinaryKnapsackSolution" ) );
+
+ // the feasible region is a subset of the unit cube, hence it has no rays
+ if( ksol->is_direction() )
+  return( false );
+
+ auto & x = ksol->get_x();
+ if( x.size() < get_NItems() )  // it holds no solution of this problem
+  return( false );
+
+ // the data of the problem is what the solution is checked against, as the
+ // physical part of is_feasible() does with the values of the Variable
+ double tot_weight = 0;
+ for( Index i = 0 ; i < get_NItems() ; ++i ) {
+  const double xi = x[ i ];
+
+  if( ( xi < 0 ) || ( xi > 1 ) )
+   return( false );
+
+  if( ( i < v_I.size() ) && v_I[ i ] && ( xi != 0 ) && ( xi != 1 ) )
+   return( false );
+
+  if( i < v_fxd.size() )
+   if( ( ( v_fxd[ i ] == 1 ) && ( xi != 0 ) ) ||
+       ( ( v_fxd[ i ] == 2 ) && ( xi != 1 ) ) )
+    return( false );
+
+  tot_weight += v_W[ i ] * xi;
+  }
+
+ return( tot_weight <= f_C );
+
+ } // end( BinaryKnapsackBlock::is_sol_feasible )
 
 /*--------------------------------------------------------------------------*/
 
@@ -700,11 +758,16 @@ void BinaryKnapsackBlock::serialize( netCDF::NcGroup & group ) const
  ( group.addVar( "Weights" , netCDF::NcDouble() , ni ) ).putVar( v_W.data() );
  
  ( group.addVar( "Profits" , netCDF::NcDouble() , ni ) ).putVar( v_P.data() );
- 
+
+ // the sense is written only when it is minimization, so that a file of a
+ // maximization problem is exactly what it used to be
+ if( ! f_sense )
+  group.putAtt( "Sense" , netCDF::NcInt() , 0 );
+
  if( countCont ) {
-   std::vector< int > tempI;
+   std::vector< int > tempI( v_I.size() );
    for( Index i = 0 ; i < v_I.size() ; ++i )
-    tempI[ i ] = ( int ) v_I[ i ]; 
+    tempI[ i ] = ( int ) v_I[ i ];
 
    ( group.addVar( "Integrality" ,
        netCDF::NcInt(), ni ) ).putVar( tempI.data() );
@@ -768,14 +831,19 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = Inf< double >();
 
- // TODO: use a GroupModification
+ // one item fixed is one abstract Modification: they all go into a single
+ // GroupModification, so that a Solver able to write a whole set of them in
+ // one operation does that instead of one call per item
+ auto nAM = un_ModBlock( make_par( par2mod( issueAMod ) ,
+                                   open_channel( par2chnl( issueAMod ) ) ) );
+
  for( i = rng.first ; i < rng.second ; i++ ) {
   double val = *(value++); // new value
 
   if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
     if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
-     v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
+     v_x[ i ].is_fixed( true , nAM );
      v_fxd[ i ] = val ? 2 : 1;
     }
     else
@@ -783,6 +851,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
       v_fxd[ i ] = val ? 2 : 1; 
   }
  }
+
+ close_channel( par2chnl( nAM ) );
 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
@@ -801,8 +871,21 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
  if( nms.empty() )
   return;
 
- if( ! ordered )
-  std::sort( nms.begin() , nms.end() );
+ // the values follow their items when these are sorted
+ boolVec sorted_value;
+ if( ! ordered ) {
+  std::vector< std::pair< Index , bool > > nv( nms.size() );
+  for( Index h = 0 ; h < nms.size() ; ++h )
+   nv[ h ] = { nms[ h ] , *(value++) };
+  std::sort( nv.begin() , nv.end() , []( auto & a , auto & b ) {
+   return( a.first < b.first ); } );
+  sorted_value.resize( nv.size() );
+  for( Index h = 0 ; h < nv.size() ; ++h ) {
+   nms[ h ] = nv[ h ].first;
+   sorted_value[ h ] = nv[ h ].second;
+   }
+  value = sorted_value.begin();
+  }
 
  if( nms.back() >= v_x.size() )
   throw( std::invalid_argument( "BinaryKnapsackBlock::fix_x: invalid item"
@@ -821,14 +904,17 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = Inf< double >();
 
- // TODO: use a GroupModification
+ // see the range version above for why they travel in one group
+ auto nAM = un_ModBlock( make_par( par2mod( issueAMod ) ,
+                                   open_channel( par2chnl( issueAMod ) ) ) );
+
  for( auto i : nms ) {
   double val = *(value++); // new value
 
   if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
     if( not_dry_run( issueAMod ) ) {
      v_x[ i ].set_value( val );
-     v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
+     v_x[ i ].is_fixed( true , nAM );
      v_fxd[ i ] = val ? 2 : 1;
     }
     else
@@ -836,6 +922,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
       v_fxd[ i ] = val ? 2 : 1; 
    }
   }
+
+ close_channel( par2chnl( nAM ) );
 
  // issue physical Modification
  if( issue_pmod( issueMod ) )  
@@ -899,11 +987,17 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = Inf< double >();
 
- // TODO: use a GroupModification
- if( not_dry_run( issueAMod ) )
+ // see fix_x() for why they travel in one group
+ if( not_dry_run( issueAMod ) ) {
+  auto nAM = un_ModBlock( make_par( par2mod( issueAMod ) ,
+                                    open_channel( par2chnl( issueAMod ) ) ) );
+
   for( i = rng.first ; i < rng.second ; ++i ) {
-   v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) );
+   v_x[ i ].is_fixed( false , nAM );
    v_fxd[ i ] = 0; 
+   }
+
+  close_channel( par2chnl( nAM ) );
   }
  else
   if( not_dry_run( issueMod ) ) {
@@ -948,12 +1042,17 @@ void BinaryKnapsackBlock::unfix_x( Subset && nms , bool ordered ,
  f_cond_lower = -Inf< double >();
  f_cond_upper = Inf< double >();
 
- // TODO: use a GroupModification
+ // see fix_x() for why they travel in one group
  if( not_dry_run( issueAMod ) ) {
+  auto nAM = un_ModBlock( make_par( par2mod( issueAMod ) ,
+                                    open_channel( par2chnl( issueAMod ) ) ) );
+
   for( auto i : nms ) {
-   v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) );
+   v_x[ i ].is_fixed( false , nAM );
    v_fxd[ i ] = 0;
    }
+
+  close_channel( par2chnl( nAM ) );
   }
  else
   if( not_dry_run( issueMod ) ) {
@@ -1006,16 +1105,22 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight , 
+void BinaryKnapsackBlock::chg_weights( MF_dbl_sp NWeight , 
                                        Range rng , 
                                        ModParam issueMod , 
                                        ModParam issueAMod )
 {
  rng.second = std::min( rng.second , get_NItems() );
  if( rng.second <= rng.first )  // nothing to change
-  return;   
+  return;
 
- if( std::equal( NWeight , NWeight + ( rng.second - rng.first ) ,
+ if( NWeight.size() < rng.second - rng.first )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::chg_weights: the span "
+				"is shorter than the Range" ) );
+
+ auto NWeight_it = NWeight.begin();
+
+ if( std::equal( NWeight_it , NWeight_it + ( rng.second - rng.first ) ,
      v_W.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
@@ -1026,18 +1131,18 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ) {
   // physical representation
-  std::copy( NWeight , NWeight + ( rng.second - rng.first ) ,
+  std::copy( NWeight_it , NWeight_it + ( rng.second - rng.first ) ,
              v_W.begin() + rng.first );
 
   // abstract representation
   LF( f_cnst.get_function() )->modify_coefficients(
-    doubleVec( NWeight , NWeight + ( rng.second - rng.first ) ) ,
+    doubleVec( NWeight_it , NWeight_it + ( rng.second - rng.first ) ) ,
     rng , un_ModBlock( issueAMod ) );
   }
  else
   if( not_dry_run( issueMod ) )
    // otherwise change only physical representation 
-   std::copy( NWeight , NWeight + ( rng.second - rng.first ) ,
+   std::copy( NWeight_it , NWeight_it + ( rng.second - rng.first ) ,
         v_W.begin() + rng.first );
 
  // issue physical Modification 
@@ -1050,15 +1155,21 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight,
+void BinaryKnapsackBlock::chg_weights( MF_dbl_sp NWeight,
                                        Subset && nms , bool ordered ,  
                                        ModParam issueMod ,
                                        ModParam issueAMod )
 {
  if( nms.empty() )  // nothing to change
-  return;            
+  return;
 
- if( is_equal( v_W , nms , NWeight , get_NItems() ) )
+ if( NWeight.size() < nms.size() )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::chg_weights: the span "
+				"is shorter than the Subset" ) );
+
+ auto NWeight_it = NWeight.begin();
+
+ if( is_equal( v_W , nms , NWeight_it , get_NItems() ) )
   return;  // actually nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -1068,18 +1179,18 @@ void BinaryKnapsackBlock::chg_weights( c_dblVec_it NWeight,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasCns ) ) {
   // physical representation
-  copyidx( v_W , nms , NWeight );
+  copyidx( v_W , nms , NWeight_it );
   
   // abstract representation
   LF( f_cnst.get_function() )->modify_coefficients(
-             doubleVec( NWeight , NWeight + nms.size() ) , 
+             doubleVec( NWeight_it , NWeight_it + nms.size() ) , 
              Subset( nms ) , ordered ,
              un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )
    // otherwise change only physical representation 
-   copyidx( v_W , nms , NWeight );
+   copyidx( v_W , nms , NWeight_it );
 
  // issue physical Modification 
  if( issue_pmod( issueMod ) ) {
@@ -1132,15 +1243,21 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng , 
+void BinaryKnapsackBlock::chg_profits( MF_dbl_sp NProfit , Range rng , 
                                        ModParam issueMod ,
                                        ModParam issueAMod )
 {
  rng.second = std::min( rng.second , get_NItems() );
  if( rng.second <= rng.first )  // nothing to change
-  return;   
+  return;
 
- if( std::equal( NProfit , NProfit + ( rng.second - rng.first ) ,
+ if( NProfit.size() < rng.second - rng.first )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::chg_profits: the span "
+				"is shorter than the Range" ) );
+
+ auto NProfit_it = NProfit.begin();
+
+ if( std::equal( NProfit_it , NProfit_it + ( rng.second - rng.first ) ,
              v_P.begin() + rng.first ) )
   return;  // nothing changes, avoid issuing the Modification
 
@@ -1152,17 +1269,17 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng ,
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ) {
   
   // physical representation
-  std::copy( NProfit , NProfit + ( rng.second - rng.first ) ,
+  std::copy( NProfit_it , NProfit_it + ( rng.second - rng.first ) ,
              v_P.begin() + rng.first );
   
   // abstract representation  
   LF( f_obj.get_function() )->modify_coefficients(
-    doubleVec( NProfit , NProfit + ( rng.second - rng.first ) ) ,
+    doubleVec( NProfit_it , NProfit_it + ( rng.second - rng.first ) ) ,
     rng , un_ModBlock( issueAMod ) );
   }
  else
   if( not_dry_run( issueMod ) )  // otherwise only physical representation 
-   std::copy( NProfit , NProfit + ( rng.second - rng.first ) ,
+   std::copy( NProfit_it , NProfit_it + ( rng.second - rng.first ) ,
         v_P.begin() + rng.first );
 
  // issue physical Modification 
@@ -1175,15 +1292,21 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit , Range rng ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit ,
+void BinaryKnapsackBlock::chg_profits( MF_dbl_sp NProfit ,
                                        Subset && nms , bool ordered ,  
                                        ModParam issueMod ,
                                        ModParam issueAMod )
 {
  if( nms.empty() )  // nothing to change
-  return;            
+  return;
 
- if( is_equal( v_P , nms , NProfit , get_NItems() ) )
+ if( NProfit.size() < nms.size() )
+  throw( std::invalid_argument( "BinaryKnapsackBlock::chg_profits: the span "
+				"is shorter than the Subset" ) );
+
+ auto NProfit_it = NProfit.begin();
+
+ if( is_equal( v_P , nms , NProfit_it , get_NItems() ) )
   return;  // actually nothing changes, avoid issuing the Modification
 
  // reset conditional bounds
@@ -1193,17 +1316,17 @@ void BinaryKnapsackBlock::chg_profits( c_dblVec_it NProfit ,
  // change both physical and abstract representation (if it exists)
  if( not_dry_run( issueAMod ) && ( AR & HasObj ) ) {
   // physical representation
-  copyidx( v_P , nms , NProfit );
+  copyidx( v_P , nms , NProfit_it );
   
   // abstract representation
   LF( f_obj.get_function() )->modify_coefficients(
-       doubleVec( NProfit , NProfit + nms.size() ) , 
+       doubleVec( NProfit_it , NProfit_it + nms.size() ) , 
        Subset( nms ) , ordered , un_ModBlock( issueAMod ) );
   } 
  else
   if( not_dry_run( issueMod ) )
    // otherwise change only physical representation 
-   copyidx( v_P , nms , NProfit );
+   copyidx( v_P , nms , NProfit_it );
 
  // issue physical Modification 
  if( issue_pmod( issueMod ) ) {
@@ -1472,7 +1595,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
     for( Index i = tmod->range().first ; i < tmod->range().second ; i++ )
      ( * npi++ ) = lf->get_coefficient( i );
 
-    chg_profits( new_profits.begin() , tmod->range() ,
+    chg_profits( new_profits , tmod->range() ,
      make_par( eNoBlck , chnl ) , eDryRun );
     return;
     }   
@@ -1490,7 +1613,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
     for( Index i = tmod->range().first ; i < tmod->range().second ; i++ )
      ( * nwi++ ) = lf->get_coefficient( i );
 
-    chg_weights( new_weights.begin() , tmod->range() ,
+    chg_weights( new_weights , tmod->range() ,
      make_par( eNoBlck , chnl ) , eDryRun );
     return;
     }
@@ -1519,7 +1642,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
      for( auto i : tmod->subset() )
       ( * npi++ ) = lf->get_coefficient( i );
 
-     chg_profits( new_profits.begin() , Subset( tmod->subset() ) , true , 
+     chg_profits( new_profits , Subset( tmod->subset() ) , true , 
                   make_par( eNoBlck , chnl ) , eDryRun );
      return;
      }
@@ -1537,7 +1660,7 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
      for( auto i : tmod->subset() )
       ( * nwi++ ) = lf->get_coefficient( i );
 
-     chg_weights( new_weights.begin() , Subset( tmod->subset() ) , true , 
+     chg_weights( new_weights , Subset( tmod->subset() ) , true , 
                   make_par( eNoBlck , chnl ) , eDryRun );
      return;
      }
@@ -1632,6 +1755,15 @@ void BinaryKnapsackBlock::compute_conditional_bounds( void )
  for( Index i = 0 ; i < get_NItems() ; i++ ) { 
   double w = v_W[ i ];                        // weight of the current item
   double p = f_sense ? v_P[ i ] : -v_P[ i ];  // profit of the current item
+
+  // fixed items are worth what they are fixed to
+  if( v_fxd[ i ] == 1 )
+   continue;
+  if( v_fxd[ i ] == 2 ) {
+   f_cond_lower += p;
+   f_cond_upper += p;
+   continue;
+   }
 
   // items contained in the optimal solution
   if( ( w <= 0 ) && ( p >= 0 ) ) {

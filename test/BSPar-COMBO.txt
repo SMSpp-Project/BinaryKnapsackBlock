@@ -1,0 +1,32 @@
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - BSPar-COMBO.txt - - - - - - - - - - - - - - -
+#
+# The BlockSolverConfig that adds the COMBOBinaryKnapsackSolver, with
+# intReopt 3, to the exact Solver of the module test. The test applies
+# it only when the Solver is built, i.e., when the sources of COMBO
+# were given; it is additive, as BSPar-exact.txt.
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+BlockSolverConfig     # exact type of the Configuration object
+
+2  # the BlockSolverConfig is an "additive" one: Solver are added
+
+1  # number of (the names of) Solver in this BlockSolverConfig
+
+# now all the names of the Solver - - - - - - - - - - - - - - - - - - - - - -
+COMBOBinaryKnapsackSolver  # 1st: COMBO, intReopt 3
+
+1  # number of ComputeConfig in this BlockSolverConfig
+
+# now all the ComputeConfig - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# 1: COMBO, intReopt 3
+*ReoptCfg.txt
+
+# end of BlockSolverConfig- - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - END BSPar-COMBO.txt - - - - - - - - - - - - - -
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
