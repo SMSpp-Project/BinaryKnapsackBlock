@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- the instances of `data/` are downloaded and extracted by the targets
+  `download_bk_<fmt>` and `extract_bk_<fmt>`, written as in every module
+  that keeps its instances in the Package Registry, and the marker of the
+  extraction carries the format in its name, so that a tree extracted
+  before extracts once more; `fetch_bk_data` is now `extract_bk_txt`
+
 ## [0.5.0] - 2026-10-09
 
 ### Added

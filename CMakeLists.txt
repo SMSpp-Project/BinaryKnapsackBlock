@@ -320,73 +320,78 @@ if (NOT hasParent)
     include(CPack)
 endif ()
 
-# ----- Custom commands and targets ----------------------------------------- #
-# Fetch the curated Pisinger data: download the txt.tgz from the GitLab Package
-# Registry and extract it. The archive carries, per instance, the raw .csv that
-# embeds the published optimum z, which the tests read directly (no further
-# conversion): the fetch_bk_data target is the test fixture's only dependency.
-
-# The version of the archive in the Package Registry. A published version is
-# never replaced: new data go out under a new version, written here first [see
-# data/upload-txt], and the archive and the marker of its extraction carry it
-# in their name, so that a tree holding the data of an older version (a cache
-# of the CI, or a clone that has been extracted before) downloads and extracts
-# again instead of taking them for the current ones.
+# ----- Data ---------------------------------------------------------------- #
+# The instances the tests read are, for each <fmt> of DATA_FORMATS, the
+# archive <fmt>.tgz in the GitLab Package Registry of the project
+# DATA_PROJECT, extracted into data/<fmt>. Nothing of this is built with the
+# module: extract_<DATA_PREFIX>_<fmt> downloads the archive (by building
+# download_<DATA_PREFIX>_<fmt>) and extracts it, and it is built when the
+# tests that read the instances are run, by a test that sets up the fixture
+# <DATA_PREFIX>_<fmt>_extracted they require.
+#
+# A published version is never replaced: new data go out under a new
+# version, written here first [see the upload scripts in data/], and the
+# archive and the marker of its extraction carry it in their name, so that a
+# tree holding the data of an older version (a cache of the CI, or a clone
+# that has been extracted before) downloads and extracts again instead of
+# taking them for the current ones.
 set(DATA_VERSION 2026-06-24)
+set(DATA_PROJECT 24425718)
+set(DATA_PREFIX bk)
+set(DATA_FORMATS txt)
 
-# Download txt.tgz from GitLab Package Registry if it doesn't exist
-set(TXT_URL "https://gitlab.com/api/v4/projects/24425718/packages/generic/txt/${DATA_VERSION}/txt.tgz")
-set(TXT_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/data/txt-${DATA_VERSION}.tgz)
-set(DATA_MARKER ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted-${DATA_VERSION})
-set(TXT_SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/download_bk_txt.cmake)
+foreach (fmt ${DATA_FORMATS})
+    set(url "https://gitlab.com/api/v4/projects/${DATA_PROJECT}/packages/\
+generic/${fmt}/${DATA_VERSION}/${fmt}.tgz")
+    set(archive ${CMAKE_CURRENT_SOURCE_DIR}/data/${fmt}-${DATA_VERSION}.tgz)
+    set(script
+        ${CMAKE_CURRENT_BINARY_DIR}/download_${DATA_PREFIX}_${fmt}.cmake)
+    # the marker of the extraction, on which what is made from the instances
+    # depends too
+    set(DATA_MARKER_${fmt}
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted-${fmt}-${DATA_VERSION})
 
-file(WRITE ${TXT_SCRIPT} "
-file(DOWNLOAD \"${TXT_URL}\" \"${TXT_ARCHIVE}\" SHOW_PROGRESS STATUS _status)
+    file(WRITE ${script} "
+file(DOWNLOAD \"${url}\" \"${archive}\" SHOW_PROGRESS STATUS _status)
 list(GET _status 0 _code)
 list(GET _status 1 _message)
 if(NOT _code EQUAL 0)
   # what is on disk is whatever the server answered with, and leaving it there
   # would let the build take it for the archive: the next attempt has to
   # download again rather than fail while extracting it
-  file(REMOVE \"${TXT_ARCHIVE}\")
-  message(FATAL_ERROR \"cannot download ${TXT_URL}: \${_message}\")
+  file(REMOVE \"${archive}\")
+  message(FATAL_ERROR \"cannot download ${url}: \${_message}\")
 endif()
-file(SIZE \"${TXT_ARCHIVE}\" _size)
+file(SIZE \"${archive}\" _size)
 if(_size LESS 1024)
-  file(REMOVE \"${TXT_ARCHIVE}\")
-  message(FATAL_ERROR \"${TXT_ARCHIVE} came down with \${_size} bytes, so the \
+  file(REMOVE \"${archive}\")
+  message(FATAL_ERROR \"${archive} came down with \${_size} bytes, so the \
 server answered but not with the archive: try again later\")
 endif()
 ")
 
-add_custom_command(
-        OUTPUT ${TXT_ARCHIVE}
-        COMMAND ${CMAKE_COMMAND} -E echo "Downloading txt.tgz from GitLab Package Registry..."
-        COMMAND ${CMAKE_COMMAND} -P ${TXT_SCRIPT}
-        COMMENT "Downloading txt.tgz"
-        VERBATIM)
+    add_custom_command(
+            OUTPUT ${archive}
+            COMMAND ${CMAKE_COMMAND} -P ${script}
+            COMMENT "Downloading ${fmt}.tgz from the GitLab Package Registry"
+            VERBATIM)
+    add_custom_target(download_${DATA_PREFIX}_${fmt} DEPENDS ${archive})
 
-add_custom_target(download_bk_txt
-        DEPENDS ${TXT_ARCHIVE})
-
-# Custom command to extract the txt.tgz archive if the marker of this version
-# does not exist
-add_custom_command(
-        OUTPUT ${DATA_MARKER}
-        COMMAND ${CMAKE_COMMAND} -E tar xzf ${TXT_ARCHIVE}
-        COMMAND echo > ${DATA_MARKER}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
-        COMMENT "Extracting txt.tgz"
-        VERBATIM
-        DEPENDS download_bk_txt)
-
-# The raw .csv are ready as soon as the archive is extracted: this is the
-# terminal target the tests depend on (see tests/BinaryKnapsackBlock).
-add_custom_target(fetch_bk_data
-        DEPENDS ${DATA_MARKER})
-
-# Ensure that the extraction is executed after the download
-add_dependencies(fetch_bk_data download_bk_txt)
+    add_custom_command(
+            OUTPUT ${DATA_MARKER_${fmt}}
+            COMMAND ${CMAKE_COMMAND} -E tar xzf ${archive}
+            COMMAND ${CMAKE_COMMAND} -E touch ${DATA_MARKER_${fmt}}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
+            COMMENT "Extracting ${fmt}.tgz"
+            VERBATIM
+            DEPENDS ${archive})
+    add_custom_target(extract_${DATA_PREFIX}_${fmt}
+                      DEPENDS ${DATA_MARKER_${fmt}})
+    # the archive is the output of a command in both targets: it has to be
+    # downloaded once, before it is extracted
+    add_dependencies(extract_${DATA_PREFIX}_${fmt}
+                     download_${DATA_PREFIX}_${fmt})
+endforeach ()
 
 # A handful of the textual instances written as netCDF files, which is what a
 # tester that reads a Block from a file needs: tools/batch says which ones and
@@ -395,28 +400,28 @@ if (UNIX)
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
-            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
             COMMENT "Running bk2nc4"
             VERBATIM
-            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${DATA_MARKER})
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${DATA_MARKER_txt})
 elseif (WIN32)
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             # using Git for Windows that includes Git Bash
             COMMAND "C:/Program Files/Git/bin/bash.exe"
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/batch" "$<TARGET_FILE:bk2nc4>"
-            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
             COMMENT "Running bk2nc4"
             VERBATIM
-            DEPENDS $<TARGET_FILE:bk2nc4> ${DATA_MARKER})
+            DEPENDS $<TARGET_FILE:bk2nc4> ${DATA_MARKER_txt})
 endif ()
 
 add_custom_target(run_bk2nc4
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated)
 
-add_dependencies(run_bk2nc4 bk2nc4 fetch_bk_data)
+add_dependencies(run_bk2nc4 bk2nc4 extract_bk_txt)
 
 # Hard-instance benchmark sources, curated on demand into data/ (gitignored).
 # data/fetch-jooken pulls a curated subset of the Jooken-Leyman-De Causmaecker
