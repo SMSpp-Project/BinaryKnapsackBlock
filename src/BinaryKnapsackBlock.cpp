@@ -420,9 +420,8 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
                                        Configuration * fsbc )
 {
  // first check bound constraints, for which only one way is available
- for( auto & xi : v_x )
-  if( ! xi.is_feasible() )
-   return( false );
+ if( ! ColVariable::is_feasible( v_x , 0 ) )
+  return( false );
 
  // now check the knapsack constraint(s)
 
