@@ -419,31 +419,46 @@ void BinaryKnapsackBlock::generate_objective( Configuration * objc )
 bool BinaryKnapsackBlock::is_feasible( bool useabstract , 
                                        Configuration * fsbc )
 {
+ double eps = 0;
+ bool rel_viol = true;
+
+ // the tolerance, and whether it is relative, out of a Configuration;
+ // false if it does not carry them
+ auto extract_parameters = [ & eps , & rel_viol ]( Configuration * c )
+  -> bool {
+  if( auto tc = dynamic_cast< SimpleConfiguration< double > * >( c ) ) {
+   eps = tc->f_value;
+   return( true );
+   }
+  if( auto tc = dynamic_cast<
+       SimpleConfiguration< std::pair< double , int > > * >( c ) ) {
+   eps = tc->f_value.first;
+   rel_viol = tc->f_value.second;
+   return( true );
+   }
+  return( false );
+  };
+
+ if( ( ! extract_parameters( fsbc ) ) && f_BlockConfig )
+  extract_parameters( f_BlockConfig->f_is_feasible_Configuration );
+
  // first check bound constraints, for which only one way is available
- if( ! ColVariable::is_feasible( v_x , 0 ) )
+ if( ! ColVariable::is_feasible( v_x , eps ) )
   return( false );
 
- // now check the knapsack constraint(s)
+ // now check the knapsack constraint
 
- if( useabstract && ( AR & HasCns ) ) {
+ if( useabstract && ( AR & HasCns ) )
   // do it using the abstract representation, if there is any
-
-  // ensure the knapsack constraint(s) is compute()-d, as this is
-  // necessary for abs_viol() to work
-  if( auto ret = f_cnst.compute() ;
-      ( ret <= FRowConstraint::kUnEval ) || ( ret > FRowConstraint::kOK ) )
-   return( false );  // failure to compute() means no proof it is feasible
-
-  // TODO: some epsilon might be required
-  return( f_cnst.abs_viol() == 0 );
-  }
+  return( RowConstraint::is_feasible( f_cnst , eps , rel_viol ) );
 
  // do it using the physical representation
  double tot_weight = 0; 
  for( Index i = 0 ; i < v_W.size() ; ++i )    // check fixed variables?
   tot_weight += v_W[ i ] * get_x( i ); 
 
- return( tot_weight <= f_C );
+ return( tot_weight - f_C <=
+	 ( rel_viol ? eps * std::max( double( 1 ) , std::abs( f_C ) ) : eps ) );
 
  } // end( BinaryKnapsackBlock::is_feasible )
 

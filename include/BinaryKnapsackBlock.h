@@ -524,7 +524,28 @@ class BinaryKnapsackBlock : public Block {
  /** Returns true if the solution encoded in the current value of the x 
   * Variables of the BinaryKnapsackBlock is feasible. This clearly requires 
   * the Variable of the BinaryKnapsackBlock to have been defined, i.e., that 
-  * generate_abstract_variables() has been called prior to this method. */
+  * generate_abstract_variables() has been called prior to this method.
+  *
+  * If useabstract is true and the knapsack constraint has been constructed,
+  * it is checked as the static methods RowConstraint::is_feasible() do: if
+  * it is relaxed it is not checked, and if it cannot be compute()-d the
+  * solution is infeasible. Otherwise it is checked out of the data.
+  *
+  * What "feasible" exactly means is decided by a tolerance and by whether it
+  * is relative or absolute (see RowConstraint::rel_viol() and
+  * RowConstraint::abs_viol()); the tolerance is used as is for the
+  * Variable. They are to be found as:
+  *
+  * - if fsbc is a SimpleConfiguration< double >, then fsbc->f_value is the
+  *   tolerance, which is relative; if it is a
+  *   SimpleConfiguration< std::pair< double , int > >, then
+  *   fsbc->f_value.first is the tolerance, which is relative if
+  *   fsbc->f_value.second is nonzero and absolute otherwise;
+  *
+  * - otherwise, if f_BlockConfig is not nullptr, the same holds for
+  *   f_BlockConfig->f_is_feasible_Configuration;
+  *
+  * - otherwise, the tolerance is 0, i.e., the check is exact. */
 
  bool is_feasible( bool useabstract = false , 
                    Configuration * fsbc = nullptr ) override;

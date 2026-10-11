@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extraction carries the format in its name, so that a tree extracted
   before extracts once more; `fetch_bk_data` is now `extract_bk_txt`
 
+### Fixed
+
+- `is_feasible()` with the abstract representation checks the knapsack
+  constraint with the static `RowConstraint::is_feasible()` of the core, as
+  the other Blocks do, so that a relaxed constraint is skipped; the check
+  takes a tolerance, out of the Configuration passed or else out of the
+  `BlockConfig`, relative as a `SimpleConfiguration< double >` and relative
+  or absolute as a `SimpleConfiguration< std::pair< double , int > >`, which
+  holds for the Variable and for the physical check as well; with none the
+  check is exact, as before
+
 ## [0.5.0] - 2026-10-09
 
 ### Added

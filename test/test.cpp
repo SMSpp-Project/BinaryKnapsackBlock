@@ -29,8 +29,9 @@
  * items of weight 0, negative data, no item at all), the fixings, the two
  * senses, a sequence of changes on one Block with every Solver attached, the
  * same changes made through the abstract representation, the netCDF round
- * trip, the abstract representation itself, the R3 copy, the conditional
- * bounds of the Block and the branching of the relaxation Solver.
+ * trip, the abstract representation itself, the feasibility check with its
+ * tolerances and a relaxed constraint, the R3 copy, the conditional bounds
+ * of the Block and the branching of the relaxation Solver.
  *
  * \author Donato Meoli \n
  *         Dipartimento di Informatica \n
@@ -855,6 +856,68 @@ void test_abstract_representation( void )
  delete b;
  }
 
+/// the feasibility check: relaxed constraint and tolerances
+
+void test_feasibility( void )
+{
+ Inst in;
+ in.C = 10;
+ in.W = { 6 , 5 };
+ in.P = { 1 , 1 };
+ in.I = { false , false };
+ auto b = build( in );
+ b->generate_abstract_variables();
+ b->generate_abstract_constraints();
+
+ // weight exactly 10: feasible with the default exact check
+ b->set_x( 0 , 1 );
+ b->set_x( 1 , 0.8 );
+ check( b->is_feasible( true ) && b->is_feasible( false ) ,
+        "feasibility: a point on the capacity fails" );
+
+ // weight 11: a violation of 1, i.e., 0.1 relative to the capacity
+ b->set_x( 1 , 1 );
+ check( ( ! b->is_feasible( true ) ) && ( ! b->is_feasible( false ) ) ,
+        "feasibility: an infeasible point passes" );
+
+ auto cns = b->get_static_constraint< FRowConstraint >( 0 );
+ if( check( cns != nullptr , "feasibility: no knapsack constraint" ) ) {
+  cns->relax( true );
+  check( b->is_feasible( true ) , "feasibility: the violated constraint is "
+         "relaxed, yet the abstract check fails" );
+  check( ! b->is_feasible( false ) , "feasibility: the physical check reads "
+         "the relaxed constraint" );
+  cns->relax( false );
+  check( ! b->is_feasible( true ) , "feasibility: the constraint is no "
+         "longer relaxed, yet the point passes" );
+  }
+
+ SimpleConfiguration< double > rel005( 0.05 ) , rel02( 0.2 );
+ check( ( ! b->is_feasible( true , & rel005 ) ) &&
+        ( ! b->is_feasible( false , & rel005 ) ) ,
+        "feasibility: a relative violation of 0.1 within 0.05" );
+ check( b->is_feasible( true , & rel02 ) && b->is_feasible( false , & rel02 ) ,
+        "feasibility: a relative violation of 0.1 beyond 0.2" );
+
+ SimpleConfiguration< std::pair< double , int > > abs05( { 0.5 , 0 } ) ,
+                                                  abs2( { 2 , 0 } );
+ check( ( ! b->is_feasible( true , & abs05 ) ) &&
+        ( ! b->is_feasible( false , & abs05 ) ) ,
+        "feasibility: a violation of 1 within an absolute 0.5" );
+ check( b->is_feasible( true , & abs2 ) && b->is_feasible( false , & abs2 ) ,
+        "feasibility: a violation of 1 beyond an absolute 2" );
+
+ // the bounds of the Variable are checked with the tolerance too
+ b->set_x( 0 , 0 );
+ b->set_x( 1 , 1.1 );
+ check( ! b->is_feasible( false , & rel005 ) ,
+        "feasibility: x = 1.1 passes within 0.05" );
+ check( b->is_feasible( false , & rel02 ) ,
+        "feasibility: x = 1.1 fails within 0.2" );
+
+ delete b;
+ }
+
 /// serialize and deserialize a Block through a netCDF file
 
 void test_netcdf( void )
@@ -1252,6 +1315,7 @@ int main( void )
   { "reoptimization" , test_reoptimization } ,
   { "abstract Modification" , test_abstract_modifications } ,
   { "abstract representation" , test_abstract_representation } ,
+  { "feasibility" , test_feasibility } ,
   { "netCDF round trip" , test_netcdf } ,
   { "R3 copy" , test_R3_copy } ,
   { "fractional weights" , test_fractional_weights } ,
