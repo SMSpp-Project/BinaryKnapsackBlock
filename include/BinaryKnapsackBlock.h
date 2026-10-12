@@ -1270,7 +1270,7 @@ class BinaryKnapsackBlockMod : public Modification {
 
  virtual ~BinaryKnapsackBlockMod() = default;   ///< destructor, does nothing
 
-/*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  /// returns the [BinaryKnapsack]Block to which the BinaryKnapsackBlockMod 
  /// refers
@@ -1340,7 +1340,7 @@ class BinaryKnapsackBlockRngdMod : public BinaryKnapsackBlockMod
 
  virtual ~BinaryKnapsackBlockRngdMod() = default;   ///< destructor
 
-/*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  /// accessor to the range
 
@@ -1395,7 +1395,7 @@ class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod {
 
  virtual ~BinaryKnapsackBlockSbstMod() = default;  ///< destructor
 
-/*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  /// accessor to the subset
 
@@ -1457,7 +1457,7 @@ class BinaryKnapsackSolution : public Solution {
  ~BinaryKnapsackSolution() override = default;
  ///< destructor: it is virtual, and empty
 
-/*------ METHODS DESCRIBING THE BEHAVIOR OF A BinaryKnapsackSolution ------*/
+/*------ METHODS DESCRIBING THE BEHAVIOR OF A BinaryKnapsackSolution -------*/
 
  void read( const Block * const block ) override final;
 

@@ -449,7 +449,7 @@ private:
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE METHODS ------------------------------*/
 /*--------------------------------------------------------------------------*/
-/*- - - - - - - - - - - - - with intIncremental == 1 - - - - - - - - - - - -*/
+/*- - - - - - - - - - - - - with intIncremental == 1  - - - - - - - - - - -*/
 
  /// build the greedy fill from the raw mirror of the instance
  /** Normalizes the profits to the maximization sense, complements the free

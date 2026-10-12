@@ -1517,7 +1517,7 @@ void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality,
   }
  }  // end( BinaryKnapsackBlock::chg_integrality( Subset ) )
 
-/*---------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackBlock::chg_capacity( double NC , ModParam issueMod ,
                       ModParam issueAMod )

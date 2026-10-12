@@ -54,7 +54,7 @@ namespace SMSpp_di_unipi_it
 {
 
 /*--------------------------------------------------------------------------*/
-/*------------------- CLASS COMBOBinaryKnapsackSolver ---------------------*/
+/*------------------- CLASS COMBOBinaryKnapsackSolver ----------------------*/
 /*--------------------------------------------------------------------------*/
 /// Solver for the BinaryKnapsackBlock based on the external COMBO
 /** Exact Solver for the BinaryKnapsackBlock that solves the integer core of
@@ -114,5 +114,5 @@ class COMBOBinaryKnapsackSolver : public CoreDPBinaryKnapsackSolver {
 #endif  /* COMBOBinaryKnapsackSolver.h included */
 
 /*--------------------------------------------------------------------------*/
-/*---------------- End File COMBOBinaryKnapsackSolver.h -------------------*/
+/*---------------- End File COMBOBinaryKnapsackSolver.h --------------------*/
 /*--------------------------------------------------------------------------*/
