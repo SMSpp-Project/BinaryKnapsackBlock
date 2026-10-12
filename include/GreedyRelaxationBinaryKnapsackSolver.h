@@ -330,40 +330,41 @@ public:
 
 /*--------------------------------------------------------------------------*/
  /// classify the effect of a Modification on an enumeration tree
- /** The knapsack-specific classification below is not active: classify()
-  * is not redefined, and the default of ChangeSolver [see
-  * ChangeSolver::classify()] applies. Once enabled, it would classify as
-  * follows [see RelaxationSolver::classify()]: profit changes only touch
-  * the objective, weight and capacity changes only touch the feasible
-  * region, while (un)fixings, integrality and sense changes reshape the
-  * branching space (they invalidate the structure of the enumeration tree,
-  * not merely its bounds) and so, together with anything structural
-  * (NBModification, GroupModification, that update_instance() would not
-  * unpack either), conservatively invalidate everything. Non-physical
+ /** Profit changes only touch the objective, weight and capacity changes
+  * only touch the feasible region [see RelaxationSolver::classify()],
+  * while (un)fixings, integrality and sense changes reshape the branching
+  * space (they invalidate the structure of the enumeration tree, not merely
+  * its bounds) and so, together with anything structural (NBModification,
+  * GroupModification, that update_instance() would not unpack either),
+  * conservatively invalidate everything. With intIncremental == 1 profit,
+  * weight and capacity changes invalidate everything as well, since the
+  * branching Changes of the tree carry the state of the greedy fill of
+  * their child [see branch()], computed with the old data. Non-physical
   * Modification (the abstract-representation mirror of the physical ones)
   * are classified eModNothing, consistently with update_instance() ignoring
-  * them: this Solver only listens to the physical representation. */
+  * them: this Solver only listens to the physical representation.
+  *
+  * The change of the profits w.r.t. the data of the last compute() is
+  * recorded here, the mirror of the instance being still that of the last
+  * compute(), for bound_shift(). */
 
- /*
- [[nodiscard]] int classify( const sp_Mod & mod ) override {
-  const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
-  if( ! tmod ) {
-   if( std::dynamic_pointer_cast< NBModification >( mod ) ||
-       std::dynamic_pointer_cast< GroupModification >( mod ) )
-    return( eModEverything );
-   return( eModNothing );    // abstract-representation mirror: ignored
-   }
-  switch( tmod->type() ) {
-   case( BinaryKnapsackBlockMod::eChgProfit ):
-    return( eModObjective );
-   case( BinaryKnapsackBlockMod::eChgWeight ):
-   case( BinaryKnapsackBlockMod::eChgCapacity ):
-    return( eModFeasibility );
-   default:    // incl. (un)fixings, integrality and sense changes
-    return( eModEverything );
-   }
-  }
- */
+ [[nodiscard]] int classify( const sp_Mod & mod ) override;
+
+/*--------------------------------------------------------------------------*/
+ /// how much the bound of the current node may have worsened
+ /** After profit changes alone [see classify()], with \f$ \Delta p \f$ the
+  * change of the profits w.r.t. the last compute() and \f$ F_0 \f$,
+  * \f$ F_1 \f$ the items fixed to 0 and to 1 at the current node, returns
+  * \f[
+  *  \delta = \sum_{j \in F_1} \Delta p_j
+  *          + \sum_{j \notin F_0 \cup F_1} \max\{ 0 , \Delta p_j \}
+  * \f]
+  * for a maximization, i.e., the maximum of \f$ \Delta p x \f$ over the
+  * box of the node, and symmetrically for a minimization [see
+  * RelaxationSolver::bound_shift()], in O( n ); +infinity with
+  * intIncremental == 1, whose tree is never kept under profit changes. */
+
+ [[nodiscard]] OFValue bound_shift( void ) override;
 
 /*--------------------------------------------------------------------------*/
  /// physically construct the true (rounded greedy) Solution
@@ -524,6 +525,13 @@ private:
  double f_ci_val = 1;    ///< the fraction of the critical item that is taken
  bool f_to_end = false;  ///< whether the fill took every item, i.e., there
                          ///< is no critical item
+
+ // what bound_shift() needs [see classify()]
+
+ std::vector< double > v_dP;  ///< change of the profits w.r.t. the data of
+                              ///< the last compute()
+ bool f_dP_stale = true;      ///< whether v_dP is that of a previous
+                              ///< change, to be reset by classify()
 
 /*--------------------------------------------------------------------------*/
 

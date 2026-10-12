@@ -72,6 +72,7 @@ int GreedyRelaxationBinaryKnapsackSolver::compute( bool changedvars )
   }
 
  update_instance();          // process all the pending modifications
+ f_dP_stale = true;          // the next change starts from these data
 
  if( ! f_norm_valid )        // profits / weights / sense changed:
   normalize_instance();      //  raw mirror -> normalized core
@@ -182,6 +183,76 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
  return( branches );
 
  }  // end( GreedyRelaxationBinaryKnapsackSolver::branch )
+
+/*--------------------------------------------------------------------------*/
+
+int GreedyRelaxationBinaryKnapsackSolver::classify( const sp_Mod & mod )
+{
+ const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
+ if( ! tmod ) {
+  if( std::dynamic_pointer_cast< NBModification >( mod ) ||
+      std::dynamic_pointer_cast< GroupModification >( mod ) )
+   return( eModEverything );
+  return( eModNothing );    // abstract-representation mirror: ignored
+  }
+
+ switch( tmod->type() ) {
+  case( BinaryKnapsackBlockMod::eChgProfit ): {
+   if( f_incremental )
+    return( eModEverything );
+   // the mirror still has the profits of the last compute(): the change of
+   // each item is the difference with the Block, whatever the Modification
+   // that changed it in between
+   if( f_dP_stale || ( v_dP.size() != f_N ) ) {
+    v_dP.assign( f_N , 0 );
+    f_dP_stale = false;
+    }
+   auto BKB = static_cast< BinaryKnapsackBlock * >( f_Block );
+   if( const auto rmod = dynamic_cast< BinaryKnapsackBlockRngdMod * >(
+                                                                 tmod ) ) {
+    for( Index i = rmod->rng().first ; i < rmod->rng().second ; ++i )
+     v_dP[ i ] = BKB->get_Profit( i ) - v_P[ i ];
+    }
+   else
+    if( const auto smod = dynamic_cast< BinaryKnapsackBlockSbstMod * >(
+                                                                 tmod ) ) {
+     for( auto i : smod->nms() )
+      v_dP[ i ] = BKB->get_Profit( i ) - v_P[ i ];
+     }
+    else
+     return( eModEverything );
+   return( eModObjective );
+   }
+  case( BinaryKnapsackBlockMod::eChgWeight ):
+  case( BinaryKnapsackBlockMod::eChgCapacity ):
+   return( f_incremental ? eModEverything : eModFeasibility );
+  default:    // incl. (un)fixings, integrality and sense changes
+   return( eModEverything );
+  }
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::classify )
+
+/*--------------------------------------------------------------------------*/
+
+Solver::OFValue GreedyRelaxationBinaryKnapsackSolver::bound_shift( void )
+{
+ if( f_incremental || ( v_dP.size() != f_N ) )
+  return( Inf< OFValue >() );
+
+ // the worst change of the objective over the box of the node: the items
+ // fixed to 1 bring their change, the free ones the part of it that worsens
+ // the bound, those fixed to 0 nothing
+ OFValue shift = 0;
+ for( Index i = 0 ; i < f_N ; ++i ) {
+  const double dp = f_sense ? v_dP[ i ] : - v_dP[ i ];
+  if( v_fxd[ i ] == 2 )
+   shift += dp;
+  else
+   if( ! v_fxd[ i ] )
+    shift += std::max( dp , 0.0 );
+  }
+ return( shift );
+
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::bound_shift )
 
 /*--------------------------------------------------------------------------*/
 

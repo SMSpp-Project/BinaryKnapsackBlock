@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `GreedyRelaxationBinaryKnapsackSolver::classify()` is active again, so
+  that a BranchAndXSolver reoptimizing on it keeps its tree under profit,
+  weight and capacity changes, but only with `intIncremental` 0: with 1
+  the branching Changes carry the state of the greedy fill computed with
+  the old data, and any such change invalidates the tree
+
+- `GreedyRelaxationBinaryKnapsackSolver::bound_shift()`: after profit
+  changes alone, the maximum (for a maximization) of the change of the
+  objective over the box of the current node, so that the node whose old
+  bound, shifted by it, cannot beat the incumbent is not solved again
+
 ### Changed
 
 - the instances of `data/` are downloaded and extracted by the targets

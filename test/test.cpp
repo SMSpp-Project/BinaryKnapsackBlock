@@ -1293,6 +1293,91 @@ void test_branch( void )
   }
  }
 
+/*--------------------------------------------------------------------------*/
+/// the classification of the Modification and the shifted bound after a
+/// change of the profits, at the root and at each child, maximizing and
+/// minimizing, for each greedy relaxation of BSPar-relax.txt: the bound of
+/// the node shifted by bound_shift() is still valid for the new profits;
+/// with intIncremental == 1 a change of the data invalidates the tree
+
+void test_bound_shift( void )
+{
+ Inst in;
+ in.C = 10;
+ in.W = { 5 , 4 , 6 , 3 , 1 };
+ in.P = { 8 , 6 , 9 , 4 , 1 };
+ in.I.assign( 5 , true );
+ const dVec dP = { 2 , -3 , 1 , -1 , 4 };
+ for( bool max : { true , false } )
+  for( Index k = 0 ; k < 2 ; ++k ) {
+   in.max = max;
+   auto b = build( in );
+   bsc( "BSPar-relax.txt" )->apply( b );
+   auto s = *std::next( b->get_registered_solvers().begin() , k );
+   const std::string cls = s->classname() + " " + std::to_string( k + 1 ) +
+                           ( max ? ", max" : ", min" );
+   auto rs = dynamic_cast< RelaxationSolver * >( s );
+   assert( rs );
+   check( s->compute() == Solver::kOK , cls + ": the root does not solve" );
+   auto children = rs->branch();
+
+   // the bounds of the root and of the children with the old profits
+   std::vector< double > old( 1 , s->get_var_value() );
+   for( auto c : children ) {
+    auto undo = rs->apply( c , true );
+    check( s->compute() == Solver::kOK , cls + ": a child does not solve" );
+    old.push_back( s->get_var_value() );
+    rs->apply( undo );
+    delete undo;
+    }
+
+   // the profits change: the classification sees it before any solve
+   dVec P = in.P;
+   for( Index i = 0 ; i < P.size() ; ++i )
+    P[ i ] += dP[ i ];
+   b->chg_profits( P.begin() , Block::Range( 0 , P.size() ) );
+   const auto mod = std::make_shared< BinaryKnapsackBlockRngdMod >(
+           b , BinaryKnapsackBlockMod::eChgProfit , Block::Range( 0 , 5 ) );
+   const int cl = rs->classify( mod );
+   check( cl == ( k ? RelaxationSolver::eModEverything
+                    : RelaxationSolver::eModObjective ) ,
+          cls + ": the change of the profits is classified " +
+          std::to_string( cl ) );
+   const auto wmod = std::make_shared< BinaryKnapsackBlockRngdMod >(
+           b , BinaryKnapsackBlockMod::eChgWeight , Block::Range( 0 , 5 ) );
+   check( rs->classify( wmod ) == ( k ? RelaxationSolver::eModEverything
+                                      : RelaxationSolver::eModFeasibility ) ,
+          cls + ": wrong classification of a change of the weights" );
+
+   // the old bound of each node, shifted, is valid for the new profits
+   for( Index c = 0 ; c <= children.size() ; ++c ) {
+    Change * undo = c ? rs->apply( children[ c - 1 ] , true ) : nullptr;
+    const auto shift = rs->bound_shift();
+    check( s->compute() == Solver::kOK , cls + ": a node does not solve" );
+    const double now = s->get_var_value();
+    const std::string node = c ? "child " + std::to_string( c - 1 )
+                               : std::string( "the root" );
+    if( k )
+     check( shift == Inf< double >() , cls + ": a shift of " + str( shift ) +
+            " for a tree that is not kept" );
+    else
+     check( max ? now <= old[ c ] + shift + tol
+                : now >= old[ c ] - shift - tol ,
+            cls + ": at " + node + " the bound " + str( now ) + " is " +
+            "beyond the old one " + str( old[ c ] ) + " shifted by " +
+            str( shift ) );
+    if( undo ) {
+     rs->apply( undo );
+     delete undo;
+     }
+    }
+   for( auto c : children )
+    delete c;
+   b->unregister_Solvers( true );
+   delete b;
+   }
+ }
+
 }  // namespace
 
 /*--------------------------------------------------------------------------*/
@@ -1321,7 +1406,8 @@ int main( void )
   { "fractional weights" , test_fractional_weights } ,
   { "rounding of the bounds" , test_rounding } ,
   { "reuse of the previous solve" , test_reopt_outcome } ,
-  { "branching" , test_branch } };
+  { "branching" , test_branch } ,
+  { "shifted bound" , test_bound_shift } };
 
  for( auto & [ name , f ] : cases ) {
   const int before = failures;
