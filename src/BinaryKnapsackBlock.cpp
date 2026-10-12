@@ -817,7 +817,8 @@ void BinaryKnapsackBlock::fix_x( bool value , Index i ,
    v_fxd[ i ] = value ? 2 : 1;
  
  // issue physical Modification
- if( issue_pmod( issueMod ) )  
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eFixX ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
   this , BinaryKnapsackBlockMod::eFixX , std::make_pair( i , i + 1 ) ) , 
          Observer::par2chnl( issueMod ) );
@@ -869,7 +870,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
  close_channel( par2chnl( nAM ) );
 
  // issue physical Modification
- if( issue_pmod( issueMod ) )  
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eFixX ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
                            this , BinaryKnapsackBlockMod::eFixX , rng ) , 
                            Observer::par2chnl( issueMod ) );
@@ -940,7 +942,8 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
  close_channel( par2chnl( nAM ) );
 
  // issue physical Modification
- if( issue_pmod( issueMod ) )  
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eFixX ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >(
                            this , BinaryKnapsackBlockMod::eFixX , 
                            std::move( nms ) ) , 
@@ -973,7 +976,8 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod ,
    v_fxd[ i ] = 0; 
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) 
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eUnfixX ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
      this , BinaryKnapsackBlockMod::eUnfixX , std::make_pair( i , i + 1 ) ) , 
      Observer::par2chnl( issueMod ) );
@@ -1020,7 +1024,8 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
    }
 
  // issue physical Modification
- if( issue_pmod( issueMod ) )  
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eUnfixX ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
                            this , BinaryKnapsackBlockMod::eUnfixX , rng ) , 
                            Observer::par2chnl( issueMod ) );
@@ -1075,7 +1080,8 @@ void BinaryKnapsackBlock::unfix_x( Subset && nms , bool ordered ,
    } 
  
  // issue physical Modification
- if( issue_pmod( issueMod ) )  
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eUnfixX ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockSbstMod >( 
                            this , BinaryKnapsackBlockMod::eUnfixX , 
                            std::move( nms ) ) , 
@@ -1109,7 +1115,8 @@ void BinaryKnapsackBlock::chg_weight( double NWeight , Index item ,
    v_W[ item ] = NWeight; 
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) 
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgWeight ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
                            this , BinaryKnapsackBlockMod::eChgWeight ,
                            std::make_pair( item , item + 1 ) ), 
@@ -1160,7 +1167,8 @@ void BinaryKnapsackBlock::chg_weights( MF_dbl_sp NWeight ,
         v_W.begin() + rng.first );
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) 
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgWeight ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
         this , BinaryKnapsackBlockMod::eChgWeight , rng ) ,
          Observer::par2chnl( issueMod ) );
@@ -1207,7 +1215,8 @@ void BinaryKnapsackBlock::chg_weights( MF_dbl_sp NWeight,
    copyidx( v_W , nms , NWeight_it );
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) {
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgWeight ) ) ) {
   if( ! ordered )
    std::sort( nms.begin() , nms.end() );
 
@@ -1247,7 +1256,8 @@ void BinaryKnapsackBlock::chg_profit( double NProfit , Index item ,
    v_P[ item ] = NProfit;
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) 
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgProfit ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
                            this , BinaryKnapsackBlockMod::eChgProfit ,
                            std::make_pair( item , item + 1 ) ), 
@@ -1297,7 +1307,8 @@ void BinaryKnapsackBlock::chg_profits( MF_dbl_sp NProfit , Range rng ,
         v_P.begin() + rng.first );
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) 
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgProfit ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
           this , BinaryKnapsackBlockMod::eChgProfit , rng ) ,
          Observer::par2chnl( issueMod ) );
@@ -1343,7 +1354,8 @@ void BinaryKnapsackBlock::chg_profits( MF_dbl_sp NProfit ,
    copyidx( v_P , nms , NProfit_it );
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) {
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgProfit ) ) ) {
   if( ! ordered )
    std::sort( nms.begin() , nms.end() );
 
@@ -1392,7 +1404,8 @@ void BinaryKnapsackBlock::chg_integrality( bool NIntegrality , Index item ,
  
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) 
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgIntegrality ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
                            this , BinaryKnapsackBlockMod::eChgIntegrality ,
                            std::make_pair( item , item + 1 ) ), 
@@ -1444,7 +1457,8 @@ void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality ,
              v_I.begin() + rng.first );
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) 
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgIntegrality ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockRngdMod >(
                            this , BinaryKnapsackBlockMod::eChgIntegrality , 
                            rng ) , Observer::par2chnl( issueMod ) );
@@ -1492,7 +1506,8 @@ void BinaryKnapsackBlock::chg_integrality( c_boolVec_it NIntegrality,
    copyidx( v_I , nms , NIntegrality );
 
  // issue physical Modification 
- if( issue_pmod( issueMod ) ) {
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgIntegrality ) ) ) {
   if( ! ordered )
    std::sort( nms.begin() , nms.end() );
 
@@ -1523,7 +1538,9 @@ void BinaryKnapsackBlock::chg_capacity( double NC , ModParam issueMod ,
   if( not_dry_run( issueMod ) )  // otherwise only physical representation 
    f_C = NC;
 
- if( issue_pmod( issueMod ) )  // issue physical Modification
+ // issue physical Modification
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgCapacity ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockMod >( this ,
                            BinaryKnapsackBlockMod::eChgCapacity ) , 
                            Observer::par2chnl( issueMod ) );
@@ -1552,7 +1569,9 @@ void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod ,
   if( not_dry_run( issueMod ) )  // otherwise only physical representation 
    f_sense = sense;
  
- if( issue_pmod( issueMod ) ) // issue physical Modification 
+ // issue physical Modification 
+ if( issue_pmod( issueMod , BinaryKnapsackBlockMod::changes_of(
+                 BinaryKnapsackBlockMod::eChgSense ) ) )
   Block::add_Modification( std::make_shared< BinaryKnapsackBlockMod >( this ,
                            BinaryKnapsackBlockMod::eChgSense ) , 
                            Observer::par2chnl( issueMod ) );

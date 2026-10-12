@@ -1225,6 +1225,40 @@ class BinaryKnapsackBlockMod : public Modification {
   eChgSense           ///< change the sense of the objective
   };
 
+ /// what a Modification of the given type changes
+ /** What a Modification of the given type changes of the model [see
+  * Modification::ModConcern], which is what changes() says and what the
+  * methods that issue it ask before issuing it [see Observer::issue_pmod()]:
+  * the weights are the coefficients of the knapsack Constraint and the
+  * capacity its side, the profits and the sense are the Objective, fixing a
+  * variable makes the feasible region shrink and unfixing it makes it grow,
+  * and the integrality is that of the Variable. */
+
+ static ModConcern changes_of( int type ) {
+  switch( type ) {
+   case( eChgWeight ):
+    return( eModPhys | eModCnsCoef | eRegnShrink | eRegnGrow );
+   case( eChgProfit ):
+   case( eChgSense ):
+    return( ePhysObj );
+   case( eChgIntegrality ):
+    return( eModPhys | eModVarType | eRegnShrink | eRegnGrow );
+   case( eChgCapacity ):
+    return( ePhysSides );
+   case( eFixX ):
+    return( eModPhys | eModVarData | eRegnShrink );
+   case( eUnfixX ):
+    return( eModPhys | eModVarData | eRegnGrow );
+   default:
+    return( eModPhys | eEffAny );
+   }
+  }
+
+ /// what the Modification changes, as its type says [see changes_of()]
+ [[nodiscard]] ModConcern changes( void ) const override {
+  return( changes_of( type() ) );
+  }
+
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
 
  /// constructor: takes the BinaryKnapsackBlock and the type
