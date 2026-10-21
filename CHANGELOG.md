@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- a `BinaryKnapsackBlockChange` takes its data by moving them rather than
+  copying them, the undo of a fixing on a range is a fixing on the range,
+  and the second child of a branching takes the pegged items of the first
+  rather than a copy, which saves an allocation per Change on each side
+
 - the instances of `data/` are downloaded and extracted by the targets
   `download_bk_<fmt>` and `extract_bk_<fmt>`, written as in every module
   that keeps its instances in the Package Registry, and the marker of the

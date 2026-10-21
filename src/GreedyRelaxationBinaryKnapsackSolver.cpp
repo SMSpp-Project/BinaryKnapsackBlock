@@ -166,16 +166,18 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
    }
   auto grp = new GroupChange();
   grp->add( crit );
-  if( ! peg0.empty() )
+  // the second child takes the pegged items, the first a copy of them
+  auto items = [ b ]( Block::Subset & peg ) {
+   return( b ? std::move( peg ) : Block::Subset( peg ) );
+   };
+  if( const auto n0 = peg0.size() )
    grp->add( new BinaryKnapsackBlockSbstChange(
                   BinaryKnapsackBlockChange::eFixX ,
-                  std::vector< double >( peg0.size() , 0 ) ,
-                  Block::Subset( peg0 ) ) );
-  if( ! peg1.empty() )
+                  std::vector< double >( n0 , 0 ) , items( peg0 ) ) );
+  if( const auto n1 = peg1.size() )
    grp->add( new BinaryKnapsackBlockSbstChange(
                   BinaryKnapsackBlockChange::eFixX ,
-                  std::vector< double >( peg1.size() , 1 ) ,
-                  Block::Subset( peg1 ) ) );
+                  std::vector< double >( n1 , 1 ) , items( peg1 ) ) );
   branches[ b ] = grp;
   }
 

@@ -1538,7 +1538,7 @@ public:
  
  BinaryKnapsackBlockChange( int type = eEmpty ,
                             std::vector< double > && data = {} ) : 
-                            f_type( type ) , v_data( data ) {}    
+                            f_type( type ) , v_data( std::move( data ) ) {}
 
  ~BinaryKnapsackBlockChange() = default;            
 
