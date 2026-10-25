@@ -66,6 +66,12 @@ BKBkOBJ += $(BKBkSDR)/obj/COMBOGuard.o \
 BKBkH += $(BKBkSDR)/include/COMBOBinaryKnapsackSolver.h
 endif
 
+# the C++20 module smspp.binaryknapsackblock - - - - - - - - - - - - - - - -
+# [see makefile-mod of SMS++]
+
+$(eval $(call SMSppMODrule,BKBk,$(BKBkSDR),BinaryKnapsackBlock,\
+	smspp.binaryknapsackblock,$(SMS++MOD)))
+
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 clean::
