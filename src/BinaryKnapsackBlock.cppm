@@ -37,11 +37,8 @@
 
 module;
 
-#include "BinaryKnapsackBlock.h"
-#include "BinaryKnapsackSolver.h"
 #include "COMBOBinaryKnapsackSolver.h"
 #include "COMBOBridge.h"
-#include "CoreDPBinaryKnapsackSolver.h"
 #include "DPBinaryKnapsackSolver.h"
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
 #include "RECORDBinaryKnapsackSolver.h"
