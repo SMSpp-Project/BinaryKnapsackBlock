@@ -81,7 +81,7 @@ public:
 /*---------------------------- PUBLIC TYPES --------------------------------*/
 /*--------------------------------------------------------------------------*/
 /** @name Public types
- @{ */
+ *  @{ */
 
  using Index = Block::Index;
  using Subset = Block::Subset;
@@ -97,7 +97,7 @@ public:
 
  static constexpr double WeightIntegrality = 1e-06;
 
-/*--------------------------------------------------------------------------*/
+/** @} ---------------------------------------------------------------------*/
 /*--------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
@@ -121,7 +121,8 @@ public:
 /** @} ---------------------------------------------------------------------*/
 /*-------------------------- OTHER INITIALIZATIONS -------------------------*/
 /*--------------------------------------------------------------------------*/
-/** @name Other initializations @{ */
+/** @name Other initializations
+ *  @{ */
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// set the (pointer to the) Block that the Solver has to solve
@@ -131,8 +132,9 @@ public:
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- METHODS FOR SOLVING THE MODEL ----------------------*/
 /*--------------------------------------------------------------------------*/
-/** @name Solving the Binary Knapsack encoded by the current 
- * BinaryKnapsackBlock @{ */
+/** @name Solving the Binary Knapsack encoded by the current
+ *  BinaryKnapsackBlock
+ *  @{ */
 
 /// Solve the Binary Knapsack Problem encoded in the BinaryKnapsackBlock
 /** Solve the Binary Knapsack Problem encoded in the BinaryKnapsackBlock,
@@ -355,7 +357,8 @@ public:
 /*--------------------------------------------------------------------------*/
 /*------------------- METHODS FOR HANDLING THE PARAMETERS ------------------*/
 /*--------------------------------------------------------------------------*/
-/** @name Handling the parameters of the DPBinaryKnapsackSolver @{ */
+/** @name Handling the parameters of the DPBinaryKnapsackSolver
+ *  @{ */
 
 /*--------------------------------------------------------------------------*/
 /// set the "double" parameters of DPBinaryKnapsackSolver

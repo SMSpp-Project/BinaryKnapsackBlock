@@ -806,7 +806,8 @@ class BinaryKnapsackBlock : public Block {
  * because it makes no sense to issue an "abstract" Modification with
  * concerns_Block() == true, since the changes in the BinaryKnapsackBlock have 
  * surely been done already, and this is just not possible for a "physical"
- * Modification. */
+ * Modification.
+ *  @{ */
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index and a value, fix the corresponding variable
