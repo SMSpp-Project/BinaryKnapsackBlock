@@ -70,7 +70,7 @@ endif
 # [see makefile-mod of SMS++]
 
 $(eval $(call SMSppMODrule,BKBk,$(BKBkSDR),BinaryKnapsackBlock,\
-	smspp.binaryknapsackblock,$(SMS++MOD)))
+	smspp.binaryknapsackblock,SMS++))
 
 # clean - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -101,8 +101,10 @@ $(BKBkSDR)/obj/CoreDPBinaryKnapsackSolver.o: \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
 $(BKBkSDR)/obj/GreedyRelaxationBinaryKnapsackSolver.o: \
-	$(BKBkSDR)/src/GreedyRelaxationBinaryKnapsackSolver.cpp $(BKBkH) $(SMS++OBJ)
-	$(CC) -c $(BKBkSDR)/src/GreedyRelaxationBinaryKnapsackSolver.cpp -o $@ \
+	$(BKBkSDR)/src/GreedyRelaxationBinaryKnapsackSolver.cpp $(BKBkH) \
+	$(SMS++OBJ)
+	$(CC) -c $(BKBkSDR)/src/GreedyRelaxationBinaryKnapsackSolver.cpp -o \
+	$@ \
 	$(BKBkINC) $(SMS++INC) $(SW)
 
 # the copy of RECORD without its main(), compiled alone in RECORDBridge.cpp
