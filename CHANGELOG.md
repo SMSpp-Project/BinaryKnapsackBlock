@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- the tester checks what each physical Modification says it changes
+  (`changes()`) against what the change does to the model, written down in
+  the tester, for every type of `BinaryKnapsackBlockMod`
+
 - the makefiles build the C++20 module `smspp.binaryknapsackblock` when
   `SMSppMOD` is not empty (e.g., `make SMSppMOD=1`), with clang++ 16 or
   later [see `lib/makefile-mod` of SMS++]
@@ -54,6 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the linker imports a DLL only for the symbols asked for, so that a
   program that used none had the module left out and its classes
   missing from the factory
+
+- fixing or unfixing an item issued two `BinaryKnapsackBlockMod` instead of
+  one: the abstract Modification of the fixing of the `ColVariable` came
+  back to `add_Modification()`, which found the item not yet fixed and
+  issued the first; `fix_x()` and `unfix_x()` now change the state of the
+  item before the `ColVariable`, in all their forms
 
 - `RECORDBinaryKnapsackSolver` builds on the current RECORD, whose
   `add_item()` numbers the items itself in the order they are added, as on

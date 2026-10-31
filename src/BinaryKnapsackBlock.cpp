@@ -698,25 +698,12 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 
 void BinaryKnapsackBlock::add_Modification( sp_Mod mod , ChnlName chnl )
 {
- // A Block must keep its OWN registered Solvers (here the DP solver, via the
- // cached v_P / v_W that it updates from the eChgProfit / eChgWeight issued by
- // chg_profits() / chg_weights() inside guts_of_add_Modification()) in sync
- // with its data on EVERY change of that data, irrespective of concerns_Block.
- //
- // concerns_Block only tells *enclosing* observers (e.g. a nested LagBFunction
- // that shares this sub-Block's Objective) whether to treat the change as
- // structural; it must NOT gate the local translation. In particular a
- // LagBFunction pushing the Lagrangian costs c^y = c + yA into this Block's
- // Objective does so with concerns_Block == false (so the enclosing
- // LagBFunction filters it), yet the DP solver of *this* Block still needs the
- // updated profits/weights, or it keeps solving the original knapsack.
- //
- // Hence the translation is attempted unconditionally. guts_of_add_Modification
- // is a no-op on Modification types it does not recognise (so this does not
- // start throwing on the mods that the previous concerns_Block == false branch
- // used to skip), and the eChgProfit / eChgWeight it issues already carry
- // concerns_Block == false (via the eNoBlck in chg_profits / chg_weights), so
- // enclosing / nested LagBFunctions keep filtering them.
+ // every abstract Modification is translated into the data, whatever its
+ // concerns_Block(): a LagBFunction moving the Lagrangian costs into the
+ // Objective issues them with concerns_Block() == false, and the Solver of
+ // this Block still have to see the new profits; the Modification that the
+ // physical methods issue themselves come back here too, and find the data
+ // already changed [see fix_x()]
  guts_of_add_Modification( mod.get() , chnl );
 
  mod->concerns_Block( false );
@@ -808,9 +795,11 @@ void BinaryKnapsackBlock::fix_x( bool value , Index i ,
  f_cond_upper = Inf< double >();
 
  if( not_dry_run( issueAMod ) ) {
-  v_x[ i ].set_value( value ); 
+  // the state goes first, so that the abstract Modification, which comes
+  // back here [see add_Modification()], finds the item already fixed
+  v_fxd[ i ] = value ? 2 : 1;
+  v_x[ i ].set_value( value );
   v_x[ i ].is_fixed( true , un_ModBlock( issueAMod ) );
-  v_fxd[ i ] = value ? 2 : 1; 
   }
  else
   if( not_dry_run( issueMod ) )
@@ -857,9 +846,9 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value , Range rng ,
 
   if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
     if( not_dry_run( issueAMod ) ) {
+     v_fxd[ i ] = val ? 2 : 1;      // the state goes first [see fix_x()]
      v_x[ i ].set_value( val );
      v_x[ i ].is_fixed( true , nAM );
-     v_fxd[ i ] = val ? 2 : 1;
     }
     else
      if( not_dry_run( issueMod ) )
@@ -929,9 +918,9 @@ void BinaryKnapsackBlock::fix_x( c_boolVec_it value ,Subset && nms ,
 
   if( ( ! v_x[ i ].is_fixed() ) && ( v_fxd[ i ] == 0 ) ) {
     if( not_dry_run( issueAMod ) ) {
+     v_fxd[ i ] = val ? 2 : 1;      // the state goes first [see fix_x()]
      v_x[ i ].set_value( val );
      v_x[ i ].is_fixed( true , nAM );
-     v_fxd[ i ] = val ? 2 : 1;
     }
     else
      if( not_dry_run( issueMod ) )
@@ -968,8 +957,9 @@ void BinaryKnapsackBlock::unfix_x( Index i , ModParam issueMod ,
  f_cond_upper = Inf< double >();
  
  if( not_dry_run( issueAMod ) ) {
-  v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) );
+  // the state goes first [see fix_x()]
   v_fxd[ i ] = 0;
+  v_x[ i ].is_fixed( false , un_ModBlock( issueAMod ) );
   }
  else
   if( not_dry_run( issueMod ) )
@@ -1011,8 +1001,8 @@ void BinaryKnapsackBlock::unfix_x( Range rng , ModParam issueMod ,
                                     open_channel( par2chnl( issueAMod ) ) ) );
 
   for( i = rng.first ; i < rng.second ; ++i ) {
+   v_fxd[ i ] = 0;                // the state goes first [see fix_x()]
    v_x[ i ].is_fixed( false , nAM );
-   v_fxd[ i ] = 0; 
    }
 
   close_channel( par2chnl( nAM ) );
@@ -1067,8 +1057,8 @@ void BinaryKnapsackBlock::unfix_x( Subset && nms , bool ordered ,
                                     open_channel( par2chnl( issueAMod ) ) ) );
 
   for( auto i : nms ) {
+   v_fxd[ i ] = 0;                // the state goes first [see fix_x()]
    v_x[ i ].is_fixed( false , nAM );
-   v_fxd[ i ] = 0;
    }
 
   close_channel( par2chnl( nAM ) );
@@ -1549,7 +1539,8 @@ void BinaryKnapsackBlock::chg_capacity( double NC , ModParam issueMod ,
 
 /*--------------------------------------------------------------------------*/
 
-void BinaryKnapsackBlock::set_objective_sense( bool sense , ModParam issueMod , 
+void BinaryKnapsackBlock::set_objective_sense( bool sense ,
+                                               ModParam issueMod ,
                                                ModParam issueAMod )
 {
  if( f_sense == sense )  // nothing to do
@@ -1612,7 +1603,9 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
   // check which one it is
   auto lf = dynamic_cast< LinearFunction * >( tmod->function() );
   if( ! lf )
-   throw( std::invalid_argument( "invalid Modification to Linear Function" ) ); 
+   throw( std::invalid_argument( "BinaryKnapsackBlock::"
+          "guts_of_add_Modification: invalid Modification to Linear Function"
+          ) );
 
   int range_size = tmod->range().second - tmod->range().first;
 
@@ -1661,7 +1654,9 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
   // check which one it is
   auto lf = dynamic_cast< LinearFunction * >( tmod->function() );
   if( ! lf )
-   throw( std::invalid_argument( "invalid Modification to Linear Function" ) ); 
+   throw( std::invalid_argument( "BinaryKnapsackBlock::"
+          "guts_of_add_Modification: invalid Modification to Linear Function"
+          ) );
 
   if( AR & HasObj ) {  // if the AR of the objective exists
    // get the objective function
@@ -1770,11 +1765,8 @@ void BinaryKnapsackBlock::guts_of_add_Modification( c_p_Mod mod ,
   throw( std::invalid_argument( "Modification to the wrong objective" ) );
   }
 
- // any other Modification type does not affect the DP-relevant data
- // (profits / weights / capacity / sense / variable state): nothing to
- // translate, so just return. This must NOT throw, because now
- // guts_of_add_Modification() is called for every Modification (see
- // add_Modification()), including those it does not recognise.
+ // any other Modification leaves the data as they are: every Modification
+ // comes here [see add_Modification()], so one not known is no error
 
 }  // end( BinaryKnapsackBlock::guts_of_add_Modification )
 

@@ -27,8 +27,10 @@
  * and a feasible rounded Solution worth the other bound. The cases are the
  * corners of the data (capacity 0, no item fitting, every item fitting,
  * items of weight 0, negative data, no item at all), the fixings, the two
- * senses, a sequence of changes on one Block with every Solver attached, the
- * same changes made through the abstract representation, the netCDF round
+ * senses, a sequence of changes on one Block with every Solver attached,
+ * what each physical Modification says it changes [see
+ * Modification::changes()], the same changes made through the abstract
+ * representation, the netCDF round
  * trip, the abstract representation itself, the feasibility check with its
  * tolerances and a relaxed constraint, the R3 copy, the conditional bounds
  * of the Block and the branching of the relaxation Solver.
@@ -57,6 +59,7 @@
 #include "BlockSolverConfig.h"
 #include "CoreDPBinaryKnapsackSolver.h"
 #include "DPBinaryKnapsackSolver.h"
+#include "FakeSolver.h"
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
 
 // assert() checks in every build type, the Release one included, as the
@@ -698,7 +701,11 @@ void test_reoptimization( void )
      break;
     case( 6 ): {
      // an unordered Subset: nms[ h ] takes the h-th value
-     if( i == j ) { b->chg_profit( up( rg ) , i ); what = "chg_profit"; break; }
+     if( i == j ) {
+      b->chg_profit( up( rg ) , i );
+      what = "chg_profit";
+      break;
+      }
      dVec v2 = { double( up( rg ) ) , double( up( rg ) ) };
      const Index hi2 = std::max( i , j ) , lo2 = std::min( i , j );
      b->chg_profits( Block::MF_dbl_sp( v2 ) , Block::Subset{ hi2 , lo2 } );
@@ -731,6 +738,77 @@ void test_reoptimization( void )
  }
 
 /// the same changes made through the abstract representation
+
+/// what each BinaryKnapsackBlockMod says it changes [see
+/// Modification::changes()], against what the change does to the model,
+/// written down here: a weight is a coefficient of the knapsack Constraint,
+/// in either direction, the capacity its side, the profits and the sense
+/// the Objective, fixing an item shrinks the feasible region and unfixing
+/// it enlarges it, and the integrality is that of the Variable
+
+void test_changes( void )
+{
+ using M = Modification;
+ using BM = BinaryKnapsackBlockMod;
+ Inst in;
+ in.C = 8;
+ in.W = { 5 , 4 , 6 };
+ in.P = { 8 , 6 , 9 };
+ in.I.assign( 3 , true );
+ auto b = build( in );
+ auto fs = new FakeSolver();
+ b->register_Solver( fs );
+
+ // the call has to issue exactly one BinaryKnapsackBlockMod, of type t,
+ // saying that it changes c
+ const auto one = [ & ]( const std::function< void( void ) > & call , int t ,
+			 M::ModConcern c , const std::string & what ) {
+  fs->lock_Modification_list();
+  fs->get_Modification_list().clear();
+  fs->unlock_Modification_list();
+  call();
+  std::vector< std::shared_ptr< BM > > got;
+  fs->lock_Modification_list();
+  for( auto & mod : fs->get_Modification_list() )
+   if( auto bm = std::dynamic_pointer_cast< BM >( mod ) )
+    got.push_back( bm );
+  fs->get_Modification_list().clear();
+  fs->unlock_Modification_list();
+  if( ! check( got.size() == 1 , what + ": " + std::to_string( got.size() )
+	       + " BinaryKnapsackBlockMod instead of 1" ) )
+   return;
+  check( got.front()->type() == t , what + ": type " +
+	 std::to_string( got.front()->type() ) + " instead of " +
+	 std::to_string( t ) );
+  check( got.front()->changes() == c , what + ": it says it changes " +
+	 std::to_string( got.front()->changes() ) + " instead of " +
+	 std::to_string( c ) );
+  };
+
+ one( [ & ]() { b->chg_weight( 7 , 1 ); } , BM::eChgWeight ,
+      M::eModPhys | M::eModCnsCoef | M::eRegnShrink | M::eRegnGrow ,
+      "a weight" );
+ one( [ & ]() { b->chg_capacity( 10 ); } , BM::eChgCapacity ,
+      M::eModPhys | M::eModCnsSide | M::eRegnShrink | M::eRegnGrow ,
+      "the capacity" );
+ one( [ & ]() { b->chg_profit( 3 , 0 ); } , BM::eChgProfit ,
+      M::eModPhys | M::eModObj | M::eObjUp | M::eObjDown , "a profit" );
+ one( [ & ]() { b->set_objective_sense( false ); } , BM::eChgSense ,
+      M::eModPhys | M::eModObj | M::eObjUp | M::eObjDown , "the sense" );
+ one( [ & ]() { b->fix_x( true , 2 ); } , BM::eFixX ,
+      M::eModPhys | M::eModVarData | M::eRegnShrink , "a fixing" );
+ one( [ & ]() { b->unfix_x( 2 ); } , BM::eUnfixX ,
+      M::eModPhys | M::eModVarData | M::eRegnGrow , "an unfixing" );
+ one( [ & ]() { b->chg_integrality( false , 1 ); } , BM::eChgIntegrality ,
+      M::eModPhys | M::eModVarType | M::eRegnShrink | M::eRegnGrow ,
+      "an integrality" );
+
+ b->unregister_Solver( fs );
+ delete fs;
+ delete b;
+ }
+
+/*--------------------------------------------------------------------------*/
 
 void test_abstract_modifications( void )
 {
@@ -837,7 +915,8 @@ void test_abstract_representation( void )
         "abstract: the solution is not feasible" );
  const double opt = optimum( in );
  check( close( b->get_objective_value() , opt ) , "abstract: the Objective "
-        "is worth " + str( b->get_objective_value() ) + ", not " + str( opt ) );
+        "is worth " + str( b->get_objective_value() ) + ", not " +
+        str( opt ) );
 
  // the Solution of the Block reads the ColVariable back
  auto sol = b->get_Solution( nullptr , false );
@@ -1132,7 +1211,8 @@ void test_reopt_outcome( void )
 
  // the third item gains a lot: the bound cannot clear it, and the optimum
  // becomes the third item alone
- chg( 2 , 30 , 30 , { 1 , 1 , 1 } , "an untaken item gaining enough to enter" );
+ chg( 2 , 30 , 30 , { 1 , 1 , 1 } ,
+      "an untaken item gaining enough to enter" );
 
  b->unregister_Solvers( true );
  delete b;
@@ -1258,7 +1338,8 @@ void test_branch( void )
   for( Index c = 0 ; c < children.size() ; ++c ) {
    auto chg = dynamic_cast< BinaryKnapsackBlockChange * >( children[ c ] );
    if( ! check( chg && ( chg->type() == BinaryKnapsackBlockChange::eFixX ) &&
-                ( chg->num_items() == 1 ) , cls + ": a child is not a fixing" ) )
+                ( chg->num_items() == 1 ) ,
+                cls + ": a child is not a fixing" ) )
     continue;
    Inst ch = in;
    ch.fxd.assign( in.n() , 0 );
@@ -1313,6 +1394,7 @@ int main( void )
   { "fixed items" , test_fixed } ,
   { "objective sense" , test_sense } ,
   { "reoptimization" , test_reoptimization } ,
+  { "what the Modification change" , test_changes } ,
   { "abstract Modification" , test_abstract_modifications } ,
   { "abstract representation" , test_abstract_representation } ,
   { "feasibility" , test_feasibility } ,
