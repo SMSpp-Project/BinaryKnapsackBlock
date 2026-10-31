@@ -49,6 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `RECORDBinaryKnapsackSolver` builds on the current RECORD, whose
+  `add_item()` numbers the items itself in the order they are added, as on
+  the earlier versions, which take the id as an argument
+
 - the makefiles of the tests and of the tools build also with g++: they
   take the option that stops at the first error and the one of the
   debugging information, which clang++ and g++ spell differently
