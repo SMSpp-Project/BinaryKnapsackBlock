@@ -5,8 +5,8 @@
  * Implementation of the bridge to RECORD (see RECORDBridge.h). RECORD.hpp is
  * RECORD's source file with its main() cut away, generated at configure time
  * from the RECORD checkout given by RECORD_ROOT (see CMakeLists.txt): the
- * main() is where the source as distributed ignores the multiplicity it
- * reads and solves a bounded knapsack, so the 0-1 problem is set up here.
+ * main() reads a bounded knapsack from the standard input, while the 0-1
+ * problem is set up here.
  *
  * \author Donato Meoli \n
  *         Dipartimento di Informatica \n

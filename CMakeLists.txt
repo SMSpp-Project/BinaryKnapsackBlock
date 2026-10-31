@@ -135,12 +135,12 @@ target_sources(${modName} PRIVATE
 # (gitlab.com/renanfernandofranco/record), which is distributed as a single
 # source file with a main(): given a checkout in RECORD_ROOT, the file is
 # copied at configure time into record-shim/RECORD.hpp with the main() cut
-# away (the main() of the distributed source ignores the multiplicity it
-# reads and solves a bounded knapsack; the 0-1 problem is set up by the
-# bridge instead), and compiled alone in src/RECORDBridge.cpp, the only file
-# that sees its global names. Without a RECORD_ROOT, the checkout is looked
-# for in the environment variable of the same name and where INSTALL.sh puts
-# it; RECORD uses POSIX clocks, which MSVC does not have.
+# away (the main() reads a bounded knapsack from the standard input, while
+# the bridge sets up the 0-1 problem itself), and compiled alone in
+# src/RECORDBridge.cpp, the only file that sees its global names. Without a
+# RECORD_ROOT, the checkout is looked for in the environment variable of the
+# same name and where INSTALL.sh puts it; RECORD uses POSIX clocks, which
+# MSVC does not have.
 find_path(RECORD_ROOT NAMES source/RECORD.cpp
         HINTS ENV RECORD_ROOT PATHS /opt/record /Library/record
         DOC "Checkout of RECORD (optional)" NO_DEFAULT_PATH)
@@ -443,19 +443,23 @@ endforeach ()
 if (UNIX)
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
-            COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch
+                    ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
+            COMMAND ${CMAKE_COMMAND} -E touch
+                    ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
             COMMENT "Running bk2nc4"
             VERBATIM
-            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${DATA_MARKER_txt})
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
+                    ${DATA_MARKER_txt})
 elseif (WIN32)
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             # using Git for Windows that includes Git Bash
             COMMAND "C:/Program Files/Git/bin/bash.exe"
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/batch" "$<TARGET_FILE:bk2nc4>"
-            COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            COMMAND ${CMAKE_COMMAND} -E touch
+                    ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
             COMMENT "Running bk2nc4"
             VERBATIM
@@ -470,9 +474,9 @@ add_dependencies(run_bk2nc4 bk2nc4 extract_bk_txt)
 # Hard-instance benchmark sources, curated on demand into data/ (gitignored).
 # data/fetch-jooken pulls a curated subset of the Jooken-Leyman-De Causmaecker
 # hard 0-1 knapsack instances (the .csv carry the published optimum z, read by
-# the test in -C mode exactly like the Pisinger ones); data/fetch-txt-large the
-# large uncorrelated / subset-sum Pisinger classes. These are the test fixtures'
-# only dependency (see tests/BinaryKnapsackBlock/batch-jooken).
+# the test in -C mode exactly like the Pisinger ones); data/fetch-txt-large
+# the large uncorrelated / subset-sum Pisinger classes. These are the only
+# dependency of the test fixtures (see tests/BinaryKnapsackBlock/batch-jooken).
 add_custom_target(fetch_jooken_data
         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/data/fetch-jooken
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
