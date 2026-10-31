@@ -25,7 +25,7 @@ RECORDBinaryKnapsackSolver  # 1st: RECORD, intReopt 3
 # 1: RECORD, intReopt 3
 *ReoptCfg.txt
 
-# end of BlockSolverConfig- - - - - - - - - - - - - - - - - - - - - - - - - -
+# end of BlockSolverConfig - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - -  END BSPar-RECORD.txt - - - - - - - - - - - - - -

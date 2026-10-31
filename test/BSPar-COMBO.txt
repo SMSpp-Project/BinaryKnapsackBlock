@@ -25,7 +25,7 @@ COMBOBinaryKnapsackSolver  # 1st: COMBO, intReopt 3
 # 1: COMBO, intReopt 3
 *ReoptCfg.txt
 
-# end of BlockSolverConfig- - - - - - - - - - - - - - - - - - - - - - - - - -
+# end of BlockSolverConfig - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - END BSPar-COMBO.txt - - - - - - - - - - - - - -

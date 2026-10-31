@@ -25,7 +25,7 @@ GreedyRelaxationBinaryKnapsackSolver  # 2nd: greedy, kept across the Changes
 # now all the ComputeConfig - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # 1: the greedy relaxation from scratch, default parameters
-* # [none]
+*  # [none]
 
 # 2: the greedy fill kept across the Changes
 ComputeConfig # exact type of the ComputeConfig object
@@ -63,9 +63,9 @@ intIncremental 1  # the greedy fill kept across the Changes
 # [none]
 
 # pointer to the "extra" Configuration
-* # [none]
+*  # [none]
 
-# end of BlockSolverConfig- - - - - - - - - - - - - - - - - - - - - - - - - -
+# end of BlockSolverConfig - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - END BSPar-relax.txt - - - - - - - - - - - - - -
