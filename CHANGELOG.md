@@ -55,7 +55,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extraction carries the format in its name, so that a tree extracted
   before extracts once more; `fetch_bk_data` is now `extract_bk_txt`
 
+### Removed
+
+- the forms of `chg_weights()`, `chg_profits()` and `chg_capacity()` taking
+  an iterator, and their registration in the methods factory, which has only
+  the span forms; the Change of the module, `bk2nc4` and the tester pass a
+  span
+
 ### Fixed
+
+- `BinaryKnapsackBlockSbstChange::apply()` passed its `issueMod` to
+  `chg_weights()`, `chg_profits()` and `chg_integrality()` as the bool
+  telling whether the Subset is ordered, and its `issueAMod` as the
+  `issueMod`, so that the abstract Modification was never issued
 
 - on Windows, the executables that copy their DLLs next to themselves
   are linked one at a time (a job pool of Ninja), since two copies of the

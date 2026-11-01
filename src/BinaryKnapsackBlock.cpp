@@ -2035,7 +2035,8 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
     }
 
    // Change data
-   BKB->chg_weights( v_data.begin() , f_rng , issueMod , issueAMod );
+   BKB->chg_weights( Block::MF_dbl_sp( v_data ) , f_rng , issueMod ,
+                     issueAMod );
 
    return( undoChg );
    }
@@ -2057,7 +2058,8 @@ Change * BinaryKnapsackBlockRngdChange::apply( Block * block ,
     }
   
    // Change data
-   BKB->chg_profits( v_data.begin() , f_rng , issueMod , issueAMod );
+   BKB->chg_profits( Block::MF_dbl_sp( v_data ) , f_rng , issueMod ,
+                     issueAMod );
 
    return( undoChg );
    }
@@ -2181,10 +2183,8 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
     }
    
    // Change data
-   BKB->chg_weights( v_data.begin() , 
-                     Subset( v_nms ) , 
-                     issueMod , 
-                     issueAMod );
+   BKB->chg_weights( Block::MF_dbl_sp( v_data ) , Subset( v_nms ) , false ,
+                     issueMod , issueAMod );
 
    return( undoChg );
    }
@@ -2206,10 +2206,8 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
     }
 
    // Change data
-   BKB->chg_profits( v_data.begin() , 
-                     Subset( v_nms ) , 
-                     issueMod , 
-                     issueAMod );
+   BKB->chg_profits( Block::MF_dbl_sp( v_data ) , Subset( v_nms ) , false ,
+                     issueMod , issueAMod );
 
    return( undoChg );
    }
@@ -2233,10 +2231,8 @@ Change * BinaryKnapsackBlockSbstChange::apply( Block * block ,
 
    // Change data (cast to bool first)
    std::vector< bool > new_int( v_data.begin() , v_data.end() );
-   BKB->chg_integrality( new_int.begin() , 
-                         Subset( v_nms ) , 
-                         issueMod , 
-                         issueAMod );
+   BKB->chg_integrality( new_int.begin() , Subset( v_nms ) , false ,
+                         issueMod , issueAMod );
 
    return( undoChg );
    }
