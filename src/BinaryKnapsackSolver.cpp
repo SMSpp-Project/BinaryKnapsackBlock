@@ -311,20 +311,26 @@ Change * BinaryKnapsackSolver::apply_to_mirror(
  Change * undo = nullptr;
  if( doUndo ) {
   // the undo under the LIFO discipline: un-fixing the same items, or
-  // re-fixing them to the values captured at call time
+  // re-fixing them to the values captured at call time; the items of a
+  // range are a range for the undo too
   std::vector< double > old_data;
-  Block::Subset nms;
   old_data.reserve( n );
-  nms.reserve( n );
-  for( Index k = 0 ; k < n ; ++k ) {
-   const Index i = chg->item( k );
-   nms.push_back( i );
-   old_data.push_back( v_fxd[ i ] == 2 ? 1 : 0 );
+  for( Index k = 0 ; k < n ; ++k )
+   old_data.push_back( v_fxd[ chg->item( k ) ] == 2 ? 1 : 0 );
+  const int type = fixing ? BinaryKnapsackBlockChange::eUnfixX
+                          : BinaryKnapsackBlockChange::eFixX;
+  if( auto rchg = dynamic_cast< const BinaryKnapsackBlockRngdChange * >(
+                                                                     chg ) )
+   undo = new BinaryKnapsackBlockRngdChange( type , std::move( old_data ) ,
+                                             rchg->rng() );
+  else {
+   Block::Subset nms;
+   nms.reserve( n );
+   for( Index k = 0 ; k < n ; ++k )
+    nms.push_back( chg->item( k ) );
+   undo = new BinaryKnapsackBlockSbstChange( type , std::move( old_data ) ,
+                                             std::move( nms ) );
    }
-  undo = new BinaryKnapsackBlockSbstChange(
-                     fixing ? BinaryKnapsackBlockChange::eUnfixX
-                            : BinaryKnapsackBlockChange::eFixX ,
-                     std::move( old_data ) , std::move( nms ) );
   }
 
  for( Index k = 0 ; k < n ; ++k )

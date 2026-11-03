@@ -23,8 +23,10 @@ of changes of profits, weights, capacity, fixings, sense and integrality is
 solved again after each change, and so are the same changes made through the
 abstract representation (the coefficients of the `LinearFunction` of the
 `Objective` and of the constraint, its right-hand side, the fixing of a
-`ColVariable`, the sense of the `Objective`). The tester also checks the
-conditional bounds and the emptiness of the Block, the abstract
+`ColVariable`, the sense of the `Objective`). The tester also checks what each
+physical `Modification` says it changes (`changes()`, against what the change
+does to the model, written down in the tester), the conditional bounds and
+the emptiness of the Block, the abstract
 representation against the data, the netCDF round trip through a temporary
 file, the R3 copy with the mapping of the solutions, the refusal of weights
 that are not integer by the DP Solvers, and the branching of the relaxation

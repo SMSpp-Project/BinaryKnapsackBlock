@@ -46,7 +46,7 @@ intReopt 3  # solution, no solve, Lagrangian bound
 # [none]
 
 # pointer to the "extra" Configuration
-* # [none]
+*  # [none]
 
 # end of ComputeConfig
 

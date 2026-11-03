@@ -524,7 +524,28 @@ class BinaryKnapsackBlock : public Block {
  /** Returns true if the solution encoded in the current value of the x 
   * Variables of the BinaryKnapsackBlock is feasible. This clearly requires 
   * the Variable of the BinaryKnapsackBlock to have been defined, i.e., that 
-  * generate_abstract_variables() has been called prior to this method. */
+  * generate_abstract_variables() has been called prior to this method.
+  *
+  * If useabstract is true and the knapsack constraint has been constructed,
+  * it is checked as the static methods RowConstraint::is_feasible() do: if
+  * it is relaxed it is not checked, and if it cannot be compute()-d the
+  * solution is infeasible. Otherwise it is checked out of the data.
+  *
+  * What "feasible" exactly means is decided by a tolerance and by whether it
+  * is relative or absolute (see RowConstraint::rel_viol() and
+  * RowConstraint::abs_viol()); the tolerance is used as is for the
+  * Variable. They are to be found as:
+  *
+  * - if fsbc is a SimpleConfiguration< double >, then fsbc->f_value is the
+  *   tolerance, which is relative; if it is a
+  *   SimpleConfiguration< std::pair< double , int > >, then
+  *   fsbc->f_value.first is the tolerance, which is relative if
+  *   fsbc->f_value.second is nonzero and absolute otherwise;
+  *
+  * - otherwise, if f_BlockConfig is not nullptr, the same holds for
+  *   f_BlockConfig->f_is_feasible_Configuration;
+  *
+  * - otherwise, the tolerance is 0, i.e., the check is exact. */
 
  bool is_feasible( bool useabstract = false , 
                    Configuration * fsbc = nullptr ) override;
@@ -785,7 +806,8 @@ class BinaryKnapsackBlock : public Block {
  * because it makes no sense to issue an "abstract" Modification with
  * concerns_Block() == true, since the changes in the BinaryKnapsackBlock have 
  * surely been done already, and this is just not possible for a "physical"
- * Modification. */
+ * Modification.
+ *  @{ */
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index and a value, fix the corresponding variable
@@ -861,20 +883,6 @@ class BinaryKnapsackBlock : public Block {
                    ModParam issueAMod = eNoBlck );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// change the weights of a contiguous interval of items, iterator form
- /** As the span form, \p NWeight pointing to the first of the new weights;
-  * its length is taken from \p rng. */
-
- void chg_weights( c_dblVec_it NWeight , Range rng = INFRange ,
-                   ModParam issueMod = eNoBlck ,
-                   ModParam issueAMod = eNoBlck ) {
-  rng.second = std::min( rng.second , get_NItems() );
-  if( rng.second > rng.first )
-   chg_weights( MF_dbl_sp( & * NWeight , rng.second - rng.first ) , rng ,
-                issueMod , issueAMod );
-  }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the weights of an arbitrary subsets of items
  /** The k-th element of \p NWeight is the new weight of item nms[ k ];
   * \p NWeight has to be at least as long as \p nms. */
@@ -883,20 +891,6 @@ class BinaryKnapsackBlock : public Block {
                    Subset && nms , bool ordered = false ,
                    ModParam issueMod = eNoBlck ,
                    ModParam issueAMod = eNoBlck );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// change the weights of an arbitrary subsets of items, iterator form
- /** As the span form, \p NWeight pointing to the first of the new weights;
-  * its length is taken from \p nms. */
-
- void chg_weights( c_dblVec_it NWeight ,
-                   Subset && nms , bool ordered = false ,
-                   ModParam issueMod = eNoBlck ,
-                   ModParam issueAMod = eNoBlck ) {
-  if( ! nms.empty() )
-   chg_weights( MF_dbl_sp( & * NWeight , nms.size() ) , std::move( nms ) ,
-                ordered , issueMod , issueAMod );
-  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// given an index i change the boolean vector that tell which variable is 
@@ -939,20 +933,6 @@ class BinaryKnapsackBlock : public Block {
                    ModParam issueAMod = eNoBlck );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// change the profits of a contiguous interval of items, iterator form
- /** As the span form, \p NProfit pointing to the first of the new profits;
-  * its length is taken from \p rng. */
-
- void chg_profits( c_dblVec_it NProfit , Range rng = INFRange ,
-                   ModParam issueMod = eNoBlck ,
-                   ModParam issueAMod = eNoBlck ) {
-  rng.second = std::min( rng.second , get_NItems() );
-  if( rng.second > rng.first )
-   chg_profits( MF_dbl_sp( & * NProfit , rng.second - rng.first ) , rng ,
-                issueMod , issueAMod );
-  }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the profits of an arbitrary subsets of items
  /** The k-th element of \p NProfit is the new profit of item nms[ k ];
   * \p NProfit has to be at least as long as \p nms. */
@@ -961,20 +941,6 @@ class BinaryKnapsackBlock : public Block {
                    Subset && nms , bool ordered = false ,
                    ModParam issueMod = eNoBlck ,
                    ModParam issueAMod = eNoBlck );
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// change the profits of an arbitrary subsets of items, iterator form
- /** As the span form, \p NProfit pointing to the first of the new profits;
-  * its length is taken from \p nms. */
-
- void chg_profits( c_dblVec_it NProfit ,
-                   Subset && nms , bool ordered = false ,
-                   ModParam issueMod = eNoBlck ,
-                   ModParam issueAMod = eNoBlck ) {
-  if( ! nms.empty() )
-   chg_profits( MF_dbl_sp( & * NProfit , nms.size() ) , std::move( nms ) ,
-                ordered , issueMod , issueAMod );
-  }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// change the capacity of the Knapsack
@@ -1000,18 +966,6 @@ class BinaryKnapsackBlock : public Block {
 				 "value in the span" ) );
 
   chg_capacity( NC.front() , issueMod , issueAMod );
-  }
-
-/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
- /// change the capacity of the Knapsack, iterator form of the above
-
- void chg_capacity( c_dblVec_it NC , Range rng = INFRange ,
-                    ModParam issueMod = eNoBlck ,
-                    ModParam issueAMod = eNoBlck ) {
-  if( rng.second <= rng.first )  // the Range is empty
-   return;                       // silently return
-
-  chg_capacity( *NC , issueMod , issueAMod );
   }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
@@ -1135,23 +1089,6 @@ class BinaryKnapsackBlock : public Block {
    & BinaryKnapsackBlock::chg_integrality );
    !!*/
 
-  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
-   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
-
-  register_method< BinaryKnapsackBlock , MF_dbl_it , Subset && , bool >(
-   "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
-
-  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
-   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
-
-  register_method< BinaryKnapsackBlock , MF_dbl_it , Subset && , bool >(
-   "BinaryKnapsackBlock::chg_profits" , & BinaryKnapsackBlock::chg_profits );
-
-  register_method< BinaryKnapsackBlock , MF_dbl_it , Range >(
-   "BinaryKnapsackBlock::chg_capacity" , & BinaryKnapsackBlock::chg_capacity );
-
-  // the same methods in the span form, which the iterator one defers to
-
   register_method< BinaryKnapsackBlock , MF_dbl_sp , Range >(
    "BinaryKnapsackBlock::chg_weights" , & BinaryKnapsackBlock::chg_weights );
 
@@ -1204,18 +1141,48 @@ class BinaryKnapsackBlockMod : public Modification {
   eChgSense           ///< change the sense of the objective
   };
 
+ /// what a Modification of the given type changes
+ /** What a Modification of the given type changes of the model [see
+  * Modification::ModConcern], which is what changes() says and what the
+  * methods that issue it ask before issuing it [see Observer::issue_pmod()]:
+  * the weights are the coefficients of the knapsack Constraint and the
+  * capacity its side, the profits and the sense are the Objective, fixing a
+  * variable makes the feasible region shrink and unfixing it makes it grow,
+  * and the integrality is that of the Variable. */
+
+ static ModConcern changes_of( int type ) {
+  switch( type ) {
+   case( eChgWeight ):
+    return( eModPhys | eModCnsCoef | eRegnShrink | eRegnGrow );
+   case( eChgProfit ):
+   case( eChgSense ):
+    return( ePhysObj );
+   case( eChgIntegrality ):
+    return( eModPhys | eModVarType | eRegnShrink | eRegnGrow );
+   case( eChgCapacity ):
+    return( ePhysSides );
+   case( eFixX ):
+    return( eModPhys | eModVarData | eRegnShrink );
+   case( eUnfixX ):
+    return( eModPhys | eModVarData | eRegnGrow );
+   default:
+    return( eModPhys | eEffAny );
+   }
+  }
+
 /*---------------------- CONSTRUCTOR & DESTRUCTOR --------------------------*/
 
  /// constructor: takes the BinaryKnapsackBlock and the type
 
  BinaryKnapsackBlockMod( BinaryKnapsackBlock * const fblock , int type )
-                       : f_Block( fblock ) , f_type( type ) {}
+  : Modification( changes_of( type ) ) , f_Block( fblock ) , f_type( type )
+  {}
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
  virtual ~BinaryKnapsackBlockMod() = default;   ///< destructor, does nothing
 
-/*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  /// returns the [BinaryKnapsack]Block to which the BinaryKnapsackBlockMod 
  /// refers
@@ -1285,7 +1252,7 @@ class BinaryKnapsackBlockRngdMod : public BinaryKnapsackBlockMod
 
  virtual ~BinaryKnapsackBlockRngdMod() = default;   ///< destructor
 
-/*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  /// accessor to the range
 
@@ -1340,7 +1307,7 @@ class BinaryKnapsackBlockSbstMod : public BinaryKnapsackBlockMod {
 
  virtual ~BinaryKnapsackBlockSbstMod() = default;  ///< destructor
 
-/*-------------------- PUBLIC METHODS OF THE CLASS ------------------------*/
+/*-------------------- PUBLIC METHODS OF THE CLASS -------------------------*/
 
  /// accessor to the subset
 
@@ -1402,7 +1369,7 @@ class BinaryKnapsackSolution : public Solution {
  ~BinaryKnapsackSolution() override = default;
  ///< destructor: it is virtual, and empty
 
-/*------ METHODS DESCRIBING THE BEHAVIOR OF A BinaryKnapsackSolution ------*/
+/*------ METHODS DESCRIBING THE BEHAVIOR OF A BinaryKnapsackSolution -------*/
 
  void read( const Block * const block ) override final;
 
@@ -1483,7 +1450,7 @@ public:
  
  BinaryKnapsackBlockChange( int type = eEmpty ,
                             std::vector< double > && data = {} ) : 
-                            f_type( type ) , v_data( data ) {}    
+                            f_type( type ) , v_data( std::move( data ) ) {}
 
  ~BinaryKnapsackBlockChange() = default;            
 

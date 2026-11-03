@@ -114,6 +114,11 @@ if (BUILD_SHARED_LIBS)
         # for by -u included, even under -dead_strip_dylibs
         target_link_options(${modName} INTERFACE
                 "LINKER:-u,_SMSpp_force_load_${modName}")
+    elseif (MINGW)
+        # the PE linker imports a DLL for the symbols asked for, -u
+        # included
+        target_link_options(${modName} INTERFACE
+                "LINKER:-u,SMSpp_force_load_${modName}")
     endif ()
 endif ()
 
@@ -135,12 +140,12 @@ target_sources(${modName} PRIVATE
 # (gitlab.com/renanfernandofranco/record), which is distributed as a single
 # source file with a main(): given a checkout in RECORD_ROOT, the file is
 # copied at configure time into record-shim/RECORD.hpp with the main() cut
-# away (the main() of the distributed source ignores the multiplicity it
-# reads and solves a bounded knapsack; the 0-1 problem is set up by the
-# bridge instead), and compiled alone in src/RECORDBridge.cpp, the only file
-# that sees its global names. Without a RECORD_ROOT, the checkout is looked
-# for in the environment variable of the same name and where INSTALL.sh puts
-# it; RECORD uses POSIX clocks, which MSVC does not have.
+# away (the main() reads a bounded knapsack from the standard input, while
+# the bridge sets up the 0-1 problem itself), and compiled alone in
+# src/RECORDBridge.cpp, the only file that sees its global names. Without a
+# RECORD_ROOT, the checkout is looked for in the environment variable of the
+# same name and where INSTALL.sh puts it; RECORD uses POSIX clocks, which
+# MSVC does not have.
 find_path(RECORD_ROOT NAMES source/RECORD.cpp
         HINTS ENV RECORD_ROOT PATHS /opt/record /Library/record
         DOC "Checkout of RECORD (optional)" NO_DEFAULT_PATH)
@@ -231,6 +236,39 @@ target_link_libraries(${modName} PUBLIC ${modNamespace}::SMS++)
 # the library with this notation.
 add_library(${modNamespace}::${modName} ALIAS ${modName})
 
+# ----- C++20 module -------------------------------------------------------- #
+# The module smspp.binaryknapsackblock (src/BinaryKnapsackBlock.cppm) exports
+# the names of the headers and re-exports smspp; like the module smspp of the
+# core, it is built when SMSpp_BUILD_MODULE is ON, which needs CMake 3.28 or
+# later, the Ninja or Visual Studio generator and a compiler that scans the
+# dependencies of the modules.
+# Where these are missing, or a module it imports is not there, the option
+# is turned off with a warning [see CheckModule.cmake of SMS++].
+smspp_check_module(${modNamespace}::SMS++_module)
+if (SMSpp_BUILD_MODULE)
+    # the scan of the module dependencies, and $<LINK_ONLY> honoured also for
+    # the target itself, which cmake_policy(VERSION 3.15) above leaves off
+    cmake_policy(SET CMP0155 NEW)
+    cmake_policy(SET CMP0131 NEW)
+
+    add_library(${modName}_module)
+    target_sources(${modName}_module PUBLIC
+            FILE_SET CXX_MODULES
+            BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src
+            FILES src/${modName}.cppm)
+    target_compile_features(${modName}_module PUBLIC cxx_std_20)
+    # the interface takes the include paths and the definitions of the
+    # library, but not its compile options (e.g., the -fopenmp of a source,
+    # which no header needs), so that it agrees with the module it imports
+    target_include_directories(${modName}_module PRIVATE
+            $<TARGET_PROPERTY:${modName},INTERFACE_INCLUDE_DIRECTORIES>)
+    target_compile_definitions(${modName}_module PRIVATE
+            $<TARGET_PROPERTY:${modName},INTERFACE_COMPILE_DEFINITIONS>)
+    target_link_libraries(${modName}_module PUBLIC $<LINK_ONLY:${modName}>
+            ${modNamespace}::SMS++_module)
+    add_library(${modNamespace}::${modName}_module ALIAS ${modName}_module)
+endif ()
+
 # ----- Subdirectories ------------------------------------------------------ #
 add_subdirectory(tools)
 
@@ -251,6 +289,17 @@ install(TARGETS ${modName}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} # .dll
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so .dylib
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}) # .lib
+
+# Install the module, whose interface is compiled again by each importer
+if (SMSpp_BUILD_MODULE)
+    install(TARGETS ${modName}_module
+            EXPORT ${modName}Targets
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            FILE_SET CXX_MODULES
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${modNamespace}/modules)
+endif ()
 
 # Install the headers
 install(DIRECTORY include/
@@ -320,73 +369,78 @@ if (NOT hasParent)
     include(CPack)
 endif ()
 
-# ----- Custom commands and targets ----------------------------------------- #
-# Fetch the curated Pisinger data: download the txt.tgz from the GitLab Package
-# Registry and extract it. The archive carries, per instance, the raw .csv that
-# embeds the published optimum z, which the tests read directly (no further
-# conversion): the fetch_bk_data target is the test fixture's only dependency.
-
-# The version of the archive in the Package Registry. A published version is
-# never replaced: new data go out under a new version, written here first [see
-# data/upload-txt], and the archive and the marker of its extraction carry it
-# in their name, so that a tree holding the data of an older version (a cache
-# of the CI, or a clone that has been extracted before) downloads and extracts
-# again instead of taking them for the current ones.
+# ----- Data ---------------------------------------------------------------- #
+# The instances the tests read are, for each <fmt> of DATA_FORMATS, the
+# archive <fmt>.tgz in the GitLab Package Registry of the project
+# DATA_PROJECT, extracted into data/<fmt>. Nothing of this is built with the
+# module: extract_<DATA_PREFIX>_<fmt> downloads the archive (by building
+# download_<DATA_PREFIX>_<fmt>) and extracts it, and it is built when the
+# tests that read the instances are run, by a test that sets up the fixture
+# <DATA_PREFIX>_<fmt>_extracted they require.
+#
+# A published version is never replaced: new data go out under a new
+# version, written here first [see the upload scripts in data/], and the
+# archive and the marker of its extraction carry it in their name, so that a
+# tree holding the data of an older version (a cache of the CI, or a clone
+# that has been extracted before) downloads and extracts again instead of
+# taking them for the current ones.
 set(DATA_VERSION 2026-06-24)
+set(DATA_PROJECT 24425718)
+set(DATA_PREFIX bk)
+set(DATA_FORMATS txt)
 
-# Download txt.tgz from GitLab Package Registry if it doesn't exist
-set(TXT_URL "https://gitlab.com/api/v4/projects/24425718/packages/generic/txt/${DATA_VERSION}/txt.tgz")
-set(TXT_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/data/txt-${DATA_VERSION}.tgz)
-set(DATA_MARKER ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted-${DATA_VERSION})
-set(TXT_SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/download_bk_txt.cmake)
+foreach (fmt ${DATA_FORMATS})
+    set(url "https://gitlab.com/api/v4/projects/${DATA_PROJECT}/packages/\
+generic/${fmt}/${DATA_VERSION}/${fmt}.tgz")
+    set(archive ${CMAKE_CURRENT_SOURCE_DIR}/data/${fmt}-${DATA_VERSION}.tgz)
+    set(script
+        ${CMAKE_CURRENT_BINARY_DIR}/download_${DATA_PREFIX}_${fmt}.cmake)
+    # the marker of the extraction, on which what is made from the instances
+    # depends too
+    set(DATA_MARKER_${fmt}
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/.extracted-${fmt}-${DATA_VERSION})
 
-file(WRITE ${TXT_SCRIPT} "
-file(DOWNLOAD \"${TXT_URL}\" \"${TXT_ARCHIVE}\" SHOW_PROGRESS STATUS _status)
+    file(WRITE ${script} "
+file(DOWNLOAD \"${url}\" \"${archive}\" SHOW_PROGRESS STATUS _status)
 list(GET _status 0 _code)
 list(GET _status 1 _message)
 if(NOT _code EQUAL 0)
   # what is on disk is whatever the server answered with, and leaving it there
   # would let the build take it for the archive: the next attempt has to
   # download again rather than fail while extracting it
-  file(REMOVE \"${TXT_ARCHIVE}\")
-  message(FATAL_ERROR \"cannot download ${TXT_URL}: \${_message}\")
+  file(REMOVE \"${archive}\")
+  message(FATAL_ERROR \"cannot download ${url}: \${_message}\")
 endif()
-file(SIZE \"${TXT_ARCHIVE}\" _size)
+file(SIZE \"${archive}\" _size)
 if(_size LESS 1024)
-  file(REMOVE \"${TXT_ARCHIVE}\")
-  message(FATAL_ERROR \"${TXT_ARCHIVE} came down with \${_size} bytes, so the \
+  file(REMOVE \"${archive}\")
+  message(FATAL_ERROR \"${archive} came down with \${_size} bytes, so the \
 server answered but not with the archive: try again later\")
 endif()
 ")
 
-add_custom_command(
-        OUTPUT ${TXT_ARCHIVE}
-        COMMAND ${CMAKE_COMMAND} -E echo "Downloading txt.tgz from GitLab Package Registry..."
-        COMMAND ${CMAKE_COMMAND} -P ${TXT_SCRIPT}
-        COMMENT "Downloading txt.tgz"
-        VERBATIM)
+    add_custom_command(
+            OUTPUT ${archive}
+            COMMAND ${CMAKE_COMMAND} -P ${script}
+            COMMENT "Downloading ${fmt}.tgz from the GitLab Package Registry"
+            VERBATIM)
+    add_custom_target(download_${DATA_PREFIX}_${fmt} DEPENDS ${archive})
 
-add_custom_target(download_bk_txt
-        DEPENDS ${TXT_ARCHIVE})
-
-# Custom command to extract the txt.tgz archive if the marker of this version
-# does not exist
-add_custom_command(
-        OUTPUT ${DATA_MARKER}
-        COMMAND ${CMAKE_COMMAND} -E tar xzf ${TXT_ARCHIVE}
-        COMMAND echo > ${DATA_MARKER}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
-        COMMENT "Extracting txt.tgz"
-        VERBATIM
-        DEPENDS download_bk_txt)
-
-# The raw .csv are ready as soon as the archive is extracted: this is the
-# terminal target the tests depend on (see tests/BinaryKnapsackBlock).
-add_custom_target(fetch_bk_data
-        DEPENDS ${DATA_MARKER})
-
-# Ensure that the extraction is executed after the download
-add_dependencies(fetch_bk_data download_bk_txt)
+    add_custom_command(
+            OUTPUT ${DATA_MARKER_${fmt}}
+            COMMAND ${CMAKE_COMMAND} -E tar xzf ${archive}
+            COMMAND ${CMAKE_COMMAND} -E touch ${DATA_MARKER_${fmt}}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data
+            COMMENT "Extracting ${fmt}.tgz"
+            VERBATIM
+            DEPENDS ${archive})
+    add_custom_target(extract_${DATA_PREFIX}_${fmt}
+                      DEPENDS ${DATA_MARKER_${fmt}})
+    # the archive is the output of a command in both targets: it has to be
+    # downloaded once, before it is extracted
+    add_dependencies(extract_${DATA_PREFIX}_${fmt}
+                     download_${DATA_PREFIX}_${fmt})
+endforeach ()
 
 # A handful of the textual instances written as netCDF files, which is what a
 # tester that reads a Block from a file needs: tools/batch says which ones and
@@ -394,36 +448,40 @@ add_dependencies(fetch_bk_data download_bk_txt)
 if (UNIX)
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
-            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch
+                    ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
+            COMMAND ${CMAKE_COMMAND} -E touch
+                    ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
             COMMENT "Running bk2nc4"
             VERBATIM
-            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4 ${DATA_MARKER})
+            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
+                    ${DATA_MARKER_txt})
 elseif (WIN32)
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             # using Git for Windows that includes Git Bash
             COMMAND "C:/Program Files/Git/bin/bash.exe"
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/batch" "$<TARGET_FILE:bk2nc4>"
-            COMMAND echo > ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+            COMMAND ${CMAKE_COMMAND} -E touch
+                    ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
             COMMENT "Running bk2nc4"
             VERBATIM
-            DEPENDS $<TARGET_FILE:bk2nc4> ${DATA_MARKER})
+            DEPENDS $<TARGET_FILE:bk2nc4> ${DATA_MARKER_txt})
 endif ()
 
 add_custom_target(run_bk2nc4
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated)
 
-add_dependencies(run_bk2nc4 bk2nc4 fetch_bk_data)
+add_dependencies(run_bk2nc4 bk2nc4 extract_bk_txt)
 
 # Hard-instance benchmark sources, curated on demand into data/ (gitignored).
 # data/fetch-jooken pulls a curated subset of the Jooken-Leyman-De Causmaecker
 # hard 0-1 knapsack instances (the .csv carry the published optimum z, read by
-# the test in -C mode exactly like the Pisinger ones); data/fetch-txt-large the
-# large uncorrelated / subset-sum Pisinger classes. These are the test fixtures'
-# only dependency (see tests/BinaryKnapsackBlock/batch-jooken).
+# the test in -C mode exactly like the Pisinger ones); data/fetch-txt-large
+# the large uncorrelated / subset-sum Pisinger classes. These are the only
+# dependency of the test fixtures (see tests/BinaryKnapsackBlock/batch-jooken).
 add_custom_target(fetch_jooken_data
         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/data/fetch-jooken
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data

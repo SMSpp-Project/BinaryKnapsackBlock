@@ -28,7 +28,7 @@ CoreDPBinaryKnapsackSolver      # 5th: core DP, intReopt 5
 # now all the ComputeConfig - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # 1: DP from scratch, default parameters
-* # [none]
+*  # [none]
 
 # 2: DP reusing the table up to half of the items changed
 *DPCfg.txt
@@ -69,7 +69,7 @@ dblReopt 1  # reuse whatever changed
 # [none]
 
 # pointer to the "extra" Configuration
-* # [none]
+*  # [none]
 
 # 4: core DP, intReopt 3
 *ReoptCfg.txt
@@ -110,9 +110,9 @@ intReopt 5  # certificate on the original items
 # [none]
 
 # pointer to the "extra" Configuration
-* # [none]
+*  # [none]
 
-# end of BlockSolverConfig- - - - - - - - - - - - - - - - - - - - - - - - - -
+# end of BlockSolverConfig - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - END BSPar-exact.txt - - - - - - - - - - - - - -

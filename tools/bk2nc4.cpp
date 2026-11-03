@@ -112,7 +112,7 @@ int main( int argc , char **argv )
   for( decltype( n ) i = 0 ; i < n ; ++i )
    P[ i ] = - BKB->get_Profit( i );
 
-  BKB->chg_profits( P.begin() , Block::Range( 0 , n ) );
+  BKB->chg_profits( Block::MF_dbl_sp( P ) , Block::Range( 0 , n ) );
   BKB->set_objective_sense( false );
   }
 

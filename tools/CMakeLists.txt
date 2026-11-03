@@ -21,7 +21,7 @@ if (NOT BUILD_SHARED_LIBS)
     endif ()
 endif ()
 
-# ----- bkbench ------------------------------------------------------------ #
+# ----- bkbench ------------------------------------------------------------- #
 # in-process benchmark over the large public Pisinger/Jooken archives (the
 # default solver is the efficient CoreDPBinaryKnapsackSolver)
 add_executable(bkbench bkbench.cpp)
