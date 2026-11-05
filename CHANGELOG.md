@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- the tester checks what each reader of the Modification gets: a Solver
+  that reads the physical ones only those, one that reads the abstract ones
+  only those, and with no reader of a kind that kind is not issued
+
+### Changed
+
+- `BinaryKnapsackSolver::concerned_by()` and
+  `DPBinaryKnapsackSolver::concerned_by()` are `eModPhys`: the abstract
+  Modification of the Block, which the two Solver have no use for, no
+  longer reach them
+
 ## [0.6.0] - 2026-11-03
 
 ### Added

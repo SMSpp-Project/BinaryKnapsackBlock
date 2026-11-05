@@ -160,6 +160,16 @@ class BinaryKnapsackSolver : public virtual Solver {
  void add_Modification( sp_Mod & mod ) override;
 
 /*--------------------------------------------------------------------------*/
+ /// the kinds of Modification read: the physical ones
+ /** The Solver works on the data of the BinaryKnapsackBlock, which the
+  * physical Modification describe, and has no use for the abstract ones
+  * [see Solver::concerned_by()]. */
+
+ [[nodiscard]] Modification::ModConcern concerned_by( void ) const override {
+  return( Modification::eModPhys );
+  }
+
+/*--------------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 

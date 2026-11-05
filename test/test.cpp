@@ -44,6 +44,7 @@
 /*--------------------------------------------------------------------------*/
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -809,6 +810,125 @@ void test_changes( void )
  }
 
 /*--------------------------------------------------------------------------*/
+/// a FakeSolver that reads only some kinds of Modification
+
+class ReadsSolver : public FakeSolver
+{
+ public:
+
+ explicit ReadsSolver( Modification::ModConcern reads ) : f_reads( reads ) {}
+
+ [[nodiscard]] Modification::ModConcern concerned_by( void ) const override {
+  return( f_reads );
+  }
+
+ Modification::ModConcern f_reads;
+ };
+
+/*--------------------------------------------------------------------------*/
+/// each reader gets the Modification of its own representation only
+/** The Solver of the module read the physical representation alone [see
+ * Solver::concerned_by()]. With the abstract representation there, a reader
+ * of the physical representation and one of the abstract one get each change
+ * in their own representation, whichever side it is made on, and without the
+ * reader of one representation its Modification are not even issued. */
+
+void test_concern( void )
+{
+ using M = Modification;
+ using BM = BinaryKnapsackBlockMod;
+ Inst in;
+ in.C = 12;
+ in.W = { 5 , 4 , 6 , 3 };
+ in.P = { 8 , 6 , 9 , 4 };
+ in.I.assign( 4 , true );
+ auto b = build( in );
+ b->generate_abstract_constraints();
+ b->generate_objective();
+
+ for( auto & s : attach( b ) )
+  check( s.s->concerned_by() == M::eModPhys , s.name + " reads more than "
+	 "the physical representation" );
+ b->unregister_Solvers( true );
+
+ auto lfo = static_cast< LinearFunction * >(
+			b->get_objective< FRealObjective >()->get_function() );
+
+ // the physical and the abstract Modification a reader got since the last
+ // call, an NBModification (which reaches anyone) counted in neither
+ const auto got = []( ReadsSolver * r ) {
+  std::array< std::size_t , 2 > n{ 0 , 0 };
+  r->lock_Modification_list();
+  for( auto & mod : r->get_Modification_list() )
+   if( std::dynamic_pointer_cast< BM >( mod ) )
+    ++n[ 0 ];
+   else
+    if( ! std::dynamic_pointer_cast< NBModification >( mod ) )
+     ++n[ 1 ];
+  r->get_Modification_list().clear();
+  r->unlock_Modification_list();
+  return( n );
+  };
+ using A = std::array< std::size_t , 2 >;
+
+ auto phys = new ReadsSolver( M::eModPhys );
+ auto abst = new ReadsSolver( M::eModAbst );
+ b->register_Solver( phys );
+ b->register_Solver( abst );
+ got( phys );
+ got( abst );
+
+ b->chg_profit( 7 , 0 );
+ check( got( phys ) == ( A{ 1 , 0 } ) , "chg_profit(): the physical reader "
+	"does not get just the BinaryKnapsackBlockMod" );
+ auto n = got( abst );
+ check( ( n[ 0 ] == 0 ) && ( n[ 1 ] > 0 ) , "chg_profit(): the abstract "
+	"reader does not get just abstract Modification" );
+ lfo->modify_coefficient( 1 , 5 );
+ check( got( phys ) == ( A{ 1 , 0 } ) , "a coefficient of the objective: "
+	"the physical reader does not get just the BinaryKnapsackBlockMod" );
+ check( got( abst ) == ( A{ 0 , 1 } ) , "a coefficient of the objective: "
+	"the abstract reader does not get just its Modification" );
+ b->fix_x( true , 2 );
+ check( got( phys ) == ( A{ 1 , 0 } ) , "fix_x(): the physical reader does "
+	"not get just the BinaryKnapsackBlockMod" );
+ n = got( abst );
+ check( ( n[ 0 ] == 0 ) && ( n[ 1 ] > 0 ) , "fix_x(): the abstract reader "
+	"does not get just abstract Modification" );
+
+ // the reader of the physical representation alone
+ b->unregister_Solver( abst );
+ check( ! b->issue_mod( eNoBlck , M::eModObj ) , "an abstract Modification "
+	"would be issued with nobody reading it" );
+ b->chg_weight( 2 , 3 );
+ check( got( phys ) == ( A{ 1 , 0 } ) , "chg_weight() with the physical "
+	"reader alone" );
+ auto lfc = static_cast< LinearFunction * >(
+	 b->get_static_constraint< FRowConstraint >( 0 )->get_function() );
+ check( lfc->get_coefficient( 3 ) == 2 , "the weight does not reach the "
+	"abstract representation" );
+
+ // the reader of the abstract representation alone
+ b->unregister_Solver( phys , true );
+ b->register_Solver( abst );
+ got( abst );
+ check( ! b->issue_pmod( eNoBlck , BM::changes_of( BM::eChgProfit ) ) ,
+	"a physical Modification would be issued with nobody reading it" );
+ b->chg_profit( 3 , 0 );
+ n = got( abst );
+ check( ( n[ 0 ] == 0 ) && ( n[ 1 ] > 0 ) , "chg_profit() with the abstract "
+	"reader alone" );
+ lfo->modify_coefficient( 1 , 2 );
+ check( got( abst ) == ( A{ 0 , 1 } ) , "a coefficient of the objective with "
+	"the abstract reader alone" );
+ check( b->get_Profit( 1 ) == 2 , "the coefficient does not reach the "
+	"profit" );
+
+ b->unregister_Solver( abst , true );
+ delete b;
+ }
+
+/*--------------------------------------------------------------------------*/
 
 void test_abstract_modifications( void )
 {
@@ -1396,6 +1516,7 @@ int main( void )
   { "reoptimization" , test_reoptimization } ,
   { "what the Modification change" , test_changes } ,
   { "abstract Modification" , test_abstract_modifications } ,
+  { "what each reader gets" , test_concern } ,
   { "abstract representation" , test_abstract_representation } ,
   { "feasibility" , test_feasibility } ,
   { "netCDF round trip" , test_netcdf } ,
