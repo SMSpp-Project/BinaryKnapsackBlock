@@ -219,8 +219,8 @@ class BinaryKnapsackBlock : public Block {
   *
   *   the index column is ignored and all items are assumed integral.
   *
-  * Like load( memory ), if there is any Solver attached to this 
-  * BinaryKnapsackBlock then a NBModification (the "nuclear option") is 
+  * Like load( memory ), if there is any Solver attached to this
+  * BinaryKnapsackBlock then a NBModification (the "nuclear option") is
   * issued. */
 
  void load( std::istream & input , char frmt = 0 ) override;
