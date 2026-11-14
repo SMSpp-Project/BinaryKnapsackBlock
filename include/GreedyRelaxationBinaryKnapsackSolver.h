@@ -400,6 +400,74 @@ public:
  Change * apply( Change * chg , bool doUndo = false ) override;
 
 /** @} ---------------------------------------------------------------------*/
+/*------------------ METHODS FOR BOUNDING AFTER A CHANGE -------------------*/
+/*--------------------------------------------------------------------------*/
+/** @name Bounding a node again after a change of the data
+ *
+ * The two sources of RelaxationSolver::shifted_bound() for the knapsack
+ * \f$ \max \{ p x : w x \leq C \,,\, x \in B_\nu \} \f$, written in the
+ * maximization sense (for a minimization problem \f$ p \f$ is replaced by
+ * \f$ - p \f$), where the box \f$ B_\nu \f$ is \f$ \{ 0 \} \f$, \f$ \{ 1
+ * \} \f$ or \f$ [ 0 , 1 ] \f$ for an item fixed to 0, fixed to 1 or free,
+ * hence always finite. The continuous relaxation solved by compute() is
+ * the Lagrangian relaxation of the capacity with the multiplier
+ * \f$ \rho \geq 0 \f$ equal to the efficiency \f$ p_c / w_c \f$ of the
+ * critical item (0 if there is none):
+ *  \f[
+ *    U = \rho C + \max_{x \in B_\nu} ( p - \rho w ) x \;,
+ *  \f]
+ * since the items before the critical one have \f$ p_j - \rho w_j \geq 0
+ * \f$, those after it \f$ \leq 0 \f$, and the critical one 0 (the
+ * complemented items and those settled by their signs give the same, since
+ * the Lagrangian does not change if \f$ x_j \f$ is replaced by \f$ 1 -
+ * y_j \f$). The certificate of a node [see get_bound_certificate()] is
+ * \f$ ( \rho , U ) \f$; after a change of the profits, of the weights
+ * and of the capacity to \f$ ( p' , w' , C' ) \f$, the Lagrangian at the
+ * same \f$ \rho \f$ is
+ *  \f[
+ *    U' = U + \rho ( C' - C ) + \sum_j \Big( \max_{x_j \in B_{\nu j}}
+ *         ( p'_j - \rho w'_j ) x_j - \max_{x_j \in B_{\nu j}}
+ *         ( p_j - \rho w_j ) x_j \Big) \;,
+ *  \f]
+ * the sum running on the changed items only, which is the bound of the
+ * node under the new data, valid also when the region grows, and never
+ * worse than the general one of RelaxationSolver::shifted_bound() (each
+ * term of the sum is at most \f$ \max_{x_j} ( p'_j - p_j - \rho ( w'_j -
+ * w_j ) ) x_j \f$). Without a certificate the bound \f$ D( \nu ) \f$ of
+ * the node gives \f$ D( \nu ) + \sum_j \max_{x_j \in B_{\nu j}} ( p'_j -
+ * p_j ) x_j \f$, valid if the region of the node cannot grow, i.e., if
+ * \f$ C' \leq C \f$ and \f$ w'_j \geq w_j \f$ for the items not fixed to 0
+ * (\f$ x \geq 0 \f$); the tighter of the two is returned. The
+ * certificate of an empty node is the excess \f$ g = \min_{x \in B_\nu} w x
+ * - C > 0 \f$ (the Farkas ray of the capacity alone), and the node stays
+ * empty if the new excess
+ *  \f[
+ *    g' = g - ( C' - C ) + \sum_j \Big( \min_{x_j \in B_{\nu j}} w'_j x_j
+ *         - \min_{x_j \in B_{\nu j}} w_j x_j \Big)
+ *  \f]
+ * is positive (with a margin of \f$ 10^{-9} \max \{ 1 , | C | \} \f$,
+ * against the rounding of the sum), or, without a certificate, if its
+ * region cannot grow. Both cost a time linear in the number of the changed
+ * items, and none in the others. A change of the sense of the Objective or
+ * of the integrality of some item gives no bound (NaN), nor does the
+ * incremental fill [see intIncremental], whose branching Changes carry the
+ * state of the fill under the old data.
+ *  @{ */
+
+ /// the certificate ( rho , U ), or the excess of an empty node
+
+ [[nodiscard]] BoundCertificate * get_bound_certificate( void ) override;
+
+ /// take in the changes of the data, remembering the old data
+
+ [[nodiscard]] bool prepare_bound_shift( void ) override;
+
+ /// the bound of the current node under the new data, see above
+
+ [[nodiscard]] OFValue shifted_bound( OFValue bound , BoundCertificate * cert
+                                      ) override;
+
+/** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -543,6 +611,29 @@ private:
  double f_ci_val = 1;    ///< the fraction of the critical item that is taken
  bool f_to_end = false;  ///< whether the fill took every item, i.e., there
                          ///< is no critical item
+
+ // the changes taken in by prepare_bound_shift() [see shifted_bound()]
+
+ /// the certificate of a node [see get_bound_certificate()]
+ struct Certificate : public BoundCertificate {
+  bool empty;    ///< whether the relaxation of the node is empty
+  double rho;    ///< the multiplier of the capacity (not empty)
+  double value;  ///< the Lagrangian value U, or the excess g (empty)
+  };
+
+ /// a changed item: its index, its old and new profit (in the
+ /// maximization sense) and its old and new weight
+ struct ChangedItem {
+  Index i;
+  double p0;
+  double w0;
+  double p1;
+  double w1;
+  };
+
+ bool f_shift_valid = false;            ///< whether a bound can be given
+ double f_shift_dC = 0;                 ///< the change of the capacity
+ std::vector< ChangedItem > v_shift;    ///< the changed items
 
 /*--------------------------------------------------------------------------*/
 

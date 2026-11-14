@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that reads the physical ones only those, one that reads the abstract ones
   only those, and with no reader of a kind that kind is not issued
 
+- `GreedyRelaxationBinaryKnapsackSolver` bounds a node again after a
+  change of the profits, of the weights and of the capacity without solving
+  it [see `RelaxationSolver::shifted_bound()`]: its certificate is the
+  multiplier of the capacity (the efficiency of the critical item) and the
+  Lagrangian value, updated exactly at that multiplier in a time linear in
+  the changed items, or the excess of the capacity of an empty node
+
 ### Changed
 
 - `BinaryKnapsackSolver::concerned_by()` and

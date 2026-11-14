@@ -38,6 +38,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
+#include <limits>
 #include <numeric>
 
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
@@ -218,6 +220,138 @@ Change * GreedyRelaxationBinaryKnapsackSolver::apply( Change * chg ,
  return( apply_to_mirror( CHG , doUndo ) );
 
  }  // end( GreedyRelaxationBinaryKnapsackSolver::apply )
+
+/*--------------------------------------------------------------------------*/
+/*------------------ METHODS FOR BOUNDING AFTER A CHANGE -------------------*/
+/*--------------------------------------------------------------------------*/
+
+BoundCertificate * GreedyRelaxationBinaryKnapsackSolver::get_bound_certificate(
+                                                                       void )
+{
+ if( f_incremental )
+  return( nullptr );
+
+ auto cert = new Certificate();
+ if( f_Cd < 0 ) {          // empty: the excess of the capacity
+  cert->empty = true;
+  cert->rho = 0;
+  cert->value = - f_Cd;
+  }
+ else {                    // the multiplier and the Lagrangian value
+  cert->empty = false;
+  cert->rho = f_fi.orig >= 0 ? n_p[ f_fi.orig ] / n_w[ f_fi.orig ] : 0;
+  cert->value = obj;
+  }
+ return( cert );
+
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::get_bound_certificate )
+
+/*--------------------------------------------------------------------------*/
+
+bool GreedyRelaxationBinaryKnapsackSolver::prepare_bound_shift( void )
+{
+ f_shift_valid = false;
+ v_shift.clear();
+ if( f_incremental )      // the branching Changes carry the old fill
+  return( false );
+
+ // the raw mirror is that of the last compute() until the queued
+ // Modification are taken in: keep what is needed of it, take them in, and
+ // compare; the flags update_instance() sets make the next compute() work
+ // on the new data
+ const auto P = v_P;
+ const auto W = v_W;
+ const auto I = v_I;
+ const double Cap = f_Cap;
+ const bool sense = f_sense;
+ update_instance();
+
+ if( ( f_sense != sense ) || ( v_I != I ) || ( P.size() != v_P.size() ) )
+  return( false );
+ const double sg = f_sense ? 1 : -1;
+ for( Index i = 0 ; i < f_N ; ++i )
+  if( ( v_P[ i ] != P[ i ] ) || ( v_W[ i ] != W[ i ] ) )
+   v_shift.push_back( { i , sg * P[ i ] , W[ i ] , sg * v_P[ i ] ,
+                        v_W[ i ] } );
+ f_shift_dC = f_Cap - Cap;
+ f_shift_valid = true;
+ return( true );
+
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::prepare_bound_shift )
+
+/*--------------------------------------------------------------------------*/
+
+Solver::OFValue GreedyRelaxationBinaryKnapsackSolver::shifted_bound(
+                                    OFValue bound , BoundCertificate * cert )
+{
+ const double NaN = std::numeric_limits< double >::quiet_NaN();
+ if( ! f_shift_valid )
+  return( NaN );
+ auto crt = dynamic_cast< Certificate * >( cert );
+
+ // the box of item i at the current node, v_fxd: 0 = [ 0 , 1 ], 1 = { 0 },
+ // 2 = { 1 }; the maximum and the minimum of a x_i over it
+ const auto hi = [ this ]( Index i ) {
+  return( v_fxd[ i ] == 1 ? 0.0 : 1.0 );
+  };
+ const auto lo = [ this ]( Index i ) {
+  return( v_fxd[ i ] == 2 ? 1.0 : 0.0 );
+  };
+ const auto bmax = [ & ]( Index i , double a ) {
+  return( a > 0 ? a * hi( i ) : a * lo( i ) );
+  };
+ const auto bmin = [ & ]( Index i , double a ) {
+  return( a < 0 ? a * hi( i ) : a * lo( i ) );
+  };
+
+ // whether the region of the node may grow: x >= 0, so only a larger
+ // capacity or a smaller weight of an item not fixed to 0 can make it
+ bool grows = f_shift_dC > 0;
+ for( const auto & c : v_shift )
+  if( ( c.w1 < c.w0 ) && ( v_fxd[ c.i ] != 1 ) ) {
+   grows = true;
+   break;
+   }
+
+ // everything in the maximization sense from here on
+ const double U = f_sense ? bound : - bound;
+ const auto out = [ this ]( double u ) { return( f_sense ? u : - u ); };
+
+ if( U == - Inf< double >() ) {      // the node is empty
+  if( crt && crt->empty ) {
+   double g = crt->value - f_shift_dC;
+   for( const auto & c : v_shift )
+    g += bmin( c.i , c.w1 ) - bmin( c.i , c.w0 );
+   if( g > 1e-9 * std::max( 1.0 , std::abs( f_Cap ) ) ) {
+    crt->value = g;
+    return( bound );
+    }
+   return( NaN );
+   }
+  return( grows ? NaN : bound );
+  }
+
+ if( U == Inf< double >() )           // no bound: still none
+  return( bound );
+
+ double best = NaN;
+ if( ! grows ) {                      // the bound of the node, shifted
+  best = U;
+  for( const auto & c : v_shift )
+   best += bmax( c.i , c.p1 - c.p0 );
+  }
+ if( crt && ( ! crt->empty ) ) {      // the Lagrangian value, updated
+  const double rho = crt->rho;
+  double L = crt->value + rho * f_shift_dC;
+  for( const auto & c : v_shift )
+   L += bmax( c.i , c.p1 - rho * c.w1 ) - bmax( c.i , c.p0 - rho * c.w0 );
+  crt->value = L;
+  if( std::isnan( best ) || ( L < best ) )
+   best = L;
+  }
+ return( std::isnan( best ) ? NaN : out( best ) );
+
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::shifted_bound )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PROTECTED METHODS ----------------------------*/
