@@ -389,7 +389,8 @@ void solve_all( BinaryKnapsackBlock * b , std::vector< Slv > & slv ,
    check( close( v , bound ) , who + ": the Solution is worth " + str( v ) +
           ", not " + str( bound ) );
    // the check of the Block agrees, on a solution with no fraction in it
-   if( std::all_of( in.I.begin() , in.I.end() , []( bool i ) { return i; } ) )
+   if( std::all_of( in.I.begin() , in.I.end() ,
+		    []( bool i ) { return( i ); } ) )
     check( b->is_sol_feasible( ks ) , who + ": is_sol_feasible() says no" );
    }
   delete sol;

@@ -284,8 +284,9 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_initialize( void )
  v_sorted.resize( f_N );
  v_sorted_pos.resize( f_N );
  std::iota( v_sorted.begin() , v_sorted.end() , 0 );
- std::sort( v_sorted.begin() , v_sorted.end() ,
-	    [ & ]( Index a , Index b ) { return( ratio( a ) > ratio( b ) ); } );
+ std::sort( v_sorted.begin() , v_sorted.end() , [ & ]( Index a , Index b ) {
+  return( ratio( a ) > ratio( b ) );
+  } );
  for( Index i = 0 ; i < f_N ; ++i )
   v_sorted_pos[ v_sorted[ i ] ] = i;
 
@@ -382,7 +383,7 @@ int GreedyRelaxationBinaryKnapsackSolver::inc_compute( void )
   f_ci = f_N ? v_sorted.back() : 0;
 
  obj = f_iP + ( ( f_ci_val == 0 ) || ( f_ci_val == 1 ) ? 0
-	                                                : v_ip[ f_ci ] * f_ci_val );
+		: v_ip[ f_ci ] * f_ci_val );
 
  // the critical item, as fractional_relaxation() describes it
  if( f_to_end || ( ! f_N ) )
@@ -400,7 +401,8 @@ int GreedyRelaxationBinaryKnapsackSolver::inc_compute( void )
 /*--------------------------------------------------------------------------*/
 
 Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
-				  BinaryKnapsackBlockChange * chg , bool doUndo )
+				  BinaryKnapsackBlockChange * chg ,
+				  bool doUndo )
 {
  // the fixings apply to the greedy fill of the current data
  if( update_instance() || ( ! f_inc_valid ) ) {
@@ -528,8 +530,8 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
   std::vector< Change * > branches( 1 );
   branches[ 0 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ leave , double( f_ssi ) , f_iC ,
-						  f_iP , epoch } ,
+			   std::vector< double >{ leave , double( f_ssi ) ,
+						  f_iC , f_iP , epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
   return( branches );
   }
@@ -539,12 +541,13 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
 			   BinaryKnapsackBlockChange::eFixX ,
 			   std::vector< double >{ take , double( f_ssi ) ,
 						  f_iC - v_iw[ f_ci ] ,
-						  f_iP + v_ip[ f_ci ] , epoch } ,
+						  f_iP + v_ip[ f_ci ] ,
+						  epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
  branches[ 1 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ leave , double( f_ssi ) , f_iC ,
-						  f_iP , epoch } ,
+			   std::vector< double >{ leave , double( f_ssi ) ,
+						  f_iC , f_iP , epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
  return( branches );
 

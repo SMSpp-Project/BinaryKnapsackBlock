@@ -11,10 +11,10 @@
  * (correlated, spanner) instances and on large-capacity ones (Pisinger
  * largecoeff R=1e7, Jooken W=1e10) this is hopeless in both time and memory.
  * The state of the art (Pisinger MINKNAP 1997, Martello-Pisinger-Toth COMBO
- * 1999, and the recent RECORD 2026) instead enumerates only the *non-dominated*
- * (profit, weight) states around an efficiency "break item", pruning with LP /
- * dominance / surrogate bounds, and is orders of magnitude faster while keeping
- * a small state set in memory.
+ * 1999, and the recent RECORD 2026) instead enumerates only the
+ * *non-dominated* (profit, weight) states around an efficiency "break item",
+ * pruning with LP / dominance / surrogate bounds, and is orders of magnitude
+ * faster while keeping a small state set in memory.
  *
  * Why a subclass of BinaryKnapsackSolver and NOT of DPBinaryKnapsackSolver:
  * the latter's dynamic_programming() must fill the full final-slice label
@@ -290,7 +290,9 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
 
  /// return the value of the (current) solution, in the Block's own sense
 
- OFValue get_var_value( void ) override { return( f_sense ? f_obj : - f_obj ); }
+ OFValue get_var_value( void ) override {
+  return( f_sense ? f_obj : - f_obj );
+  }
 
  /// write the current solution into the variables of the BinaryKnapsackBlock
 
@@ -321,7 +323,8 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   long   wsum;       ///< weight sum of the state ( <= residual capacity )
   double psum;       ///< profit sum of the state
   int    parent;     ///< index of the originating state in the previous step
-  bool   took;       ///< whether the current item was added to reach this state
+  bool   took;       ///< whether the current item was added to reach this
+		     ///< state
   };
 
 /*--------------------------------------------------------------------------*/
@@ -366,8 +369,9 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   * \f$ g \f$, so the usable capacity is
   * \f[ \bar C=\Big\lfloor\tfrac{C}{g}\Big\rfloor\,g\le C. \f]
   * Returned in place of @p C: it is exact for feasibility (all state
-  * weights are multiples of \f$ g \f$) and only tightens the bounds; it applies
-  * to the pure-integer core, the continuous fill keeps the real \f$ C \f$. */
+  * weights are multiples of \f$ g \f$) and only tightens the bounds; it
+  * applies to the pure-integer core, the continuous fill keeps the real
+  * \f$ C \f$. */
 
  long divisibility_capacity( const std::vector< long > & w , int m ,
                              long C ) const;
@@ -397,9 +401,10 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   *   \hat p+\big\lfloor r\,\tfrac{p_{b+1}}{w_{b+1}}\big\rfloor ,
   *   \;\; \hat p+p_b-\big\lceil (w_b-r)\,\tfrac{p_{b-1}}{w_{b-1}}\big\rceil
   *   \;\Big\} , \f]
-  * with \f$ \hat p \f$, \f$ r=C-\hat w \f$ as above (the floor/ceil are dropped
-  * for non-integer profits). Provably \f$ U^{2}\le U^{D}=\hat p+r\,p_b/w_b \f$
-  * (the Dantzig bound), hence always valid. @p C is the effective capacity. */
+  * with \f$ \hat p \f$, \f$ r=C-\hat w \f$ as above (the floor/ceil are
+  * dropped for non-integer profits). Provably
+  * \f$ U^{2}\le U^{D}=\hat p+r\,p_b/w_b \f$ (the Dantzig bound), hence always
+  * valid. @p C is the effective capacity. */
 
  double upper_bound_u2( const std::vector< long > & w ,
                         const std::vector< double > & p , int m , int b ,
@@ -407,17 +412,18 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
 
  /// surrogate relaxation with a cardinality constraint (COMBO scheme).
  /** Let \f$ N_{\max} \f$ be the largest cardinality that fits \f$ C \f$ (the
-  * \f$ N_{\max} \f$ smallest weights sum to \f$ \le C \f$) and \f$ N_{\min} \f$
-  * the smallest cardinality whose largest profits exceed \f$ z \f$. When one of
-  * them is within 1 of the break cardinality \f$ b \f$ (the cardinality is then
-  * essentially forced) the capacity and cardinality constraints are aggregated
-  * with a multiplier \f$ \mu \f$ into the single surrogate constraint
+  * \f$ N_{\max} \f$ smallest weights sum to \f$ \le C \f$) and
+  * \f$ N_{\min} \f$ the smallest cardinality whose largest profits exceed
+  * \f$ z \f$. When one of them is within 1 of the break cardinality \f$ b \f$
+  * (the cardinality is then essentially forced) the capacity and cardinality
+  * constraints are aggregated with a multiplier \f$ \mu \f$ into the single
+  * surrogate constraint
   * \f[ \sum_i (w_i+\mu)\,x_i\ \le\ C+\mu\,k, \f]
   * and the surrogate upper bound is \f$ \min_{\mu} U^{SF}(\mu) \f$ with
   * \f$ U^{SF}(\mu) \f$ the fractional-knapsack value of the items
   * \f$ (p_i,\,w_i+\mu) \f$ under capacity \f$ C+\mu k \f$. A dichotomy at
-  * \f$ b \f$ (\f$ \sum_i x_i\le b \f$ vs \f$ \ge b+1 \f$) is a complete, always
-  * valid case split. Returns \f$ +\infty \f$ (no tightening) for a wide
+  * \f$ b \f$ (\f$ \sum_i x_i\le b \f$ vs \f$ \ge b+1 \f$) is a complete,
+  * always valid case split. Returns \f$ +\infty \f$ (no tightening) for a wide
   * window. */
 
  double surrogate_bound( const std::vector< long > & w ,
@@ -527,8 +533,10 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
   * "complement" items (originally negative weight and profit) are stored with
   * flipped sign and v_comp = 1, so that x_orig = 1 - ( chosen in the core ) */
 
- std::vector< long >   v_w;       ///< weights of the integer core items ( > 0 )
- std::vector< double > v_p;       ///< profits of the integer core items ( > 0 )
+ std::vector< long >   v_w;       ///< weights of the integer core
+				  ///< items ( > 0 )
+ std::vector< double > v_p;       ///< profits of the integer core
+				  ///< items ( > 0 )
  std::vector< Index >  v_orig;    ///< original item index of each core item
  std::vector< char >   v_comp;    ///< 1 if the item is complemented
 
@@ -653,7 +661,8 @@ class CoreDPBinaryKnapsackSolver : public BinaryKnapsackSolver {
 
  private:
 
- SMSpp_insert_in_factory_h;  // insert CoreDPBinaryKnapsackSolver in the factory
+ SMSpp_insert_in_factory_h;  // insert CoreDPBinaryKnapsackSolver in the
+			     // factory
 
  };  // end( class( CoreDPBinaryKnapsackSolver ) )
 

@@ -458,7 +458,8 @@ bool BinaryKnapsackBlock::is_feasible( bool useabstract ,
   tot_weight += v_W[ i ] * get_x( i ); 
 
  return( tot_weight - f_C <=
-	 ( rel_viol ? eps * std::max( double( 1 ) , std::abs( f_C ) ) : eps ) );
+	 ( rel_viol ? eps * std::max( double( 1 ) , std::abs( f_C ) ) :
+	   eps ) );
 
  } // end( BinaryKnapsackBlock::is_feasible )
 

@@ -596,7 +596,7 @@ class BinaryKnapsackBlock : public Block {
   * - r3bc == nullptr: the copy (a BinaryKnapsackBlock identical to this)
   */
 
- Block * get_R3_Block( Configuration *r3bc = nullptr , Block * base = nullptr , 
+ Block * get_R3_Block( Configuration *r3bc = nullptr , Block * base = nullptr ,
                        Block * father = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/
