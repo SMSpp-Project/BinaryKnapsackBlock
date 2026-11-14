@@ -20,6 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Modification of the Block, which the two Solver have no use for, no
   longer reach them
 
+### Fixed
+
+- `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1: the
+  value of a branching fixing is that of the item in the Block, as for any
+  Change, rather than that of the item in the fill, which is the opposite
+  for a complemented item and changes with the signs of the data; under a
+  `BranchAndXSolver` that retains its tree (`intReoptimize`), the state of
+  the fill a branching Change carries is taken only if it is of the current
+  data, the fill starting again out of the fixed items otherwise (an item
+  settled by its signs included), and the child that takes the critical
+  item is no longer left out when local reductions are not allowed; the
+  optimum after a change of the profits, of the weights or of the capacity
+  was wrong
+
 ## [0.6.0] - 2026-11-03
 
 ### Added
