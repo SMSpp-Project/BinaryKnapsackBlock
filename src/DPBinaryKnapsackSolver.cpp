@@ -36,6 +36,10 @@
 
 #include "DPBinaryKnapsackSolver.h"
 
+#include <algorithm>
+#include <iterator>
+#include <ostream>
+
 /*--------------------------------------------------------------------------*/
 /*-------------------------------- MACROS ----------------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -88,6 +92,11 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
  // Process modifications and compute the first item to process (start_item)
  process_outstanding_Modification();
 
+ // a solve with intBoundPrune stores no column of the full table, hence
+ // the next one cannot restart from one
+ if( f_tainted && ( start_item != Inf< int >() ) )
+  start_item = 0;
+
  // check start_item
  if( start_item == Inf< int >() ) {   // INF means everything altready done
   unlock();                           // unlock the mutex and
@@ -114,11 +123,26 @@ int DPBinaryKnapsackSolver::compute( bool changedvars ) {
 
  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
- dynamic_programming( std::floor( C ) );    // solve the integer knapsack
- 
+ f_expanded = f_dominated = f_bounded = 0;
+
+ if( f_bound_prune )  // solve the integer knapsack
+  dynamic_programming_bound( std::floor( C ) , C );
+ else
+  dynamic_programming( std::floor( C ) );
+
+ f_tainted = ( f_bound_prune != 0 );
+
  greedy_algorithm( C );                     // solve the continuous knapsack
 
  obj += P;                        // add residual profit (from preprocessing)
+
+ if( f_log ) {
+  const auto prec = f_log->precision( 17 );
+  *f_log << "DPBinaryKnapsackSolver: states expanded " << f_expanded
+	 << " , dominated " << f_dominated << " , bounded " << f_bounded
+	 << " , value " << get_var_value() << std::endl;
+  f_log->precision( prec );
+  }
  
  // End - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -249,11 +273,15 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
 
   // compute nextlab
   for( Index j = 0 ; j < currlab.size() ; ++j ) {
-   
-   if( currlab[ j ] <= bestlab )        // skip node with label = -inf or
-    continue;                           // with a worse label than bestlab
-   
+
+   if( currlab[ j ] <= bestlab ) {         // skip node with label = -inf or
+    if( currlab[ j ] > -Inf< double >() )  // with a worse label than bestlab
+     ++f_dominated;
+    continue;
+    }
+
    bestlab = currlab[ j ];                       // update bestlab
+   ++f_expanded;
                           
    if( currlab[ j ] > nextlab[ j ] ) {            // horizontal arc 
     pred[ i + 1 ][ j ] = false;                         
@@ -278,6 +306,212 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
  std::swap( lab.back() , currlab );
 
  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/// Dynamic Programming with bound pruning
+
+void DPBinaryKnapsackSolver::dynamic_programming_bound( Index C , double Cd )
+{
+ // the items still to be decided at the first column, i.e., the integer ones
+ // from start_item on and all the continuous ones, with the signs of those
+ // with negative weight and profit changed as in the table (after the
+ // preprocessing both are then positive), by decreasing efficiency
+ struct item
+ {
+  double p;
+  double w;
+  Index i;
+  };
+ std::vector< item > it;
+ it.reserve( f_N );
+ double sump = 0;  // the scale of the profits, for the tolerance
+ for( Index i = 0 ; i < f_N ; ++i ) {
+  if( skip[ i ] || ( v_I[ i ] && ( i < start_item ) ) )
+   continue;
+  double p = v_P[ i ];
+  double w = v_W[ i ];
+  if( ( p < 0 ) && ( w < 0 ) ) {
+   p = -p;
+   w = -w;
+   }
+  it.push_back( { p , w , i } );
+  sump += p;
+  }
+
+ std::sort( it.begin() , it.end() , []( const item & a , const item & b ) {
+  const double ea = a.p / a.w;
+  const double eb = b.p / b.w;
+  return( ( ea > eb ) || ( ( ea == eb ) && ( a.i < b.i ) ) );
+  } );
+
+ // the list of the remaining items, in that order: an integer item leaves it
+ // after its column
+ const Index m = it.size();
+ std::vector< Index > nxt( m + 1 ) , prv( m + 1 );  // m is the sentinel
+ std::vector< Index > where( f_N , m );
+ for( Index k = 0 ; k < m ; ++k ) {
+  nxt[ k ] = k + 1;
+  prv[ k ] = k ? k - 1 : m;
+  where[ it[ k ].i ] = k;
+  }
+ nxt[ m ] = m ? 0 : m;
+ prv[ m ] = m ? m - 1 : m;
+
+ // the prefixes of the list that fit in Cd: Wp[ k ] and Pp[ k ] are the
+ // weight and profit of the first k items, eff[ k ] the efficiency of the
+ // (k + 1)-th (0 if there is none), so that the Dantzig bound with capacity
+ // c is Pp[ k ] + ( c - Wp[ k ] ) eff[ k ] for the largest k with
+ // Wp[ k ] <= c, and Pp[ k ] is the value of a feasible completion
+ std::vector< double > Wp , Pp , eff;
+ Wp.reserve( m + 1 );
+ Pp.reserve( m + 1 );
+ eff.reserve( m + 1 );
+
+ auto prefixes = [ & ]() {
+  Wp.assign( 1 , 0 );
+  Pp.assign( 1 , 0 );
+  eff.clear();
+  for( Index k = nxt[ m ] ; k != m ; k = nxt[ k ] ) {
+   if( Wp.back() + it[ k ].w > Cd ) {
+    eff.push_back( it[ k ].p / it[ k ].w );
+    return;
+    }
+   Wp.push_back( Wp.back() + it[ k ].w );
+   Pp.push_back( Pp.back() + it[ k ].p );
+   eff.push_back( it[ k ].p / it[ k ].w );
+   }
+  eff.push_back( 0 );
+  };
+
+ // the columns are dense vectors of labels, -INF but at the states in the
+ // sorted list of the column, so that a column costs as many operations as
+ // its states (the vectors are allocated, and the first column is read,
+ // once); the columns are not stored for the reoptimization
+ const Index sz =
+   std::max( Index( C + 1 ) , Index( lab[ start_item ].size() ) );
+ std::vector< double > currlab( sz , -Inf< double >() );
+ std::vector< double > nextlab( sz , -Inf< double >() );
+ std::vector< Index > curr , next , diag;
+ for( Index j = 0 ; j < lab[ start_item ].size() ; ++j )
+  if( lab[ start_item ][ j ] > -Inf< double >() ) {
+   currlab[ j ] = lab[ start_item ][ j ];
+   curr.push_back( j );
+   }
+
+ // the incumbent: the greedy completion of the first state (the empty one,
+ // when the table starts from scratch)
+ double z = -Inf< double >();
+ if( ! curr.empty() ) {
+  double c = Cd - curr.front();
+  double g = currlab[ curr.front() ];
+  for( Index k = nxt[ m ] ; ( k != m ) && ( c > 0 ) ; k = nxt[ k ] )
+   if( it[ k ].w <= c ) {
+    c -= it[ k ].w;
+    g += it[ k ].p;
+    }
+   else if( ! v_I[ it[ k ].i ] ) {  // a continuous item takes a fraction
+    g += it[ k ].p * ( c / it[ k ].w );
+    c = 0;
+    }
+  z = g;
+  }
+
+ for( Index i = start_item ; i < f_N ; ++i ) {  // for each item
+
+  if( skip[ i ] || ( ! v_I[ i ] ) )  // skip preprocessed and continuous items
+   continue;
+
+  double p = v_P[ i ];  // profit of the current item
+  int w = v_W[ i ];     // weight of the current item
+
+  if( p < 0 && w < 0 ) {  // if both are negative, change the signs
+   p = -p;
+   w = -w;
+   }
+
+  prefixes();                // the bound of the items from i on
+  Index kb = Wp.size() - 1;  // the break of the largest capacity
+
+  // the states of the column that pass the dominance and the bound
+  double bestlab = -Inf< double >();
+  next.clear();
+  diag.clear();
+  for( auto j : curr ) {
+
+   if( currlab[ j ] <= bestlab ) {  // a lighter state is not worse
+    ++f_dominated;
+    continue;
+    }
+
+   bestlab = currlab[ j ];
+
+   // the capacity decreases with j, hence so does the break
+   const double c = Cd - j;
+   while( Wp[ kb ] > c )
+    --kb;
+
+   // the longest fitting prefix is a feasible completion
+   if( currlab[ j ] + Pp[ kb ] > z )
+    z = currlab[ j ] + Pp[ kb ];
+
+   const double ub = currlab[ j ] + Pp[ kb ] + ( c - Wp[ kb ] ) * eff[ kb ];
+   if( ub < z - 1e-9 * ( 1 + std::abs( z ) + sump ) ) {
+    ++f_bounded;
+    continue;
+    }
+
+   ++f_expanded;
+   next.push_back( j );
+   if( j + w <= C )
+    diag.push_back( j + w );
+   }
+
+  // the next column, by increasing j as in dynamic_programming(), so that
+  // the ties go the same way
+  Index maxj = 0;
+  if( ! next.empty() )
+   maxj = std::max( next.back() , diag.empty() ? 0 : diag.back() );
+  if( pred[ i + 1 ].size() < maxj + 1 )
+   pred[ i + 1 ].resize( maxj + 1 );
+
+  for( auto j : next ) {
+   if( currlab[ j ] > nextlab[ j ] ) {  // horizontal arc
+    pred[ i + 1 ][ j ] = false;
+    nextlab[ j ] = currlab[ j ];
+    }
+
+   if( j + w > C )  // check capacity limit
+    continue;
+
+   if( currlab[ j ] + p > nextlab[ j + w ] ) {  // diagonal arc
+    pred[ i + 1 ][ j + w ] = true;
+    nextlab[ j + w ] = currlab[ j ] + p;
+    }
+   }
+
+  // the states of the next column, merging the two sorted lists
+  for( auto j : curr )  // clear the column
+   currlab[ j ] = -Inf< double >();
+  curr.clear();
+  std::merge( next.begin() , next.end() , diag.begin() , diag.end() ,
+	      std::back_inserter( curr ) );
+  curr.erase( std::unique( curr.begin() , curr.end() ) , curr.end() );
+
+  std::swap( currlab , nextlab );
+
+  // the item is decided: out of the list
+  if( const Index k = where[ i ]; k < m ) {
+   nxt[ prv[ k ] ] = nxt[ k ];
+   prv[ nxt[ k ] ] = prv[ k ];
+   }
+  }
+
+ // the last column, up to its heaviest state, is what greedy_algorithm()
+ // reads, as from dynamic_programming()
+ const Index last = curr.empty() ? 0 : curr.back();
+ lab.back().assign( currlab.begin() , currlab.begin() + last + 1 );
+
+ }  // end( DPBinaryKnapsackSolver::dynamic_programming_bound )
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /// Greedy algorithm
@@ -472,6 +706,19 @@ void DPBinaryKnapsackSolver::set_par( idx_type par , double value ) {
   // restart from 0 in the next call of compute()
   start_item = 0;  
   
+  return;
+  }
+
+ Solver::set_par( par , value );
+ }
+
+/*--------------------------------------------------------------------------*/
+
+void DPBinaryKnapsackSolver::set_par( idx_type par , int value )
+{
+
+ if( par == intBoundPrune ) {
+  f_bound_prune = value;
   return;
   }
 

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `DPBinaryKnapsackSolver` has the parameter `intBoundPrune` (default 0, the
+  full table as before): with 1 a state of the table is not expanded when
+  its label plus the Dantzig bound of the items still to be decided is
+  below the best solution found so far (the greedy one first, then those
+  that the bound itself finds), and each column costs as many operations as
+  its states; the optimal value and the solution are those of the full
+  table, and a solve restarts from the first item whatever `dblReopt` says.
+  On the Pisinger classes 1-5 of 50 to 1000 items the states expanded are
+  16 to 630 times fewer, on the subset-sum class 6 about 2 times
+- `DPBinaryKnapsackSolver` writes in its log, if it has one, the states
+  that each solve expands and those removed by the dominance and by the
+  bound
 - the tester checks what each reader of the Modification gets: a Solver
   that reads the physical ones only those, one that reads the abstract ones
   only those, and with no reader of a kind that kind is not issued

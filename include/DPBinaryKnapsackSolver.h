@@ -93,6 +93,11 @@ public:
   dblLastDPBKSlvPar
   };
 
+ enum int_par_type_DPBKSlv {
+  intBoundPrune = intLastAlgPar ,  ///< pruning of the states by bounds
+  intLastDPBKSlvPar
+  };
+
  /// tolerance for integrality property of weights- - - - - - - - - - - - - -
 
  static constexpr double WeightIntegrality = 1e-06;
@@ -108,9 +113,11 @@ public:
 /*--------------------------------------------------------------------------*/
  /// constructor
 
- DPBinaryKnapsackSolver() : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) ,
-                            besth( 0 ) , obj( - Inf< double >() ) ,
-                            start_item( 0 ) , reopt( 0 ) , step( 1 ) {}
+ DPBinaryKnapsackSolver()
+     : Solver() , f_N( 0 ) , f_C( 0 ) , f_sense( true ) , besth( 0 ) ,
+       obj( -Inf< double >() ) , start_item( 0 ) , reopt( 0 ) , step( 1 ) ,
+       f_bound_prune( 0 ) , f_tainted( false ) , f_expanded( 0 ) ,
+       f_dominated( 0 ) , f_bounded( 0 ) { }
 
 /*--------------------------------------------------------------------------*/
  /// destructor
@@ -433,6 +440,83 @@ public:
   return( Solver::dbl_par_str2idx( name ) );
   }
 
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+ /// set the "int" parameters of DPBinaryKnapsackSolver
+ /** Set the "int" parameters of DPBinaryKnapsackSolver. The only parameter
+ * currently present is:
+ *
+ * - intBoundPrune [0]: if nonzero, a state \f$ ( i , j ) \f$ of the table,
+ *   i.e., the best profit \f$ \lambda_{i,j} \f$ of a subset of the first
+ *   \f$ i \f$ (integer) items of weight \f$ j \f$, is not expanded when
+ *   \f[
+ *     \lambda_{i,j} + U_i( C - j ) < z - \epsilon \, ,
+ *   \f]
+ *   where \f$ U_i( c ) \f$ is the Dantzig bound of the items that are still
+ *   to be decided at \f$ i \f$, i.e., the integer items from \f$ i \f$ on
+ *   and all the continuous ones, with capacity \f$ c \f$ (the value of the
+ *   continuous relaxation of the knapsack of those items), \f$ z \f$ is the
+ *   value of the best feasible solution found so far, and \f$ \epsilon =
+ *   10^{-9} ( 1 + | z | + \sum_k | p_k | ) \f$ covers the rounding.
+ *   \f$ U_i \f$ is admissible, since any completion of the state is a
+ *   feasible solution of that relaxation, and therefore a pruned state is
+ *   on no optimal path: the optimal value, and the solution, are those of
+ *   intBoundPrune = 0 [see dynamic_programming_bound()]. The first
+ *   \f$ z \f$ is the greedy solution of the remaining items from the first
+ *   state; then, while the states of a column are scanned for the bound,
+ *   \f$ z \f$ is raised to \f$ \lambda_{i,j} \f$ plus the profit of the
+ *   longest prefix of the items sorted by efficiency that fits in
+ *   \f$ C - j \f$, a feasible completion that the bound computes anyway.
+ *   The columns are not stored (a pruned column is not one of the full
+ *   table), and therefore a solve after one with intBoundPrune restarts
+ *   from the first item whatever dblReopt says. */
+
+ void set_par( idx_type par , int value ) override;
+
+ using Solver::set_par;  // keep the other set_par() overloads visible
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ idx_type get_num_int_par( void ) const override {
+  return( idx_type( intLastDPBKSlvPar ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ int get_int_par( const idx_type par ) const override {
+  if( par == intBoundPrune )
+   return( f_bound_prune );
+
+  return( Solver::get_int_par( par ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ int get_dflt_int_par( const idx_type par ) const override {
+  if( par == intBoundPrune )
+   return( 0 );
+
+  return( Solver::get_dflt_int_par( par ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ idx_type int_par_str2idx( const std::string & name ) const override {
+  if( name == "intBoundPrune" )
+   return( intBoundPrune );
+
+  return( Solver::int_par_str2idx( name ) );
+  }
+
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+ const std::string & int_par_idx2str( const idx_type idx ) const override {
+  static const std::string name = "intBoundPrune";
+  if( idx == intBoundPrune )
+   return( name );
+
+  return( Solver::int_par_idx2str( idx ) );
+  }
+
 /** @} ---------------------------------------------------------------------*/
 /*------------- METHODS FOR ADDING / REMOVING / CHANGING DATA --------------*/
 /*--------------------------------------------------------------------------*/
@@ -465,6 +549,37 @@ protected:
  /// Dynamic Programming to solve the integer knapsack
 
  virtual void dynamic_programming( Index C );
+
+ /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+ /// the Dynamic Programming of dynamic_programming() with bound pruning
+ /** The same table as dynamic_programming(), column by column and with the
+  * same dominance between the states of a column, save that a state that
+  * passes the dominance is not expanded if its label plus the Dantzig bound
+  * of the remaining items is below the incumbent [see intBoundPrune].
+  *
+  * The result is that of dynamic_programming(). Let \f$ z^* \f$ be the
+  * optimal value; a state on an optimal path has
+  * \f$ \lambda_{i,j} + U_i( C - j ) \geq z^* \geq z \f$, hence it is
+  * never pruned, and so is every state that reaches a node of an optimal
+  * path with the label of that node, as it is on an optimal path itself.
+  * Therefore the labels of the nodes of the optimal paths, and the arcs
+  * that the ties choose at them, are those of the full table. A state that
+  * the dominance removes in the full table and not here (because the state
+  * that dominates it has been pruned) has a smaller label and a smaller
+  * residual capacity than a pruned one, hence its bound is smaller and it
+  * is pruned too, and the states that are expanded are a subset of those of
+  * the full table. Each column keeps the sorted list of its states, and it
+  * is scanned by increasing \f$ j \f$, i.e., decreasing capacity \f$ c = C
+  * - j \f$, over the remaining items sorted by decreasing efficiency, so
+  * that the break item of \f$ U_i( c ) \f$ only moves backwards: a column
+  * costs \f$ O( n + a_i ) \f$, where \f$ a_i \f$ is its number of states,
+  * rather than the \f$ O( C ) \f$ of dynamic_programming(), plus the
+  * \f$ O( n \log n ) \f$ sorting and the \f$ O( C ) \f$ allocation done
+  * once. \p C is the integer residual
+  * capacity, as in dynamic_programming(), and \p Cd the residual capacity
+  * itself, which the continuous items can fill. */
+
+ void dynamic_programming_bound( Index C , double Cd );
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
  /// reconstructs the optimal solution into v_x out of the DP table
@@ -517,8 +632,16 @@ protected:
 
 /* algorithmic parameters - - - - - - - - - - - - - - - - - - - - - - - - - */
 
- double reopt;                          ///< reoptimization parameter
- Index step;                            ///< step for reoptimization
+ double reopt;       ///< reoptimization parameter
+ Index step;         ///< step for reoptimization
+ int f_bound_prune;  ///< the intBoundPrune parameter
+ bool f_tainted;     ///< the last solve has pruned
+
+ /* statistics of the last solve - - - - - - - - - - - - - - - - - - - - - - */
+
+ unsigned long f_expanded;   ///< states expanded by the last compute()
+ unsigned long f_dominated;  ///< states removed by the dominance
+ unsigned long f_bounded;    ///< states removed by the bound
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PRIVATE PART OF THE CLASS ------------------------*/
