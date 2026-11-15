@@ -128,14 +128,24 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
  // throughout this subtree [see the branch() doc]; the pegged items are split
  // by the value they are stuck at
  Block::Subset peg0 , peg1;
- // the incumbent is read from the "DoubleProperties" universe of the
- // GlobalInformation, if any [see GlobalInformation.h]
+ // the incumbent is the one of the GlobalInformation, if any, not finite
+ // when there is none yet; the pegging depends on it, hence it is not done
+ // when local tightenings are not allowed [see GlobalInformation.h]
  bool hasIncumbent = false;
  double cutoff = 0;
- if( f_global_information )
-  if( auto universe = f_global_information->get_from_Universe< double >(
-							"DoubleProperties" ) )
-   hasIncumbent = universe->read( "incumbent" , cutoff );
+ if( f_global_information ) {
+  bool allowed = true;
+  if( auto flags = f_global_information->get_from_Universe<
+                    std::atomic< bool > >(
+                     GlobalInformation::str_AtomicFlags ) )
+   flags->read( GlobalInformation::str_LocalFixingAllowed , allowed );
+  if( allowed )
+   if( auto scalars = f_global_information->get_from_Universe<
+                       std::atomic< double > >(
+                        GlobalInformation::str_AtomicScalars ) )
+    hasIncumbent = scalars->read( GlobalInformation::str_Incumbent ,
+                                  cutoff ) && std::isfinite( cutoff );
+  }
  if( hasIncumbent && ( f_fi.orig >= 0 ) ) {
   // the incumbent in the normalized (maximization) sense; the conservative
   // guard wards off pegging the optimum away by a floating-point whisker

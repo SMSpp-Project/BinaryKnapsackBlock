@@ -308,8 +308,9 @@ public:
  /** The two children fix the critical item to 0 and to 1.
   *
   * With intIncremental == 0, each child also carries, when an incumbent is
-  * available (in the "DoubleProperties" universe of the GlobalInformation
-  * [see GlobalInformation.h]), the reduced-cost (Martello-Toth) pegging
+  * available (a finite GlobalInformation::str_Incumbent) and local
+  * tightenings are allowed [see GlobalInformation::str_LocalFixingAllowed],
+  * the reduced-cost (Martello-Toth) pegging
   * valid in its subtree: with \f$ \rho \f$ the efficiency of the critical
   * item and \f$ U \f$ the relaxation value, flipping a free integer item
   * \f$ j \f$ away from its greedy value \f$ \bar{x}_j \f$ cannot yield more

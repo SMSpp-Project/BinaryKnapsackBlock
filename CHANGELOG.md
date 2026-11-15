@@ -41,6 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   optimum after a change of the profits, of the weights or of the capacity
   was wrong
 
+- the reduced-cost (Martello-Toth) pegging of
+  `GreedyRelaxationBinaryKnapsackSolver::branch()` reads the incumbent
+  where `BranchAndXSolver` writes it, `GlobalInformation::str_Incumbent`,
+  rather than in a collection that nobody writes, so that it is done under
+  a `BranchAndXSolver`, and only when local tightenings are allowed
+  (`GlobalInformation::str_LocalFixingAllowed`), since a pegging depends on
+  the incumbent and on the data
+
 ## [0.6.0] - 2026-11-03
 
 ### Added
