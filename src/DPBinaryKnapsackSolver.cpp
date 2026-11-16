@@ -226,7 +226,8 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
   if( i % step == 0  )          // reoptimization: save currlab in lab[ i ]
    lab[ i ] = currlab;             
 
-  if( skip[ i ] || ( ! v_I[ i ] ) ) // skip preprocessed and continuous variables
+  if( skip[ i ] || ( ! v_I[ i ] ) ) // skip preprocessed and continuous
+                                    // variables
    continue;                               
 
   double p = v_P[ i ];          // profit of the current item
@@ -260,7 +261,7 @@ void DPBinaryKnapsackSolver::dynamic_programming( Index C ) {
     nextlab[ j ] = currlab[ j ];
     }
 
-   if( j + w > C )                                // check capacity limit                               
+   if( j + w > C )                                // check capacity limit
     continue;                                    
    
    if( currlab[ j ] + p > nextlab[ j + w ] ) {    // diagonal arc
@@ -329,7 +330,7 @@ void DPBinaryKnapsackSolver::greedy_algorithm( double C ) {
    double p = v_P[ idxCont[ j ] ];    // profit of the current item    
    int w = v_W[ idxCont[ j ] ];       // weight of the current item    
    if( p < 0 && w < 0 ) {             // if both are negative  
-    p = -p;                           // change the signs                         
+    p = -p;                           // change the signs
     w = -w;                         
     }
  
@@ -409,7 +410,8 @@ void DPBinaryKnapsackSolver::reconstruct_x( const std::string & method ) {
  
  for( int i = f_N - 1 ; i >= 0 ; i-- ) {
   
-  if( skip[ i ] || ( ! v_I[ i ] ) )  // skip preprocessed and continuous variables
+  if( skip[ i ] || ( ! v_I[ i ] ) )  // skip preprocessed and continuous
+                                     // variables
    continue;
 
   int w = v_W[ i ];                    // weight of the current item
@@ -532,7 +534,8 @@ void DPBinaryKnapsackSolver::load( void ) {
  // (try to) lock the BinaryKnapsackBlock
  bool owned = BKB->is_owned_by( f_id );
  if( ( ! owned ) && ( ! BKB->read_lock() ) )
-  throw( std::runtime_error( "DPBinaryKnapsackSolver::load: unable to lock the Block" ) );
+  throw( std::runtime_error(
+    "DPBinaryKnapsackSolver::load: unable to lock the Block" ) );
    
  // load Binary Knapsack instance - - - - - - - - - - - - - - - - - - - - - 
  
@@ -636,7 +639,8 @@ void DPBinaryKnapsackSolver::process_outstanding_Modification( void ) {
  while( mod != v_mod_tmp.end() ) {
   
   // BinaryKnapsackBlockMod - - - - - - - - - - - - - - - - - - - - - - - - -
-  if( const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod->get() ) ) {
+  if( const auto tmod =
+      dynamic_cast< BinaryKnapsackBlockMod * >( mod->get() ) ) {
    switch( tmod->type() ) {
     // Change Capacity- - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // If the new capacity is smaller than the previous one, restart the DP

@@ -219,8 +219,8 @@ class BinaryKnapsackBlock : public Block {
   *
   *   the index column is ignored and all items are assumed integral.
   *
-  * Like load( memory ), if there is any Solver attached to this 
-  * BinaryKnapsackBlock then a NBModification (the "nuclear option") is 
+  * Like load( memory ), if there is any Solver attached to this
+  * BinaryKnapsackBlock then a NBModification (the "nuclear option") is
   * issued. */
 
  void load( std::istream & input , char frmt = 0 ) override;
@@ -596,7 +596,7 @@ class BinaryKnapsackBlock : public Block {
   * - r3bc == nullptr: the copy (a BinaryKnapsackBlock identical to this)
   */
 
- Block * get_R3_Block( Configuration *r3bc = nullptr , Block * base = nullptr , 
+ Block * get_R3_Block( Configuration *r3bc = nullptr , Block * base = nullptr ,
                        Block * father = nullptr ) override;
 
 /*--------------------------------------------------------------------------*/

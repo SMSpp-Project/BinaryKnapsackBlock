@@ -66,7 +66,7 @@ namespace SMSpp_di_unipi_it
  *
  * There are no restrictions on the weights and profits sign (both positive 
  * and negative values are allowed), and the objective sense of the 
- * problem can be either Min or Max.                                        */                       
+ * problem can be either Min or Max.                                        */
 
 
 class DPBinaryKnapsackSolver : public Solver {
@@ -146,7 +146,7 @@ public:
 */ 
 /*--------------------------------------------------------------------------*/
 /*--------------- METHOD FOR SOLVING THE INTEGER KNAPSACK ------------------*/
-/*--------------------------------------------------------------------------*/    
+/*--------------------------------------------------------------------------*/
 /*
 * The implemented algorithm processes one item at a time and iteratevily  
 * constructs a graph G with the solutions of each sub-problem.
@@ -242,7 +242,7 @@ public:
 *       - it has positive weight and negative profit -> set v_x[ i ] = 0
 *       - it has negative weight and positive profit -> set v_x[ i ] = 1
 *       - its weight exceeds the "residual" capacity, i.e. the capacity
-*         obtained subtrancting the weight of the items that are fixed to 1           
+*         obtained subtrancting the weight of the items that are fixed to 1
 *
 *   These conditions are checked in the preprocessing method()
 *
@@ -444,6 +444,16 @@ public:
  * the list of modification must be cleared. */
  
  virtual void add_Modification( sp_Mod &mod ) override;
+
+/*--------------------------------------------------------------------------*/
+ /// the kinds of Modification read: the physical ones
+ /** The Solver works on the data of the BinaryKnapsackBlock, which the
+  * physical Modification describe, and has no use for the abstract ones
+  * [see Solver::concerned_by()]. */
+
+ [[nodiscard]] Modification::ModConcern concerned_by( void ) const override {
+  return( Modification::eModPhys );
+  }
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/

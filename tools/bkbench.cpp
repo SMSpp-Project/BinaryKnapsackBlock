@@ -21,7 +21,8 @@
  * so any Solver that reads the BinaryKnapsackBlock physical representation
  * can be benchmarked.
  * output: one "SLOW ..." line per instance above the threshold, then a final
- *         "<class>: n=<#> ok=<#> mism=<#> tot=<s> max=<s> (<slowest>)" summary.
+ *         "<class>: n=<#> ok=<#> mism=<#> tot=<s> max=<s> (<slowest>)"
+ *         summary.
  *
  * \author Donato Meoli
  */

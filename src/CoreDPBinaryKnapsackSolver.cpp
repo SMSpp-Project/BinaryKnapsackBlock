@@ -5,8 +5,8 @@
  * Implementation of the *concrete* class CoreDPBinaryKnapsackSolver.
  *
  * Break-item core enumeration of the 0-1 knapsack with dominance (Pareto
- * frontier) and an LP upper bound (per-state pruning + global early-exit), i.e.
- * the MINKNAP scheme: only the deviations from the break solution are
+ * frontier) and an LP upper bound (per-state pruning + global early-exit),
+ * i.e. the MINKNAP scheme: only the deviations from the break solution are
  * enumerated, keeping a small state set in memory. On top of it: a strong
  * initial heuristic pool seeding the incumbent, the Martello-Toth U2 ceiling,
  * the surrogate / cardinality relaxation - both as a fractional bound and
@@ -947,7 +947,8 @@ double CoreDPBinaryKnapsackSolver::core_enumerate_engine(
   if( reg[ j ].d > 0 )
    regIdx.push_back( int( j ) );
  std::sort( regIdx.begin() , regIdx.end() , [ & ]( int a , int b ) {
-  return( reg[ a ].p * double( reg[ b ].w ) > reg[ b ].p * double( reg[ a ].w ) );
+  return( reg[ a ].p * double( reg[ b ].w ) >
+	  reg[ b ].p * double( reg[ a ].w ) );
   } );
  const int mA = int( regIdx.size() );
  std::vector< long > w( mA ) , d( mA );
@@ -1035,7 +1036,8 @@ double CoreDPBinaryKnapsackSolver::core_enumerate_engine(
   ++bE;
   }
  const int bA = ( bE < mE ) ? uitem( bE ) : mA;
- std::vector< long > cntb( mA , 0 );    // per-item copies in the break solution
+ std::vector< long > cntb( mA , 0 );    // per-item copies in the break
+					// solution
  for( int u = 0 ; u < bE ; ++u )
   ++cntb[ uitem( u ) ];
 
@@ -1065,8 +1067,8 @@ double CoreDPBinaryKnapsackSolver::core_enumerate_engine(
  // heuristic selection is folded into per-item copy counts
  std::vector< long > best_in( mA , 0 );
  std::vector< char > selE( mE , 0 );
- const double z0 = initial_heuristic( wE , pE , mE , bE , wsumb , psumb , Ceff ,
-                                      selE );
+ const double z0 = initial_heuristic( wE , pE , mE , bE , wsumb , psumb ,
+				      Ceff , selE );
  for( int u = 0 ; u < mE ; ++u )
   if( selE[ u ] )
    ++best_in[ uitem( u ) ];
@@ -1351,7 +1353,8 @@ double CoreDPBinaryKnapsackSolver::core_enumerate_engine(
   // merges instead of one per copy. As soon as one batch yields no new state
   // none of the following can either (each translate of the frontier is then
   // a translate of an already-merged one), so the item is closed early
-  for( long mdone = 0 , mult = 1 ; mdone < avail ; mdone += mult , mult *= 2 ) {
+  for( long mdone = 0 , mult = 1 ; mdone < avail ;
+       mdone += mult , mult *= 2 ) {
    if( mult > avail - mdone )
     mult = avail - mdone;
    const bool lastB = ( mdone + mult >= avail );
@@ -2001,12 +2004,12 @@ double CoreDPBinaryKnapsackSolver::surrogate_card_bound(
 {
  // tightest surrogate fractional bound for the cardinality value `card`,
  // minimised over the integer multiplier s in [ slo , shi ]: the surrogate
- // problem is max sum p_i x_i s.t. sum (w_i + s) x_i <= C + s*card, x in [0,1];
- // ANY s in the valid sign range gives a valid upper bound, so the min is too.
- // combo.c surbin's gradient binary search is used to locate the minimiser;
- // with bit 0 of intSurrAdapt it first probes the end of the range next to
- // s = 0, where the surrogate is the plain continuous relaxation: when the
- // gradient points to that end the search is over in one or two steps
+ // problem is max sum p_i x_i s.t. sum (w_i + s) x_i <= C + s*card, x in
+ // [0,1]; ANY s in the valid sign range gives a valid upper bound, so the min
+ // is too. combo.c surbin's gradient binary search is used to locate the
+ // minimiser; with bit 0 of intSurrAdapt it first probes the end of the range
+ // next to s = 0, where the surrogate is the plain continuous relaxation: when
+ // the gradient points to that end the search is over in one or two steps
  bool probe = ( f_surr_adapt & 1 ) && ( ( slo == 0 ) || ( shi == 0 ) );
  double best = Inf< double >();
  long bestsur = 0;
@@ -2251,10 +2254,10 @@ double CoreDPBinaryKnapsackSolver::solve_with_continuous(
 {
  // With continuous variables the integer part can no longer be optimised in
  // isolation: a lighter integer solution leaves more room for the (fractional)
- // continuous fill. Since the dominance relation is unchanged, we enumerate the
- // full feasible integer Pareto frontier (dominance only, no Dantzig pruning)
- // and pick the (weight, profit) state maximising profit + g( C - weight ),
- // where g is the fractional knapsack value of the continuous items.
+ // continuous fill. Since the dominance relation is unchanged, we enumerate
+ // the full feasible integer Pareto frontier (dominance only, no Dantzig
+ // pruning) and pick the (weight, profit) state maximising profit + g( C -
+ // weight ), where g is the fractional knapsack value of the continuous items.
 
  const int m = int( v_w.size() );
  in.assign( m , 0 );

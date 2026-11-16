@@ -37,6 +37,7 @@
 /*--------------------------------------------------------------------------*/
 
 #include <algorithm>
+#include <atomic>
 #include <numeric>
 
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
@@ -283,8 +284,9 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_initialize( void )
  v_sorted.resize( f_N );
  v_sorted_pos.resize( f_N );
  std::iota( v_sorted.begin() , v_sorted.end() , 0 );
- std::sort( v_sorted.begin() , v_sorted.end() ,
-	    [ & ]( Index a , Index b ) { return( ratio( a ) > ratio( b ) ); } );
+ std::sort( v_sorted.begin() , v_sorted.end() , [ & ]( Index a , Index b ) {
+  return( ratio( a ) > ratio( b ) );
+  } );
  for( Index i = 0 ; i < f_N ; ++i )
   v_sorted_pos[ v_sorted[ i ] ] = i;
 
@@ -294,6 +296,7 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_initialize( void )
  f_free_cap = f_Cap;
  v_ix.assign( f_N , 0 );
  v_skip.assign( f_N , false );
+ v_settled.assign( f_N , 0 );
 
  for( Index i = 0 ; i < f_N ; ++i ) {
   if( v_fxd[ i ] == 1 ) {         // fixed to 0
@@ -313,11 +316,13 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_initialize( void )
   if( ( v_iw[ i ] >= 0 ) && ( v_ip[ i ] <= 0 ) ) {  // never convenient
    v_ix[ i ] = 0;
    v_skip[ i ] = true;
+   v_settled[ i ] = 1;
    }
   else
    if( ( v_iw[ i ] <= 0 ) && ( v_ip[ i ] >= 0 ) ) {  // always convenient
     v_ix[ i ] = 1;
     v_skip[ i ] = true;
+    v_settled[ i ] = 2;
     f_free_cap -= v_iw[ i ];
     f_iP += v_ip[ i ];
     }
@@ -332,7 +337,9 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_initialize( void )
  // continuous relaxation may take a fraction of it, as the critical item
 
  f_iC = f_free_cap;
+ f_fix_P = f_iP;
  f_x_valid = false;
+ ++f_inc_epoch;          // the states carried by the Changes are older
 
  }  // end( GreedyRelaxationBinaryKnapsackSolver::inc_initialize )
 
@@ -376,7 +383,7 @@ int GreedyRelaxationBinaryKnapsackSolver::inc_compute( void )
   f_ci = f_N ? v_sorted.back() : 0;
 
  obj = f_iP + ( ( f_ci_val == 0 ) || ( f_ci_val == 1 ) ? 0
-	                                                : v_ip[ f_ci ] * f_ci_val );
+		: v_ip[ f_ci ] * f_ci_val );
 
  // the critical item, as fractional_relaxation() describes it
  if( f_to_end || ( ! f_N ) )
@@ -394,7 +401,8 @@ int GreedyRelaxationBinaryKnapsackSolver::inc_compute( void )
 /*--------------------------------------------------------------------------*/
 
 Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
-				  BinaryKnapsackBlockChange * chg , bool doUndo )
+				  BinaryKnapsackBlockChange * chg ,
+				  bool doUndo )
 {
  // the fixings apply to the greedy fill of the current data
  if( update_instance() || ( ! f_inc_valid ) ) {
@@ -423,16 +431,24 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
 
  std::vector< double > data = sbst ? sbst->data() : rngd->data();
 
- // the (fixing) Change of a branching carries in its last three positions
+ // the (fixing) Change of a branching carries in its last four positions
  // the state of the child [see branch()], and its (unfixing) undo that of
  // the parent: the position from which compute() resumes, the residual
- // capacity and the profit; the whole state is set, so that the Change can
- // be applied after any other Change, not only after the compute() of the
- // parent (say, by a worker re-applying the path to a node)
- const bool stated = ( items.size() + 3 == data.size() );
- const bool branching = stated && ( type == BinaryKnapsackBlockChange::eFixX );
- const bool restore = stated && ( type == BinaryKnapsackBlockChange::eUnfixX );
- std::vector< double > parent = { double( f_ssi ) , f_iC , f_iP };
+ // capacity and the profit, and the epoch of the data they were computed
+ // on; the whole state is set, so that the Change can be applied after any
+ // other Change, not only after the compute() of the parent (say, by a
+ // worker re-applying the path to a node), but only if it is of the current
+ // data: a state of before a Modification is not, and the fill is then
+ // started again from the first item, out of the fixed items alone, as it
+ // is after any Change that does not carry a current state
+ const bool stated = ( items.size() + 4 == data.size() );
+ const bool current = stated && ( data.back() == double( f_inc_epoch ) );
+ const bool branching = current &&
+                        ( type == BinaryKnapsackBlockChange::eFixX );
+ const bool restore = current &&
+                      ( type == BinaryKnapsackBlockChange::eUnfixX );
+ std::vector< double > parent = { double( f_ssi ) , f_iC , f_iP ,
+                                  double( f_inc_epoch ) };
  std::vector< double > state;
  if( branching || restore )
   state.assign( data.begin() + items.size() , data.end() );
@@ -445,14 +461,14 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
   }
 
  // the undo Change, which carries the state of the parent if this is a
- // branching one, so that undoing it brings the parent back
+ // fixing, so that undoing it brings the parent back
  Change * undo = nullptr;
  if( doUndo ) {
   const auto utype = ( type == BinaryKnapsackBlockChange::eFixX )
                      ? BinaryKnapsackBlockChange::eUnfixX
                      : BinaryKnapsackBlockChange::eFixX;
   std::vector< double > udata( data );
-  if( branching )
+  if( type == BinaryKnapsackBlockChange::eFixX )
    udata.insert( udata.end() , parent.begin() , parent.end() );
   if( sbst )
    undo = new BinaryKnapsackBlockSbstChange( utype , std::move( udata ) ,
@@ -473,6 +489,12 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
   f_iC = state[ 1 ];
   f_iP = state[ 2 ];
   }
+ else
+  if( ! branching ) {    // no state of the current data: fill again
+   f_ssi = 0;
+   f_iC = f_free_cap;
+   f_iP = f_fix_P;
+   }
 
  return( undo );
 
@@ -483,17 +505,33 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
 std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
 								       void )
 {
- // the data of each child are the value the critical item is fixed to, the
- // position from which compute() resumes, the residual capacity after the
- // fixing and the profit of the child, the last three being what apply()
- // takes as the state of the child
+ // the data of each child are the value the critical item is fixed to (in
+ // the space of the Block, which for a complemented item is the opposite of
+ // that of the fill), the position from which compute() resumes, the
+ // residual capacity after the fixing, the profit of the child and the
+ // epoch of the data, the last four being what apply() takes as the state
+ // of the child
+ const double epoch = double( f_inc_epoch );
+ const double take = v_icomp[ f_ci ] ? 0.0 : 1.0;  // the item in the fill
+ const double leave = 1.0 - take;                   // the item out of it
 
- if( f_free_cap - v_iw[ f_ci ] < 0 ) {  // only the child at 0
+ // leaving out the child that takes the critical item, empty under the
+ // current data, is a reduction valid for these data only: it is not done
+ // when the tree is retained across changes of the data [see
+ // GlobalInformation::str_LocalFixingAllowed]
+ bool reduce = true;
+ if( f_global_information )
+  if( auto flags = f_global_information->get_from_Universe<
+                    std::atomic< bool > >(
+                     GlobalInformation::str_AtomicFlags ) )
+   flags->read( GlobalInformation::str_LocalFixingAllowed , reduce );
+
+ if( reduce && ( f_free_cap - v_iw[ f_ci ] < 0 ) ) {  // only the one out
   std::vector< Change * > branches( 1 );
   branches[ 0 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ 0.0 , double( f_ssi ) , f_iC ,
-						  f_iP } ,
+			   std::vector< double >{ leave , double( f_ssi ) ,
+						  f_iC , f_iP , epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
   return( branches );
   }
@@ -501,14 +539,15 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
  std::vector< Change * > branches( 2 );
  branches[ 0 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ 1.0 , double( f_ssi ) ,
+			   std::vector< double >{ take , double( f_ssi ) ,
 						  f_iC - v_iw[ f_ci ] ,
-						  f_iP + v_ip[ f_ci ] } ,
+						  f_iP + v_ip[ f_ci ] ,
+						  epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
  branches[ 1 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ 0.0 , double( f_ssi ) , f_iC ,
-						  f_iP } ,
+			   std::vector< double >{ leave , double( f_ssi ) ,
+						  f_iC , f_iP , epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
  return( branches );
 
@@ -517,10 +556,21 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
 /*--------------------------------------------------------------------------*/
 
 void GreedyRelaxationBinaryKnapsackSolver::inc_unfix_item( Index i ,
-							   double value )
+							   double x )
 {
+ const double value = v_icomp[ i ] ? 1 - x : x;  // in the space of the fill
  v_skip[ i ] = false;
  f_free_cap += value * v_iw[ i ];
+ f_fix_P -= value * v_ip[ i ];
+ // an item settled by its signs goes back where they put it
+ if( v_settled[ i ] ) {
+  v_skip[ i ] = true;
+  v_ix[ i ] = v_settled[ i ] == 2 ? 1 : 0;
+  if( v_settled[ i ] == 2 ) {
+   f_free_cap -= v_iw[ i ];
+   f_fix_P += v_ip[ i ];
+   }
+  }
  f_ssi = std::min( f_ssi , v_sorted_pos[ i ] );
 
  }  // end( GreedyRelaxationBinaryKnapsackSolver::inc_unfix_item )
@@ -528,15 +578,23 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_unfix_item( Index i ,
 /*--------------------------------------------------------------------------*/
 
 void GreedyRelaxationBinaryKnapsackSolver::inc_fix_item( Index i ,
-							 double value )
+							 double x )
 {
- if( ( value != 0 ) && ( value != 1 ) )
+ if( ( x != 0 ) && ( x != 1 ) )
   throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
 				"inc_fix_item: the value of a fixing must "
 				"be 0 or 1" ) );
+ const double value = v_icomp[ i ] ? 1 - x : x;  // in the space of the fill
 
- v_ix[ i ] = v_icomp[ i ] ? 1 - value : value;
+ // an item settled by its signs (which a Change of a tree retained across
+ // a Modification may fix) leaves where they put it first
+ if( v_skip[ i ] && ( v_settled[ i ] == 2 ) ) {
+  f_free_cap += v_iw[ i ];
+  f_fix_P -= v_ip[ i ];
+  }
+ v_ix[ i ] = x;
  f_free_cap -= value * v_iw[ i ];
+ f_fix_P += value * v_ip[ i ];
  v_skip[ i ] = true;
  f_ci = i;
  const Index pos = v_sorted_pos[ i ];

@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-16
+
+### Added
+
+- the tester checks what each reader of the Modification gets: a Solver
+  that reads the physical ones only those, one that reads the abstract ones
+  only those, and with no reader of a kind that kind is not issued
+
+### Changed
+
+- `BinaryKnapsackSolver::concerned_by()` and
+  `DPBinaryKnapsackSolver::concerned_by()` are `eModPhys`: the abstract
+  Modification of the Block, which the two Solver have no use for, no
+  longer reach them
+
+### Fixed
+
+- `bk2nc4` uses `smspp_terminate()` of the core, with which it aborts with a
+  message when `std::terminate()` is called with no exception, e.g., by the
+  destructor of a `std::thread` that can still be joined, where rethrowing
+  the null exception crashed
+
+- the installed module `smspp.binaryknapsackblock` could not be imported,
+  since its package gave the interface of the module the target of the
+  library by its name in the build tree, which an installed package does not
+  have
+
+- `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1: the
+  value of a branching fixing is that of the item in the Block, as for any
+  Change, rather than that of the item in the fill, which is the opposite
+  for a complemented item and changes with the signs of the data; under a
+  `BranchAndXSolver` that retains its tree (`intReoptimize`), the state of
+  the fill a branching Change carries is taken only if it is of the current
+  data, the fill starting again out of the fixed items otherwise (an item
+  settled by its signs included), and the child that takes the critical
+  item is no longer left out when local reductions are not allowed; the
+  optimum after a change of the profits, of the weights or of the capacity
+  was wrong
+
 ## [0.6.0] - 2026-11-03
 
 ### Added
@@ -410,7 +449,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First test release.
 
-[Unreleased]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.6.0...develop
+[Unreleased]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.7.0...develop
+[0.7.0]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.6.0...0.7.0
 [0.6.0]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.5.0...0.6.0
 [0.5.0]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.4.0...0.5.0
 [0.4.0]: https://gitlab.com/smspp/binaryknapsackblock/-/compare/0.3.2...0.4.0

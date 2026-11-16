@@ -319,12 +319,17 @@ public:
   * the fixing of the critical item in a GroupChange.
   *
   * With intIncremental == 1, the data of each child carry, in their last
-  * three positions, the state of the greedy fill of the child (the position
-  * from which compute() resumes, the residual capacity and the profit), so
-  * that apply() sets it without recomputing it, whatever Change came before
-  * (say, a parallel exploration re-applying the path to a node); the
-  * child that fixes the critical item to 1 is not produced if the item does
-  * not fit the capacity left by the fixed items. */
+  * four positions, the state of the greedy fill of the child (the position
+  * from which compute() resumes, the residual capacity and the profit) and
+  * the epoch of the data it was computed on, so that apply() sets it
+  * without recomputing it, whatever Change came before (say, a parallel
+  * exploration re-applying the path to a node), as long as the data have
+  * not changed since; the value of the fixing is that of the item in the
+  * Block, as for any Change, whether or not the fill complements the item;
+  * the child that takes the critical item is not produced if the item does
+  * not fit the capacity left by the fixed items, unless local reductions
+  * are not allowed [see GlobalInformation::str_LocalFixingAllowed], since
+  * the child may be non-empty under other data. */
 
  std::vector< Change * > branch() override;
 
@@ -380,10 +385,14 @@ public:
   * BinaryKnapsackSolver::apply_to_mirror()], with intIncremental == 1 to
   * the state of the greedy fill, and the next compute() then solves the
   * relaxation under the new fixings. With intIncremental == 1 the undo of
-  * a branching Change carries the state of the parent in its last three
-  * data (the position from which compute() resumes, the residual capacity
-  * and the profit), so that undoing a child brings the parent back, as the
-  * branching Change itself carries that of the child [see branch()]. A
+  * a fixing Change carries the state of the parent in its last four
+  * data (the position from which compute() resumes, the residual capacity,
+  * the profit and the epoch of the data), so that undoing a child brings
+  * the parent back, as the branching Change itself carries that of the
+  * child [see branch()]; a state of data that have changed since (say, a
+  * Change of a tree retained across a Modification) is not taken, and the
+  * fill starts again from the first item, out of the fixed items alone, as
+  * after any Change that carries no state. A
   * GroupChange is applied by applying its sub-Change, and its undo is the
   * GroupChange of their undo in reverse order; any other Change is
   * forwarded to the Block. */
@@ -475,19 +484,19 @@ private:
  std::vector< Change * > inc_branch( void );
 
 /*--------------------------------------------------------------------------*/
- /// unfix item i, which was fixed to value
+ /// unfix item i, which was fixed to x (in the space of the Block)
  /** Updates the capacity left by the fixed items and moves the position
   * from which compute() resumes back to the item, if it is before. */
 
- void inc_unfix_item( Index i , double value );
+ void inc_unfix_item( Index i , double x );
 
 /*--------------------------------------------------------------------------*/
- /// fix item i to value (0 or 1)
+ /// fix item i to x (0 or 1, in the space of the Block)
  /** Updates the capacity left by the fixed items, the profit and residual
   * capacity of the greedy fill and the position from which compute()
   * resumes, as the fixing requires. */
 
- void inc_fix_item( Index i , double value );
+ void inc_fix_item( Index i , double x );
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/
@@ -514,11 +523,21 @@ private:
  /// the items that compute() skips (fixed, or settled by their signs)
  std::vector< bool > v_skip;
 
+ /// the items settled by their signs: 1 never taken, 2 always taken, 0
+ /// neither
+ std::vector< char > v_settled;
+
  /// the position in v_sorted from which compute() resumes the search of
  /// the critical item (after a branching, say)
  Index f_ssi = 0;
 
  double f_free_cap = 0;  ///< the capacity left by the fixed items alone
+ double f_fix_P = 0;     ///< the profit of the fixed items alone
+
+ /// the epoch of the data of the greedy fill, which inc_initialize()
+ /// advances; the state a branching Change carries is only taken if it is
+ /// of the current epoch [see apply()]
+ std::size_t f_inc_epoch = 0;
  double f_iP = 0;        ///< the profit of the fill without the critical item
  double f_iC = 0;        ///< the residual capacity of the same
  double f_ci_val = 1;    ///< the fraction of the critical item that is taken
