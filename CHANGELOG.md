@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- the installed module `smspp.binaryknapsackblock` could not be imported,
+  since its package gave the interface of the module the target of the
+  library by its name in the build tree, which an installed package does not
+  have
+
 - `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1: the
   value of a branching fixing is that of the item in the Block, as for any
   Change, rather than that of the item in the fill, which is the opposite
