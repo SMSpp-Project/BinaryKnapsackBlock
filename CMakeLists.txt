@@ -15,7 +15,7 @@
 #                         Dipartimento di Informatica                         #
 #                             Universita' di Pisa                             #
 # --------------------------------------------------------------------------- #
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.24)
 cmake_policy(VERSION 3.15)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/DeriveVersion.cmake)
 smspp_derive_version(SMSPP_MODULE_VERSION)
@@ -64,19 +64,9 @@ configure_file(cmake/${modName}Config.h.in ${modName}Config.h)
 # ----- RPATH --------------------------------------------------------------- #
 # The installed libraries and executables look for the libraries of the same
 # installation relative to their own location, so that the installed tree can
-# be moved as a whole; the directories of the external libraries are kept.
+# be moved as a whole [see SMSppModule.cmake of SMS++].
 include(GNUInstallDirs)
-if (NOT CMAKE_INSTALL_RPATH)
-    if (APPLE)
-        set(rpathOrigin "@loader_path")
-    else ()
-        set(rpathOrigin "$ORIGIN")
-    endif ()
-    file(RELATIVE_PATH binToLib ${CMAKE_INSTALL_FULL_BINDIR}
-            ${CMAKE_INSTALL_FULL_LIBDIR})
-    set(CMAKE_INSTALL_RPATH "${rpathOrigin}" "${rpathOrigin}/${binToLib}")
-endif ()
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+smspp_install_rpath()
 
 # ----- Library ------------------------------------------------------------- #
 # With the BUILD_SHARED_LIBS variable we can specify if the library will
@@ -98,29 +88,9 @@ set_target_properties(${modName} PROPERTIES
 
 # The classes of the module register themselves in the factory from a static
 # initialiser, and a linker that drops what looks unused takes the
-# registration away with it: the target tells whoever links it to keep the
-# symbol that forces the module in, or the library as a whole where naming
-# the symbol is not enough.
-if (BUILD_SHARED_LIBS)
-    if (MSVC)
-        target_link_options(${modName} INTERFACE
-                "/INCLUDE:SMSpp_force_load_${modName}")
-    elseif (UNIX AND (NOT APPLE))
-        # the ELF linker decides by the symbols a regular object asks for, so
-        # naming the symbol is not enough and the library has to be kept
-        target_link_options(${modName} INTERFACE "LINKER:--no-as-needed")
-    elseif (APPLE)
-        # ld64 keeps a dylib that provides a symbol to the link, one asked
-        # for by -u included, even under -dead_strip_dylibs
-        target_link_options(${modName} INTERFACE
-                "LINKER:-u,_SMSpp_force_load_${modName}")
-    elseif (MINGW)
-        # the PE linker imports a DLL for the symbols asked for, -u
-        # included
-        target_link_options(${modName} INTERFACE
-                "LINKER:-u,SMSpp_force_load_${modName}")
-    endif ()
-endif ()
+# registration away with it: whoever links the target calls the function
+# that forces the module in [see SMSppModule.cmake of SMS++].
+smspp_keep_module(${modName})
 
 # When adding source files with target_sources(), PRIVATE means that the files
 # should only be added to this library, whereas PUBLIC means they should be
@@ -144,12 +114,12 @@ target_sources(${modName} PRIVATE
 # the bridge sets up the 0-1 problem itself), and compiled alone in
 # src/RECORDBridge.cpp, the only file that sees its global names. Without a
 # RECORD_ROOT, the checkout is looked for in the environment variable of the
-# same name and where INSTALL.sh puts it; RECORD uses POSIX clocks, which
-# MSVC does not have.
+# same name and where INSTALL.sh puts it; RECORD uses POSIX clocks, hence
+# it is built where the shim compiles.
 find_path(RECORD_ROOT NAMES source/RECORD.cpp
         HINTS ENV RECORD_ROOT PATHS /opt/record /Library/record
         DOC "Checkout of RECORD (optional)" NO_DEFAULT_PATH)
-if (RECORD_ROOT AND EXISTS ${RECORD_ROOT}/source/RECORD.cpp AND NOT MSVC)
+if (RECORD_ROOT AND EXISTS ${RECORD_ROOT}/source/RECORD.cpp)
     file(READ ${RECORD_ROOT}/source/RECORD.cpp _recordSrc)
     string(FIND "${_recordSrc}" "int main (" _recordMain)
     if (_recordMain GREATER -1)
@@ -157,12 +127,24 @@ if (RECORD_ROOT AND EXISTS ${RECORD_ROOT}/source/RECORD.cpp AND NOT MSVC)
     endif ()
     file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/record-shim/RECORD.hpp
             "${_recordSrc}")
+    include(CheckCXXSourceCompiles)
+    set(CMAKE_REQUIRED_INCLUDES ${CMAKE_CURRENT_BINARY_DIR}/record-shim)
+    set(CMAKE_REQUIRED_FLAGS ${CMAKE_CXX20_STANDARD_COMPILE_OPTION})
+    check_cxx_source_compiles("#include \"RECORD.hpp\"
+int main() { return 0; }" BinaryKnapsackBlock_RECORD_COMPILES)
+    unset(CMAKE_REQUIRED_INCLUDES)
+    unset(CMAKE_REQUIRED_FLAGS)
+endif ()
+if (BinaryKnapsackBlock_RECORD_COMPILES)
     target_sources(${modName} PRIVATE
             src/RECORDBridge.cpp
             src/RECORDBinaryKnapsackSolver.cpp)
     set_source_files_properties(src/RECORDBridge.cpp PROPERTIES
             INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/record-shim)
-    if (NOT MSVC)               # its simd pragmas
+    # its simd pragmas, where the compiler takes the option
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag(-fopenmp-simd BinaryKnapsackBlock_OPENMP_SIMD)
+    if (BinaryKnapsackBlock_OPENMP_SIMD)
         set_source_files_properties(src/RECORDBridge.cpp PROPERTIES
                 COMPILE_OPTIONS "-fopenmp-simd")
     endif ()
@@ -178,13 +160,18 @@ endif ()
 # and weights), and compiled alone in src/COMBOGuard.c, which turns the
 # exit() of COMBO on an internal error into an error code. Without a
 # COMBO_ROOT, the directory is looked for in the environment variable of the
-# same name and in /opt/combo or /Library/combo. The 128-bit integer is not
-# available with MSVC.
+# same name and in /opt/combo or /Library/combo. It is built where the C
+# compiler has the 128-bit integer.
 find_path(COMBO_ROOT NAMES combo.c
         HINTS ENV COMBO_ROOT PATHS /opt/combo /Library/combo
         DOC "Directory with combo.c and combo.h (optional)" NO_DEFAULT_PATH)
+if (COMBO_ROOT)
+    include(CheckCSourceCompiles)
+    check_c_source_compiles("__int128 x; int main(void) { return 0; }"
+            BinaryKnapsackBlock_INT128)
+endif ()
 if (COMBO_ROOT AND EXISTS ${COMBO_ROOT}/combo.c AND
-        EXISTS ${COMBO_ROOT}/combo.h AND NOT MSVC)
+        EXISTS ${COMBO_ROOT}/combo.h AND BinaryKnapsackBlock_INT128)
     file(READ ${COMBO_ROOT}/combo.c _comboSrc)
     string(REGEX REPLACE "typedef[ \t]+double[ \t]+prod;"
             "typedef __int128 prod;" _comboWide "${_comboSrc}")
@@ -460,31 +447,16 @@ endforeach ()
 # A handful of the textual instances written as netCDF files, which is what a
 # tester that reads a Block from a file needs: tools/batch says which ones and
 # why, the tests of the module building their own instances instead.
-if (UNIX)
-    add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch
-                    ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
-            COMMAND ${CMAKE_COMMAND} -E touch
-                    ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
-            COMMENT "Running bk2nc4"
-            VERBATIM
-            DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/tools/bk2nc4
-                    ${DATA_MARKER_txt})
-elseif (WIN32)
-    add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            # using Git for Windows that includes Git Bash
-            COMMAND "C:/Program Files/Git/bin/bash.exe"
-            "${CMAKE_CURRENT_SOURCE_DIR}/tools/batch" "$<TARGET_FILE:bk2nc4>"
-            COMMAND ${CMAKE_COMMAND} -E touch
-                    ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
-            COMMENT "Running bk2nc4"
-            VERBATIM
-            DEPENDS $<TARGET_FILE:bk2nc4> ${DATA_MARKER_txt})
-endif ()
+add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+        COMMAND ${SMSpp_BASH} ${CMAKE_CURRENT_SOURCE_DIR}/tools/batch
+                $<TARGET_FILE:bk2nc4>
+        COMMAND ${CMAKE_COMMAND} -E touch
+                ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tools
+        COMMENT "Running bk2nc4"
+        VERBATIM
+        DEPENDS $<TARGET_FILE:bk2nc4> ${DATA_MARKER_txt})
 
 add_custom_target(run_bk2nc4
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/data/nc4/.generated)
