@@ -139,13 +139,16 @@ if (BinaryKnapsackBlock_RECORD_COMPILES)
     target_sources(${modName} PRIVATE
             src/RECORDBridge.cpp
             src/RECORDBinaryKnapsackSolver.cpp)
-    set_source_files_properties(src/RECORDBridge.cpp PROPERTIES
-            INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/record-shim)
+    # the shim is a system header, since its warnings are those of RECORD;
+    # it is built only by the compilers that have the POSIX clocks of RECORD,
+    # all of which take -isystem
+    set_property(SOURCE src/RECORDBridge.cpp APPEND PROPERTY COMPILE_OPTIONS
+            "-isystem" "${CMAKE_CURRENT_BINARY_DIR}/record-shim")
     # its simd pragmas, where the compiler takes the option
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag(-fopenmp-simd BinaryKnapsackBlock_OPENMP_SIMD)
     if (BinaryKnapsackBlock_OPENMP_SIMD)
-        set_source_files_properties(src/RECORDBridge.cpp PROPERTIES
+        set_property(SOURCE src/RECORDBridge.cpp APPEND PROPERTY
                 COMPILE_OPTIONS "-fopenmp-simd")
     endif ()
     message(STATUS "${modName}: RECORD found in ${RECORD_ROOT}.")

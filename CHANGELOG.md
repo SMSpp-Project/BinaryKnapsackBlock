@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RECORD is built where its shim compiles, with `-fopenmp-simd` where the
   compiler takes it, and COMBO where the C compiler has the 128-bit integer
 
+### Fixed
+
+- the shim of RECORD is included as a system header, so that the warnings of
+  RECORD are not shown as those of the module
+
 ## [0.7.0] - 2026-11-16
 
 ### Added
