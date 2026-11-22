@@ -115,7 +115,7 @@ $(BKBkSDR)/obj/record-shim/RECORD.hpp: $(BKBkRECORD)
 $(BKBkSDR)/obj/RECORDBridge.o: $(BKBkSDR)/src/RECORDBridge.cpp \
 	$(BKBkSDR)/include/RECORDBridge.h $(BKBkSDR)/obj/record-shim/RECORD.hpp
 	$(CC) -c $(BKBkSDR)/src/RECORDBridge.cpp -o $@ \
-	-isystem$(BKBkSDR)/obj/record-shim $(BKBkINC) $(SW) -fopenmp-simd
+	-isystem $(BKBkSDR)/obj/record-shim $(BKBkINC) $(SW) -fopenmp-simd
 
 $(BKBkSDR)/obj/RECORDBinaryKnapsackSolver.o: \
 	$(BKBkSDR)/src/RECORDBinaryKnapsackSolver.cpp $(BKBkH) \

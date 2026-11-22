@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- the makefile passes the directory of the header of RECORD as a word of its
+  own after `-isystem`, which MSYS2 turns into a path of Windows for its
+  compilers.
+
 - the shim of RECORD is included as a system header, so that the warnings of
   RECORD are not shown as those of the module
 
