@@ -50,4 +50,8 @@ BKBkINC := $(BKBkINC) $(SMS++INC)
 # external libraries for BKBlock
 BKBkLIB = $(SMS++LIB) -pthread
 
+# the objects as the shared libraries of the module and of those whose
+# objects it takes [see SMS++/lib/makefile-shared]
+$(eval $(call SMSppSOlib,BKBk))
+
 ############################ End of makefile #################################
