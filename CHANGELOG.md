@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- the group of the variables of `BinaryKnapsackBlock` is named
+  `x_knapsack`, so that a Solver can be told about it by name, as the
+  `vstrBranchGroups` of `LagrangianDualRelaxationSolver` (`x_knapsack[0]`
+  being the first item of each knapsack)
+
 ### Changed
 
 - the makefiles give the shared library of the module by default, a DLL on
