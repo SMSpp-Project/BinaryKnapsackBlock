@@ -355,7 +355,7 @@ void BinaryKnapsackBlock::generate_abstract_variables( Configuration * stvv )
    }
   }
 
- add_static_variable( v_x );
+ add_static_variable( v_x , "x_knapsack" );
 
  AR |= HasVar;
 
