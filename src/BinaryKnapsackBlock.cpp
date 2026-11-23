@@ -681,7 +681,98 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 
 /*--------------------------------------------------------------------------*/
 
- bool BinaryKnapsackBlock::is_fixed( Index i ) const { 
+ bool BinaryKnapsackBlock::get_fixing_penalties(
+	 std::vector< std::tuple< ColVariable * , double , double > > & pen )
+{
+ if( ( ! ( AR & HasVar ) ) || countCont )
+  return( false );
+
+ const Index n = v_P.size();
+ const auto integer = []( double v ) {
+  return( std::abs( v - std::round( v ) ) <= 1e-9 * std::max( 1.0 ,
+							   std::abs( v ) ) );
+  };
+
+ // the free items, each as a maximization item of nonnegative weight: one
+ // of negative weight is complemented (y = 1 - x), and the fixed ones go in
+ // the capacity
+ const double sgn = f_sense ? 1 : -1;  // the profits of a maximization
+ double cap = f_C;
+ std::vector< Index > item;
+ std::vector< long > w;
+ std::vector< double > p;
+ std::vector< char > cmp;
+ for( Index i = 0 ; i < n ; ++i ) {
+  int fx = v_fxd[ i ];  // 0 free, 1 at 0, 2 at 1
+  if( ( ! fx ) && v_x[ i ].is_fixed() )
+   fx = v_x[ i ].get_value() > 0.5 ? 2 : 1;
+  if( fx ) {
+   if( fx == 2 )
+    cap -= v_W[ i ];
+   continue;
+   }
+  if( ! integer( v_W[ i ] ) )
+   return( false );
+  const bool neg = v_W[ i ] < 0;
+  if( neg )
+   cap -= v_W[ i ];  // the item at 1 to start with
+  item.push_back( i );
+  w.push_back( std::lround( std::abs( v_W[ i ] ) ) );
+  p.push_back( neg ? - sgn * v_P[ i ] : sgn * v_P[ i ] );
+  cmp.push_back( neg );
+  }
+
+ if( ( ! integer( cap ) ) || ( cap < 0 ) )
+  return( false );
+ const long C = std::lround( cap );
+ const Index m = item.size();
+ if( double( m + 1 ) * double( C + 1 ) > 1e8 )
+  return( false );
+
+ // F[ t ][ c ]: the best profit of the first t items within c, B[ t ][ c ]
+ // that of the items from t on
+ std::vector< std::vector< double > > F( m + 1 ,
+					   std::vector< double >( C + 1 , 0 ) );
+ auto B = F;
+ for( Index t = 0 ; t < m ; ++t ) {
+  F[ t + 1 ] = F[ t ];
+  for( long c = w[ t ] ; c <= C ; ++c )
+   F[ t + 1 ][ c ] = std::max( F[ t ][ c ] , F[ t ][ c - w[ t ] ] + p[ t ] );
+  }
+ for( Index t = m ; t-- > 0 ; ) {
+  B[ t ] = B[ t + 1 ];
+  for( long c = w[ t ] ; c <= C ; ++c )
+   B[ t ][ c ] = std::max( B[ t + 1 ][ c ] ,
+			   B[ t + 1 ][ c - w[ t ] ] + p[ t ] );
+  }
+ const double opt = F[ m ][ C ];
+
+ // the best with item t out and with item t in, by the two halves
+ const auto best = [ & ]( Index t , long R ) {
+  double v = - Inf< double >();
+  for( long c = 0 ; c <= R ; ++c )
+   v = std::max( v , F[ t ][ c ] + B[ t + 1 ][ R - c ] );
+  return( v );
+  };
+
+ pen.reserve( pen.size() + m );
+ for( Index t = 0 ; t < m ; ++t ) {
+  const double out = opt - best( t , C );
+  const double in = w[ t ] <= C ? opt - ( p[ t ] + best( t , C - w[ t ] ) )
+                                : Inf< double >();
+  // an item complemented is at 1 when y is out
+  const double p0 = cmp[ t ] ? in : out;
+  const double p1 = cmp[ t ] ? out : in;
+  pen.emplace_back( & v_x[ item[ t ] ] , std::max( 0.0 , p0 ) ,
+		    std::max( 0.0 , p1 ) );
+  }
+ return( true );
+
+ }  // end( BinaryKnapsackBlock::get_fixing_penalties )
+
+/*--------------------------------------------------------------------------*/
+
+bool BinaryKnapsackBlock::is_fixed( Index i ) const { 
   
   if( i >= v_fxd.size() )
     throw( std::invalid_argument( "Invalid index of the item" ) );

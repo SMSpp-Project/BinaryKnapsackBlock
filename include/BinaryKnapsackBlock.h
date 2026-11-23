@@ -372,6 +372,23 @@ class BinaryKnapsackBlock : public Block {
   }
 
 /*--------------------------------------------------------------------------*/
+ /// the penalties of fixing each free binary item, by dynamic programming
+ /** Implements Block::get_fixing_penalties() by one forward and one
+  * backward dynamic programming over the free items, with the current
+  * profits (which a LagBFunction keeps at the Lagrangian costs) and the
+  * current fixings, those of fix_x() as well as those of the ColVariable:
+  * an item of negative weight is complemented, as one fixed is taken out of
+  * the capacity. It returns false, leaving \p pen untouched, if the
+  * Variable have not been generated, if some item is continuous, if the
+  * weights and the capacity of the free items are not integer, or if the
+  * table, of the number of free items times the capacity, has more than
+  * 10^8 entries. */
+
+ bool get_fixing_penalties(
+  std::vector< std::tuple< ColVariable * , double , double > > & pen )
+  override;
+
+/*--------------------------------------------------------------------------*/
  /// get the number of items
 
  Index get_NItems( void ) const { return( v_P.size() ); }

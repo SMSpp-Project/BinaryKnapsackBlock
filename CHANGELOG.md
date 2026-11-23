@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `get_fixing_penalties()` of `BinaryKnapsackBlock`, by one forward and
+  one backward dynamic programming over the free items with the current
+  profits and fixings, for integer weights
+
 ### Changed
 
 - the makefiles give the shared library of the module by default, a DLL on
