@@ -46,6 +46,8 @@
 
 #include "Change.h"
 
+#include "GlobalInformation.h"
+
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -401,6 +403,20 @@ public:
 
  Change * apply( Change * chg , bool doUndo = false ) override;
 
+/*--------------------------------------------------------------------------*/
+ /// set the GlobalInformation, forgetting the cells read from the previous
+ /** The cells of GlobalInformation::str_LocalFixingAllowed and
+  * GlobalInformation::str_Incumbent are looked up at the first branch()
+  * that finds them, and read through a reference from then on. */
+
+ void set_global_information( GlobalInformation * gi ) override {
+  RelaxationSolver::set_global_information( gi );
+  f_lfa_cells.reset();
+  f_lfa_cell = nullptr;
+  f_inc_cells.reset();
+  f_inc_cell = nullptr;
+  }
+
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -493,6 +509,20 @@ private:
  void inc_unfix_item( Index i , double x );
 
 /*--------------------------------------------------------------------------*/
+ /// whether the local reductions are allowed
+ /** The value of GlobalInformation::str_LocalFixingAllowed, true if there is
+  * no such cell. */
+
+ bool local_fixing_allowed( void );
+
+/*--------------------------------------------------------------------------*/
+ /// the incumbent, if there is one
+ /** Writes in \p value the value of GlobalInformation::str_Incumbent, and
+  * returns whether there is such a cell and it is finite. */
+
+ bool incumbent( double & value );
+
+/*--------------------------------------------------------------------------*/
  /// fix item i to x (0 or 1, in the space of the Block)
  /** Updates the capacity left by the fixed items, the profit and residual
   * capacity of the greedy fill and the position from which compute()
@@ -505,6 +535,22 @@ private:
 /*--------------------------------------------------------------------------*/
 
  int f_incremental = 0;  ///< the parameter intIncremental
+
+ // the cells of the GlobalInformation [see set_global_information()], with
+ // the Collection that holds each, so that the reference stays valid
+
+ /// the Collection of GlobalInformation::str_LocalFixingAllowed
+ std::shared_ptr< Collection< std::atomic< bool > > > f_lfa_cells;
+
+ /// the cell of GlobalInformation::str_LocalFixingAllowed, nullptr if not
+ /// found yet
+ std::atomic< bool > * f_lfa_cell = nullptr;
+
+ /// the Collection of GlobalInformation::str_Incumbent
+ std::shared_ptr< Collection< std::atomic< double > > > f_inc_cells;
+
+ /// the cell of GlobalInformation::str_Incumbent, nullptr if not found yet
+ std::atomic< double > * f_inc_cell = nullptr;
 
  // the greedy fill kept across the Changes, with intIncremental == 1
 

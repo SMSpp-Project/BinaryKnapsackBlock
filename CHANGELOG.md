@@ -34,6 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RECORD is built where its shim compiles, with `-fopenmp-simd` where the
   compiler takes it, and COMBO where the C compiler has the 128-bit integer
 
+- a step of `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1
+  reads the items and the data of the Change in place, by its `num_items()`
+  and `item()`, allocating only its undo, and its branching reads the cells
+  of `GlobalInformation::str_LocalFixingAllowed` and
+  `GlobalInformation::str_Incumbent` through a reference taken at the first
+  branching that finds them, instead of looking them up at every node
+
 ### Fixed
 
 - the branching of `GreedyRelaxationBinaryKnapsackSolver` with
