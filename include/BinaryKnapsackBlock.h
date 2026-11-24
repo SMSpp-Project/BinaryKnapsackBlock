@@ -372,17 +372,46 @@ class BinaryKnapsackBlock : public Block {
   }
 
 /*--------------------------------------------------------------------------*/
- /// the penalties of fixing each free binary item, by dynamic programming
- /** Implements Block::get_fixing_penalties() by one forward and one
-  * backward dynamic programming over the free items, with the current
-  * profits (which a LagBFunction keeps at the Lagrangian costs) and the
-  * current fixings, those of fix_x() as well as those of the ColVariable:
-  * an item of negative weight is complemented, as one fixed is taken out of
-  * the capacity. It returns false, leaving \p pen untouched, if the
-  * Variable have not been generated, if some item is continuous, if the
-  * weights and the capacity of the free items are not integer, or if the
-  * table, of the number of free items times the capacity, has more than
-  * 10^8 entries. */
+ /// the penalties of fixing each free binary item, exactly
+ /** Implements Block::get_fixing_penalties() with the current profits
+  * (which a LagBFunction keeps at the Lagrangian costs) and the current
+  * fixings, those of fix_x() as well as those of the ColVariable: a binary
+  * item of negative weight is complemented, as one fixed is taken out of
+  * the capacity, and a continuous one is settled by its signs as in the
+  * greedy fill, so that, in the maximization sense, the m free binary items
+  * have weights \f$ w_t \geq 0 \f$ and profits \f$ p_t \f$, the residual
+  * capacity is \f$ \bar{C} \geq 0 \f$, and the continuous items left have
+  * positive weights and profits. A subset S of the binary items is then
+  * worth
+  * \f[
+  *   v( S ) = \sum_{t \in S} p_t + g\Big( \bar{C} - \sum_{t \in S} w_t
+  *   \Big) \;,
+  * \f]
+  * where \f$ g( R ) \f$ is the value of the greedy fill of the residual
+  * capacity R with the continuous items by non-increasing efficiency, a
+  * concave and nondecreasing piecewise-linear function (0 with no
+  * continuous item, \f$ - \infty \f$ for \f$ R < 0 \f$). With
+  * \f$ v^* = \max_S v( S ) \f$, the penalties of item t are
+  * \f$ v^* - \max_{S \not\ni t} v( S ) \f$ and
+  * \f$ v^* - \max_{S \ni t} v( S ) \f$ (swapped for a complemented item),
+  * Inf< double >() if no such S is feasible. For a single binary item they
+  * are \f$ g( \bar{C} ) \f$ against \f$ p_1 + g( \bar{C} - w_1 ) \f$.
+  *
+  * With integer \f$ w_t \f$ and \f$ C = \lfloor \bar{C} \rfloor \f$, one
+  * forward dynamic programming \f$ F_t( c ) \f$, the best profit of the
+  * first t items within c, and one backward \f$ B_t( c ) \f$, that of the
+  * items from t on within c plus \f$ g \f$ of what they leave of
+  * \f$ c + \bar{C} - C \f$, give \f$ \max_{S \not\ni t} v( S ) = \max_c
+  * F_t( c ) + B_{t+1}( C - c ) \f$ and the same with \f$ C - w_t \f$ and
+  * \f$ p_t \f$ added for \f$ S \ni t \f$, in \f$ O( m C ) \f$ time and
+  * memory. With some continuous item, if \f$ m \leq 20 \f$ and either
+  * \f$ 2^m \leq C + 1 \f$ or some \f$ w_t \f$ is not integer, the
+  * \f$ 2^m \f$ subsets are enumerated instead, in
+  * \f$ O( 2^m ( m + \log k ) ) \f$ time for k continuous items, which
+  * needs no integer weight. It returns false, leaving \p pen untouched, if
+  * the Variable have not been generated, if \f$ \bar{C} < 0 \f$, if with no
+  * continuous item the weights and the capacity are not integer, if neither
+  * way applies, or if the table has more than 10^8 entries. */
 
  bool get_fixing_penalties(
   std::vector< std::tuple< ColVariable * , double , double > > & pen )

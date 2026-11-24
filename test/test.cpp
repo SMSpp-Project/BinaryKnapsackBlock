@@ -1431,6 +1431,104 @@ void test_reopt_outcome( void )
  delete b;
  }
 
+/// the penalties of fixing each free binary item, against the enumeration
+/** For each entry of get_fixing_penalties(), the optimum with the item fixed
+ * to 0 and to 1, found by the enumeration, has to be worse than the free
+ * one by the two penalties (Inf< double >() if it is empty); every free
+ * binary item, and no other one, has an entry. The penalties are given
+ * whenever the instance is not empty, the Block having integer weights and
+ * capacity or a few binary items. */
+
+void check_penalties( const Inst & in , const std::string & label )
+{
+ auto b = build( in );
+ b->generate_abstract_variables();
+ std::vector< std::tuple< ColVariable * , double , double > > pen;
+ const bool ok = b->get_fixing_penalties( pen );
+ const double opt = opt_max( in );
+ if( check( ok == ( ! std::isinf( opt ) ) , label + ": penalties " +
+	    ( ok ? "given" : "not given" ) ) && ok ) {
+  std::vector< int > seen( in.n() , 0 );
+  for( auto & [ v , p0 , p1 ] : pen ) {
+   const Index i = v - b->get_Var( 0 );
+   if( ! check( ( i < in.n() ) && in.I[ i ] && ( ! in.fxd[ i ] ) &&
+		( ! seen[ i ]++ ) , label + ": an entry of a wrong item" ) )
+    continue;
+   for( unsigned char f : { 1 , 2 } ) {
+    Inst fi = in;
+    fi.fxd[ i ] = f;
+    const double of = opt_max( fi );
+    const double exp = std::isinf( of ) ? INFINITY : opt - of;
+    const double got = f == 1 ? p0 : p1;
+    check( close( got , exp ) , label + ": item " + std::to_string( i ) +
+	   " fixed to " + std::to_string( f - 1 ) + " costs " + str( got ) +
+	   " rather than " + str( exp ) );
+    }
+   }
+  for( Index i = 0 ; i < in.n() ; ++i )
+   if( in.I[ i ] && ( ! in.fxd[ i ] ) )
+    check( seen[ i ] , label + ": no entry for item " + std::to_string( i ) );
+  }
+ delete b;
+ }
+
+/// penalties of pure binary and mixed knapsacks, and of arc knapsacks
+/** The arc knapsacks are those of the arc relaxation of the fixed-charge
+ * network design: continuous flows of weight u^k and cost c^k u^k, of any
+ * sign as Lagrangian costs are, and one binary item of weight - ubar and
+ * cost F, capacity 0, minimization; with a fractional ubar they are solved
+ * by the enumeration of the binary items, with many binary items of small
+ * weight next to continuous ones by the dynamic programming. */
+
+void test_fixing_penalties( void )
+{
+ std::mt19937 rg( 23 );
+ for( int k = 0 ; k < 90 ; ++k ) {
+  const Index n = 1 + k % 12;
+  const bool max = k % 2;
+  Inst in;
+  if( k < 30 )
+   in = random_inst( rg , n , -10 , 20 , -15 , 30 , 0 , 0.3 , max );
+  else
+   in = random_inst( rg , n , -10 , 20 , -15 , 30 , 0.4 , 0.3 , max );
+  check_penalties( in , "penalties " + std::to_string( k ) );
+  }
+
+ std::uniform_real_distribution< double > u01( 0 , 1 );
+ for( int k = 0 ; k < 40 ; ++k ) {
+  Inst in;
+  in.max = false;
+  in.C = 0;
+  const Index K = 1 + k % 6;
+  double ubar = 0;
+  for( Index h = 0 ; h < K ; ++h ) {
+   const double u = 1 + std::round( 20 * u01( rg ) ) / ( k % 2 ? 4 : 1 );
+   in.W.push_back( u );
+   in.P.push_back( std::round( 20 * ( u01( rg ) - 0.6 ) ) * u / 2 );
+   in.I.push_back( false );
+   ubar += u;
+   }
+  in.W.push_back( - std::round( ubar * ( 0.3 + u01( rg ) ) )
+		  - ( k % 2 ) / 3.0 );
+  in.P.push_back( std::round( 40 * ( u01( rg ) - 0.3 ) ) );
+  in.I.push_back( true );
+  in.fxd.assign( in.n() , 0 );
+  check_penalties( in , "arc penalties " + std::to_string( k ) );
+  }
+
+ for( int k = 0 ; k < 20 ; ++k ) {
+  Inst in = random_inst( rg , 14 , 1 , 5 , -5 , 20 , 0 , 0 , k % 2 );
+  for( Index h = 0 ; h < 4 ; ++h ) {
+   in.W.push_back( 1 + std::round( 8 * u01( rg ) ) );
+   in.P.push_back( std::round( 30 * u01( rg ) ) );
+   in.I.push_back( false );
+   in.fxd.push_back( 0 );
+   }
+  in.C = 10 + k + 0.5 * ( k % 2 );
+  check_penalties( in , "mixed penalties " + std::to_string( k ) );
+  }
+ }
+
 /// the two children of branch() cover the relaxation, then undo
 
 void test_branch( void )
@@ -1525,6 +1623,7 @@ int main( void )
   { "fractional weights" , test_fractional_weights } ,
   { "rounding of the bounds" , test_rounding } ,
   { "reuse of the previous solve" , test_reopt_outcome } ,
+  { "penalties of fixing" , test_fixing_penalties } ,
   { "branching" , test_branch } };
 
  for( auto & [ name , f ] : cases ) {
