@@ -41,6 +41,7 @@
 #include <atomic>
 #include <cmath>
 #include <numeric>
+#include <typeinfo>
 
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
 
@@ -49,6 +50,28 @@
 /*--------------------------------------------------------------------------*/
 
 using namespace SMSpp_di_unipi_it;
+
+/*--------------------------------------------------------------------------*/
+/*---------------------------- LOCAL FUNCTIONS -----------------------------*/
+/*--------------------------------------------------------------------------*/
+
+namespace {
+
+/// p as a T * if the dynamic type of *p is exactly T, else nullptr
+/** The addresses of the two type_info are compared, which does not walk the
+ * class hierarchy as a dynamic_cast does (comparing the names of the types
+ * as strings, when the type_info are not merged across shared libraries);
+ * a nullptr is not a proof that *p is not a T (it may be of a class derived
+ * from T, or have a type_info of another library), so the caller falls back
+ * to a dynamic_cast. */
+
+template< class T , class B >
+T * exact_cast( B * p ) {
+ return( ( p && ( & typeid( * p ) == & typeid( T ) ) )
+         ? static_cast< T * >( p ) : nullptr );
+ }
+
+}  // end( unnamed namespace )
 
 /*--------------------------------------------------------------------------*/
 /*----------------------------- STATIC MEMBERS -----------------------------*/
@@ -193,10 +216,22 @@ Change * GreedyRelaxationBinaryKnapsackSolver::apply( Change * chg ,
  // a GroupChange (e.g., the composed undo of branching plus separation, see
  // BranchAndXSolver) is applied by decomposing it; the sub-undos are
  // composed back in reverse order; the Change of the Block, which a step
- // of the tree is, is tested first
- auto CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
+ // of the tree is, is tested first, by its exact type before any
+ // dynamic_cast, since a tree applies a great many of them
+ BinaryKnapsackBlockChange * CHG =
+  exact_cast< BinaryKnapsackBlockRngdChange >( chg );
+ if( ! CHG )
+  CHG = exact_cast< BinaryKnapsackBlockSbstChange >( chg );
+ GroupChange * grp = nullptr;
  if( ! CHG ) {
-  auto grp = dynamic_cast< GroupChange * >( chg );
+  grp = exact_cast< GroupChange >( chg );
+  if( ! grp ) {
+   CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
+   if( ! CHG )
+    grp = dynamic_cast< GroupChange * >( chg );
+   }
+  }
+ if( ! CHG ) {
   if( ! grp )
    throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
 				 "apply: the Change must be a "
@@ -462,11 +497,19 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
   udata.assign( data.begin() , data.begin() + n );
   if( type == BinaryKnapsackBlockChange::eFixX )
    udata.insert( udata.end() , parent.begin() , parent.end() );
-  if( auto rngd = dynamic_cast< BinaryKnapsackBlockRngdChange * >( chg ) )
+  auto rngd = exact_cast< BinaryKnapsackBlockRngdChange >( chg );
+  auto sbst = rngd ? nullptr : exact_cast< BinaryKnapsackBlockSbstChange >(
+								      chg );
+  if( ( ! rngd ) && ( ! sbst ) ) {
+   rngd = dynamic_cast< BinaryKnapsackBlockRngdChange * >( chg );
+   if( ! rngd )
+    sbst = dynamic_cast< BinaryKnapsackBlockSbstChange * >( chg );
+   }
+  if( rngd )
    undo = new BinaryKnapsackBlockRngdChange( utype , std::move( udata ) ,
 					     Block::Range( rngd->rng() ) );
   else
-   if( auto sbst = dynamic_cast< BinaryKnapsackBlockSbstChange * >( chg ) )
+   if( sbst )
     undo = new BinaryKnapsackBlockSbstChange( utype , std::move( udata ) ,
 					      Block::Subset( sbst->nms() ) );
    else

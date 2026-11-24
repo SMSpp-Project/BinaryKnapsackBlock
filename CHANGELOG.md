@@ -41,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `GlobalInformation::str_Incumbent` through a reference taken at the first
   branching that finds them, instead of looking them up at every node
 
+- `GreedyRelaxationBinaryKnapsackSolver::apply()` and the undo of a step
+  tell the Range and Subset Changes, and a GroupChange, by the address of
+  their `type_info` before any `dynamic_cast`, which compares the names of
+  the types as strings when the `type_info` are not merged across shared
+  libraries
+
 ### Fixed
 
 - the branching of `GreedyRelaxationBinaryKnapsackSolver` with
