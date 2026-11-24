@@ -9,11 +9,11 @@
  * re-optimizing it along the Changes of a Branch-and-Bound [see
  * intIncremental].
  *
- * \author Antonio Frangioni \n
+ * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Federica Di Pasquale \n
+ * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *

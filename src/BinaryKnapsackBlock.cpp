@@ -6,20 +6,20 @@
  * implements the Block concept for a Knapsack problem with linear objective
  * and both integer and continuous variables.
  *
- * \author Federica Di Pasquale \n
- *         Dipartimento di Informatica \n
- *         Universita' di Pisa \n
- *
  * \author Francesca Demelas \n
  *         Laboratoire d'Informatique de Paris Nord \n
  *         Universite' Sorbonne Paris Nord \n
+ *
+ * \author Federica Di Pasquale \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
  *
  * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \copyright &copy; by Federica Di Pasquale, Antonio Frangioni,
- *                      Francesca Demelas
+ * \copyright &copy; by Francesca Demelas, Federica Di Pasquale,
+ *                      Antonio Frangioni
  */
 /*--------------------------------------------------------------------------*/
 /*---------------------------- IMPLEMENTATION ------------------------------*/

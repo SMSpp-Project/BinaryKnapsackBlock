@@ -7,11 +7,11 @@
  * under Modification, the normalized (positive, maximisation) core, and the
  * continuous (Dantzig) relaxation of the latter.
  *
- * \author Antonio Frangioni \n
+ * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Federica Di Pasquale \n
+ * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *

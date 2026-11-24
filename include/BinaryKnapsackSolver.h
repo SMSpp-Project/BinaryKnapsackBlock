@@ -33,11 +33,11 @@
  * this is at once the whole solve of GreedyRelaxationBinaryKnapsackSolver
  * and a valid upper bound for any exact derived Solver.
  *
- * \author Antonio Frangioni \n
+ * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Federica Di Pasquale \n
+ * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *

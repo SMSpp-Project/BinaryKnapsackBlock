@@ -9,13 +9,13 @@
  * approach to deal with the integer variables combined with the exact greedy
  * algorithm to deal with the continuous ones.
  *
- * \author Federica Di Pasquale \n
- *         Dipartimento di Informatica \n
- *         Universita' di Pisa \n
- *
  * \author Francesca Demelas \n
  *         Laboratoire d'Informatique de Paris Nord \n
  *         Universite' Sorbonne Paris Nord \n
+ *
+ * \author Federica Di Pasquale \n
+ *         Dipartimento di Informatica \n
+ *         Universita' di Pisa \n
  *
  * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
@@ -25,7 +25,7 @@
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \copyright &copy; by Federica Di Pasquale, Francesca Demelas,
+ * \copyright &copy; by Francesca Demelas, Federica Di Pasquale,
  *                      Antonio Frangioni, Donato Meoli
  */ 
 /*--------------------------------------------------------------------------*/
