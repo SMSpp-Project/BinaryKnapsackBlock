@@ -681,7 +681,194 @@ void BinaryKnapsackBlock::set_x( c_dblVec_it xSol , c_Subset & nms )
 
 /*--------------------------------------------------------------------------*/
 
- bool BinaryKnapsackBlock::is_fixed( Index i ) const { 
+ bool BinaryKnapsackBlock::get_fixing_penalties(
+	 std::vector< std::tuple< ColVariable * , double , double > > & pen )
+{
+ if( ! ( AR & HasVar ) )
+  return( false );
+
+ const Index n = v_P.size();
+ const auto integer = []( double v ) {
+  return( std::abs( v - std::round( v ) ) <= 1e-9 * std::max( 1.0 ,
+							   std::abs( v ) ) );
+  };
+
+ // the free items, each as a maximization item of nonnegative weight: one
+ // of negative weight is complemented (y = 1 - x), and the fixed ones go in
+ // the capacity; the continuous ones are settled by their signs as in the
+ // greedy fill, those of positive weight and profit being the candidates
+ const double sgn = f_sense ? 1 : -1;  // the profits of a maximization
+ double cap = f_C;
+ std::vector< Index > item;
+ std::vector< double > wd;
+ std::vector< double > p;
+ std::vector< char > cmp;
+ std::vector< std::pair< double , double > > cnt;  // ( w , p ) , both > 0
+ bool intw = true;
+ for( Index i = 0 ; i < n ; ++i ) {
+  int fx = v_fxd[ i ];  // 0 free, 1 at 0, 2 at 1
+  if( fx ) {
+   if( fx == 2 )
+    cap -= v_W[ i ];
+   continue;
+   }
+  if( v_x[ i ].is_fixed() ) {
+   if( ! v_I[ i ] )
+    cap -= v_W[ i ] * v_x[ i ].get_value();
+   else
+    if( v_x[ i ].get_value() > 0.5 )
+     cap -= v_W[ i ];
+   continue;
+   }
+  const double pi = sgn * v_P[ i ];
+  if( ! v_I[ i ] ) {
+   const double wi = v_W[ i ];
+   if( ( wi <= 0 ) && ( pi >= 0 ) )
+    cap -= wi;
+   else
+    if( ( wi < 0 ) && ( pi < 0 ) ) {
+     cap -= wi;
+     cnt.emplace_back( - wi , - pi );
+     }
+    else
+     if( ( wi > 0 ) && ( pi > 0 ) )
+      cnt.emplace_back( wi , pi );
+   continue;
+   }
+  if( ! integer( v_W[ i ] ) ) {
+   if( ! countCont )
+    return( false );
+   intw = false;
+   }
+  const bool neg = v_W[ i ] < 0;
+  if( neg )
+   cap -= v_W[ i ];  // the item at 1 to start with
+  item.push_back( i );
+  wd.push_back( std::abs( v_W[ i ] ) );
+  p.push_back( neg ? - pi : pi );
+  cmp.push_back( neg );
+  }
+
+ if( cap < 0 )
+  return( false );
+ if( ( ! countCont ) && ( ! integer( cap ) ) )
+  return( false );
+
+ // g( R ), the value of the greedy fill of the residual capacity R with the
+ // continuous candidates by non-increasing efficiency, - INF if R < 0 (up
+ // to the relative tolerance of the integrality of the capacity)
+ std::sort( cnt.begin() , cnt.end() , []( auto & a , auto & b ) {
+  return( a.second * b.first > b.second * a.first ); } );
+ const Index mc = cnt.size();
+ std::vector< double > sw( mc + 1 , 0 ) , sp( mc + 1 , 0 );
+ for( Index k = 0 ; k < mc ; ++k ) {
+  sw[ k + 1 ] = sw[ k ] + cnt[ k ].first;
+  sp[ k + 1 ] = sp[ k ] + cnt[ k ].second;
+  }
+ const auto g = [ & ]( double R ) {
+  if( R < 0 ) {
+   if( R < - 1e-9 * std::max( 1.0 , std::abs( cap ) ) )
+    return( - Inf< double >() );
+   R = 0;
+   }
+  const Index k = std::upper_bound( sw.begin() , sw.end() , R ) - sw.begin()
+                  - 1;
+  if( k >= mc )
+   return( sp[ mc ] );
+  return( sp[ k ] + cnt[ k ].second * ( ( R - sw[ k ] ) / cnt[ k ].first ) );
+  };
+
+ const Index m = item.size();
+ std::vector< double > out( m ) , in( m );
+ double opt;
+ const double Cd = std::floor( cap + ( integer( cap ) ? 0.5 : 0 ) );
+
+ if( countCont && ( m <= 20 ) &&
+     ( ( ! intw ) || ( double( 1UL << m ) <= Cd + 1 ) ) ) {
+  // few free integer items: each subset S of them is worth
+  // sum_{t in S} p_t + g( cap - sum_{t in S} w_t )
+  out.assign( m , - Inf< double >() );
+  in.assign( m , - Inf< double >() );
+  opt = - Inf< double >();
+  for( unsigned long S = 0 ; S < ( 1UL << m ) ; ++S ) {
+   double W = 0 , P = 0;
+   for( Index t = 0 ; t < m ; ++t )
+    if( S & ( 1UL << t ) ) {
+     W += wd[ t ];
+     P += p[ t ];
+     }
+   const double v = P + g( cap - W );
+   opt = std::max( opt , v );
+   for( Index t = 0 ; t < m ; ++t ) {
+    auto & bt = ( S & ( 1UL << t ) ) ? in[ t ] : out[ t ];
+    bt = std::max( bt , v );
+    }
+   }
+  }
+ else {
+  if( ( ! intw ) || ( double( m + 1 ) * ( Cd + 1 ) > 1e8 ) )
+   return( false );
+  const long C = std::lround( Cd );
+  std::vector< long > w( m );
+  for( Index t = 0 ; t < m ; ++t )
+   w[ t ] = std::lround( wd[ t ] );
+
+  // F[ t ][ c ]: the best profit of the first t items within c, B[ t ][ c ]
+  // that of the items from t on plus the greedy fill of what they leave of
+  // c + cap - C (0 with no continuous item)
+  std::vector< std::vector< double > > F( m + 1 ,
+                                   std::vector< double >( C + 1 , 0 ) );
+  auto B = F;
+  if( countCont )
+   for( long c = 0 ; c <= C ; ++c )
+    B[ m ][ c ] = g( std::max( 0.0 , c + ( cap - C ) ) );
+  for( Index t = 0 ; t < m ; ++t ) {
+   F[ t + 1 ] = F[ t ];
+   for( long c = w[ t ] ; c <= C ; ++c )
+    F[ t + 1 ][ c ] = std::max( F[ t ][ c ] , F[ t ][ c - w[ t ] ] + p[ t ] );
+   }
+  for( Index t = m ; t-- > 0 ; ) {
+   B[ t ] = B[ t + 1 ];
+   for( long c = w[ t ] ; c <= C ; ++c )
+    B[ t ][ c ] = std::max( B[ t + 1 ][ c ] ,
+                            B[ t + 1 ][ c - w[ t ] ] + p[ t ] );
+   }
+  opt = B[ 0 ][ C ];
+  if( ! countCont )
+   opt = F[ m ][ C ];
+
+  // the best with item t out and with item t in, by the two halves
+  const auto best = [ & ]( Index t , long R ) {
+   double v = - Inf< double >();
+   for( long c = 0 ; c <= R ; ++c )
+    v = std::max( v , F[ t ][ c ] + B[ t + 1 ][ R - c ] );
+   return( v );
+   };
+
+  for( Index t = 0 ; t < m ; ++t ) {
+   out[ t ] = best( t , C );
+   in[ t ] = w[ t ] <= C ? p[ t ] + best( t , C - w[ t ] )
+                         : - Inf< double >();
+   }
+  }
+
+ pen.reserve( pen.size() + m );
+ for( Index t = 0 ; t < m ; ++t ) {
+  const double po = opt - out[ t ];
+  const double pin = std::isinf( in[ t ] ) ? Inf< double >() : opt - in[ t ];
+  // an item complemented is at 1 when y is out
+  const double p0 = cmp[ t ] ? pin : po;
+  const double p1 = cmp[ t ] ? po : pin;
+  pen.emplace_back( & v_x[ item[ t ] ] , std::max( 0.0 , p0 ) ,
+		    std::max( 0.0 , p1 ) );
+  }
+ return( true );
+
+ }  // end( BinaryKnapsackBlock::get_fixing_penalties )
+
+/*--------------------------------------------------------------------------*/
+
+bool BinaryKnapsackBlock::is_fixed( Index i ) const { 
   
   if( i >= v_fxd.size() )
     throw( std::invalid_argument( "Invalid index of the item" ) );

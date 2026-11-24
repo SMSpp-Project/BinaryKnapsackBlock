@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `get_fixing_penalties()` of `BinaryKnapsackBlock`, by one forward and
+  one backward dynamic programming over the free binary items with the
+  current profits and fixings, for integer weights, the continuous items
+  entering by the greedy fill of the capacity the binary ones leave, or by
+  the enumeration of the binary items when they are few, also with weights
+  that are not integer
+
 - the group of the variables of `BinaryKnapsackBlock` is named
   `x_knapsack`, so that a Solver can be told about it by name, as the
   `vstrBranchGroups` of `LagrangianDualRelaxationSolver` (`x_knapsack[0]`
