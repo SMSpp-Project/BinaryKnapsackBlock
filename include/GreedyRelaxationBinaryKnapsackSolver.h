@@ -308,15 +308,17 @@ public:
  /** The two children fix the critical item to 0 and to 1.
   *
   * With intIncremental == 0, each child also carries, when an incumbent is
-  * available (in the "DoubleProperties" universe of the GlobalInformation
-  * [see GlobalInformation.h]), the reduced-cost (Martello-Toth) pegging
-  * valid in its subtree: with \f$ \rho \f$ the efficiency of the critical
-  * item and \f$ U \f$ the relaxation value, flipping a free integer item
-  * \f$ j \f$ away from its greedy value \f$ \bar{x}_j \f$ cannot yield more
-  * than \f$ U - | p_j - \rho w_j | \f$ (in the normalized maximization
-  * sense), so whenever this does not beat the incumbent \f$ x_j \f$ is fixed
-  * at \f$ \bar{x}_j \f$ throughout the subtree; these fixings travel with
-  * the fixing of the critical item in a GroupChange.
+  * available and local tightenings are sound [see
+  * GlobalInformation::str_Incumbent and
+  * GlobalInformation::str_LocalFixingAllowed], the reduced-cost
+  * (Martello-Toth) pegging valid in its subtree: with \f$ \rho \f$ the
+  * efficiency of the critical item and \f$ U \f$ the relaxation value,
+  * flipping a free integer item \f$ j \f$ away from its greedy value
+  * \f$ \bar{x}_j \f$ cannot yield more than \f$ U - | p_j - \rho w_j | \f$
+  * (in the normalized maximization sense), so whenever this does not beat
+  * the incumbent \f$ x_j \f$ is fixed at \f$ \bar{x}_j \f$ throughout the
+  * subtree; these fixings travel with the fixing of the critical item in a
+  * GroupChange.
   *
   * With intIncremental == 1, the data of each child carry, in their last
   * four positions, the state of the greedy fill of the child (the position

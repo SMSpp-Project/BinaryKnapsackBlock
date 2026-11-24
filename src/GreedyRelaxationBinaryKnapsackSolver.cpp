@@ -38,6 +38,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <numeric>
 
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
@@ -126,14 +127,24 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
  // throughout this subtree [see the branch() doc]; the pegged items are split
  // by the value they are stuck at
  Block::Subset peg0 , peg1;
- // the incumbent is read from the "DoubleProperties" universe of the
- // GlobalInformation, if any [see GlobalInformation.h]
+ // the incumbent is the value of the best solution found by anybody, not
+ // finite while there is none, and the pegging depends on it, so it is only
+ // done while local tightenings are sound [see GlobalInformation.h]
  bool hasIncumbent = false;
  double cutoff = 0;
- if( f_global_information )
-  if( auto universe = f_global_information->get_from_Universe< double >(
-							"DoubleProperties" ) )
-   hasIncumbent = universe->read( "incumbent" , cutoff );
+ if( f_global_information ) {
+  bool reduce = true;
+  if( auto flags = f_global_information->get_from_Universe<
+                    std::atomic< bool > >(
+                     GlobalInformation::str_AtomicFlags ) )
+   flags->read( GlobalInformation::str_LocalFixingAllowed , reduce );
+  if( reduce )
+   if( auto scalars = f_global_information->get_from_Universe<
+                       std::atomic< double > >(
+                        GlobalInformation::str_AtomicScalars ) )
+    hasIncumbent = scalars->read( GlobalInformation::str_Incumbent , cutoff )
+                   && std::isfinite( cutoff );
+  }
  if( hasIncumbent && ( f_fi.orig >= 0 ) ) {
   // the incumbent in the normalized (maximization) sense; the conservative
   // guard wards off pegging the optimum away by a floating-point whisker

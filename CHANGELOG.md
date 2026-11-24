@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- the branching of `GreedyRelaxationBinaryKnapsackSolver` with
+  `intIncremental` 0 pegs the items by their reduced costs, reading
+  the incumbent from `GlobalInformation::str_Incumbent` and only while
+  `GlobalInformation::str_LocalFixingAllowed` holds, instead of from a
+  Collection that nobody declares
+
 - the makefile passes the directory of the header of RECORD as a word of its
   own after `-isystem`, which MSYS2 turns into a path of Windows for its
   compilers.
