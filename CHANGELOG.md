@@ -47,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the types as strings when the `type_info` are not merged across shared
   libraries
 
+- the reduced-cost pegging in the branching of
+  `GreedyRelaxationBinaryKnapsackSolver` looks at no item when the gap
+  between the relaxation and the incumbent exceeds the largest margin of an
+  item, which `BinaryKnapsackSolver::max_margin()` gives in logarithmic time
+  from an envelope built with the efficiency order
+
 ### Fixed
 
 - the branching of `GreedyRelaxationBinaryKnapsackSolver` with

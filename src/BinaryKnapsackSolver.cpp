@@ -364,9 +364,57 @@ void BinaryKnapsackSolver::build_efficiency_order( void )
   return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
   } );
 
+ // the upper envelope of the lines a + m rho = +-( p_i - rho w_i ) of the
+ // items that can enter the relaxation, which come first in v_ord: the
+ // lines by increasing slope, of equal slope the highest only, a line being
+ // dropped when the next one overtakes the one before it no later than it
+ std::vector< std::pair< double , double > > lines;
+ lines.reserve( 2 * f_N );
+ for( int i : v_ord ) {
+  if( n_w[ i ] <= 0 )
+   break;
+  lines.emplace_back( - n_w[ i ] , n_p[ i ] );
+  lines.emplace_back( n_w[ i ] , - n_p[ i ] );
+  }
+ std::sort( lines.begin() , lines.end() );
+ v_env_m.clear();  v_env_a.clear();  v_env_x.clear();
+ const auto cross = [ this ]( std::size_t k , double m , double a ) {
+  return( ( v_env_a[ k ] - a ) / ( m - v_env_m[ k ] ) );
+  };
+ for( std::size_t k = 0 ; k < lines.size() ; ++k ) {
+  const auto [ m , a ] = lines[ k ];
+  if( ( k + 1 < lines.size() ) && ( lines[ k + 1 ].first == m ) )
+   continue;                       // a higher line of the same slope next
+  while( ! v_env_m.empty() ) {
+   const double x = cross( v_env_m.size() - 1 , m , a );
+   if( v_env_x.empty() || ( x > v_env_x.back() ) ) {
+    v_env_x.push_back( x );
+    break;
+    }
+   v_env_m.pop_back();  v_env_a.pop_back();  v_env_x.pop_back();
+   }
+  v_env_m.push_back( m );
+  v_env_a.push_back( a );
+  }
+
  f_ord_valid = true;
 
  }  // end( BinaryKnapsackSolver::build_efficiency_order )
+
+/*--------------------------------------------------------------------------*/
+
+double BinaryKnapsackSolver::max_margin( double rho ) const
+{
+ if( v_env_m.empty() )
+  return( 0 );
+
+ // the line of the envelope at rho is the first one whose right breakpoint
+ // is not on the left of rho
+ const auto k = std::lower_bound( v_env_x.begin() , v_env_x.end() , rho ) -
+                v_env_x.begin();
+ return( v_env_a[ k ] + v_env_m[ k ] * rho );
+
+ }  // end( BinaryKnapsackSolver::max_margin )
 
 /*--------------------------------------------------------------------------*/
 

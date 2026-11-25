@@ -240,9 +240,20 @@ class BinaryKnapsackSolver : public virtual Solver {
   * continuous relaxation follows. The order only depends on the profits,
   * the weights and the sense of the Objective, NOT on the fixings, hence it
   * survives a re-solve under different fixings and is only rebuilt when
-  * #f_ord_valid says so. */
+  * #f_ord_valid says so; so is the envelope that max_margin() reads. */
 
  void build_efficiency_order( void );
+
+/*--------------------------------------------------------------------------*/
+ /// the largest margin of an item at the given efficiency
+ /** Returns \f$ \max_j | p_j - \rho w_j | \f$ over the items that can
+  * enter the relaxation (those of positive normalized weight [see
+  * normalize_instance()]), whether or not they are fixed, 0 if there is
+  * none, in \f$ O( \log n ) \f$ time: the maximum is the upper envelope of
+  * the \f$ 2n \f$ lines \f$ \pm ( p_j - \rho w_j ) \f$, which is built
+  * with the efficiency order [see build_efficiency_order()]. */
+
+ double max_margin( double rho ) const;
 
 /*--------------------------------------------------------------------------*/
  /// apply an (un)fixing Change to the internal mirror of the instance
@@ -314,6 +325,9 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  std::vector< int >    v_ord;     ///< ALL the items by efficiency
  bool f_ord_valid;                ///< if v_ord matches profits / weights
+ std::vector< double > v_env_m;   ///< slopes, intercepts and breakpoints
+ std::vector< double > v_env_a;   ///< of the upper envelope that
+ std::vector< double > v_env_x;   ///< max_margin() reads
  bool f_norm_valid;               ///< if the normalization matches the
                                   ///< current profits / weights / sense
  bool f_relax_data;               ///< if normalize_instance() fills n_w,

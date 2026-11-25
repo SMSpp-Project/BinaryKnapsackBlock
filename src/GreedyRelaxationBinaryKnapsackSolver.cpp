@@ -163,16 +163,20 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
                       1e-9 * ( 1 + std::abs( cutoff ) );
   const Index ci = Index( f_fi.orig );
   const double rho = n_p[ ci ] / n_w[ ci ];   // critical efficiency
-  for( Index j = 0 ; j < f_N ; ++j ) {
-   if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
-    continue;                  // not free, critical, or not integer
-   const double xj = f_x[ j ];                   // 0 or 1 (original space)
-   const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
-   const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
-                            : rho * n_w[ j ] - n_p[ j ];
-   if( obj - margin <= zmax )
-    ( xj ? peg1 : peg0 ).push_back( j );
-   }
+  // a gap above the largest margin of any item pegs nothing, and then no
+  // item is looked at; the slack keeps the rounding of the envelope from
+  // skipping a scan that would peg
+  if( obj - zmax <= max_margin( rho ) + 1e-9 * ( 1 + std::abs( obj ) ) )
+   for( Index j = 0 ; j < f_N ; ++j ) {
+    if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
+     continue;                 // not free, critical, or not integer
+    const double xj = f_x[ j ];                  // 0 or 1 (original space)
+    const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
+    const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
+                             : rho * n_w[ j ] - n_p[ j ];
+    if( obj - margin <= zmax )
+     ( xj ? peg1 : peg0 ).push_back( j );
+    }
   }
 
  // the two children fix the critical item to 0 and to 1; each also carries

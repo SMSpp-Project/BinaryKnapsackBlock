@@ -320,7 +320,9 @@ public:
   * (in the normalized maximization sense), so whenever this does not beat
   * the incumbent \f$ x_j \f$ is fixed at \f$ \bar{x}_j \f$ throughout the
   * subtree; these fixings travel with the fixing of the critical item in a
-  * GroupChange.
+  * GroupChange. No item is looked at when \f$ U \f$ exceeds the incumbent
+  * by more than the largest margin [see BinaryKnapsackSolver::max_margin()],
+  * since then no item can be pegged.
   *
   * With intIncremental == 1, the data of each child carry, in their last
   * four positions, the state of the greedy fill of the child (the position
