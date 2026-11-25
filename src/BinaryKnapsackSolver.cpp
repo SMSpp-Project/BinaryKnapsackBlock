@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numeric>
+#include <typeinfo>
 
 #include "BinaryKnapsackSolver.h"
 
@@ -316,42 +317,6 @@ void BinaryKnapsackSolver::refresh_fixings( void )
 
  }  // end( BinaryKnapsackSolver::refresh_fixings )
 
-/*--------------------------------------------------------------------------*/
-
-void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
-{
- const unsigned char o = v_fxd[ i ];
- v_fxd[ i ] = v;
- if( ( o == v ) || ( ! f_norm_valid ) )
-  return;
-
- if( ! f_relax_data ) {
-  f_norm_valid = false;
-  return;
-  }
-
- if( ! f_exact )
-  ++f_fix_steps;
-
- // under the fixing s, whether the item is (tentatively) taken and whether
- // it is in the relaxation, as normalize_instance() and refresh_fixings()
- // have it: a free item is taken if always taken or complemented
- const unsigned char cls = n_cls[ i ];
- const auto taken = [ cls ]( unsigned char s ) {
-  return( s ? ( s == 2 ) : ( ( cls == 1 ) || ( cls == 2 ) ) );
-  };
-
- if( const int d = int( taken( v ) ) - int( taken( o ) ) ) {
-  const double p = f_sense ? v_P[ i ] : - v_P[ i ];
-  if( d > 0 ) { f_base += p; f_Cd -= v_W[ i ]; }
-  else        { f_base -= p; f_Cd += v_W[ i ]; }
-  }
-
- n_in[ i ] = ( ! v ) && ( cls >= 2 );
- if( ! n_in[ i ] )          // in the relaxation, f_x[ i ] set by the scan
-  f_x[ i ] = taken( v );
-
- }  // end( BinaryKnapsackSolver::set_fixing )
 
 /*--------------------------------------------------------------------------*/
 
@@ -364,38 +329,68 @@ Change * BinaryKnapsackSolver::apply_to_mirror(
                                 "the Change must be an (un)fixing one" ) );
 
  const bool fixing = ( chg->type() == BinaryKnapsackBlockChange::eFixX );
- const Index n = chg->num_items();
  const auto & data = chg->data();
 
- Change * undo = nullptr;
- if( doUndo ) {
-  // the undo under the LIFO discipline: un-fixing the same items, or
-  // re-fixing them to the values captured at call time; the items of a
-  // range are a range for the undo too
-  std::vector< double > old_data;
-  old_data.reserve( n );
-  for( Index k = 0 ; k < n ; ++k )
-   old_data.push_back( v_fxd[ chg->item( k ) ] == 2 ? 1 : 0 );
-  const int type = fixing ? BinaryKnapsackBlockChange::eUnfixX
-                          : BinaryKnapsackBlockChange::eFixX;
-  if( auto rchg = dynamic_cast< const BinaryKnapsackBlockRngdChange * >(
-                                                                     chg ) )
-   undo = new BinaryKnapsackBlockRngdChange( type , std::move( old_data ) ,
-                                             rchg->rng() );
-  else {
-   Block::Subset nms;
-   nms.reserve( n );
+ // the items of a Range or of a Subset are read in place, with no virtual
+ // call per item, those of any other Change through item()
+ const auto run = [ & ]( Index n , auto item ,
+                         const BinaryKnapsackBlockRngdChange * rchg ) {
+  Change * undo = nullptr;
+  if( doUndo ) {
+   // the undo under the LIFO discipline: un-fixing the same items, or
+   // re-fixing them to the values captured at call time; the items of a
+   // range are a range for the undo too
+   std::vector< double > old_data;
+   old_data.reserve( n );
    for( Index k = 0 ; k < n ; ++k )
-    nms.push_back( chg->item( k ) );
-   undo = new BinaryKnapsackBlockSbstChange( type , std::move( old_data ) ,
-                                             std::move( nms ) );
+    old_data.push_back( v_fxd[ item( k ) ] == 2 ? 1 : 0 );
+   const int type = fixing ? BinaryKnapsackBlockChange::eUnfixX
+                           : BinaryKnapsackBlockChange::eFixX;
+   if( rchg )
+    undo = new BinaryKnapsackBlockRngdChange( type , std::move( old_data ) ,
+                                              rchg->rng() );
+   else {
+    Block::Subset nms;
+    nms.reserve( n );
+    for( Index k = 0 ; k < n ; ++k )
+     nms.push_back( item( k ) );
+    undo = new BinaryKnapsackBlockSbstChange( type , std::move( old_data ) ,
+                                              std::move( nms ) );
+    }
    }
+
+  for( Index k = 0 ; k < n ; ++k )
+   set_fixing( item( k ) , fixing ? ( data[ k ] == 1 ? 2 : 1 ) : 0 );
+
+  return( undo );
+  };
+
+ // the type is told first by the address of its type_info, which is
+ // cheaper than a dynamic_cast [see GreedyRelaxationBinaryKnapsackSolver]
+ auto rchg = ( & typeid( * chg ) == & typeid( BinaryKnapsackBlockRngdChange ) )
+             ? static_cast< const BinaryKnapsackBlockRngdChange * >( chg )
+             : nullptr;
+ auto schg = ( & typeid( * chg ) == & typeid( BinaryKnapsackBlockSbstChange ) )
+             ? static_cast< const BinaryKnapsackBlockSbstChange * >( chg )
+             : nullptr;
+ if( ( ! rchg ) && ( ! schg ) ) {
+  rchg = dynamic_cast< const BinaryKnapsackBlockRngdChange * >( chg );
+  if( ! rchg )
+   schg = dynamic_cast< const BinaryKnapsackBlockSbstChange * >( chg );
   }
 
- for( Index k = 0 ; k < n ; ++k )
-  set_fixing( chg->item( k ) , fixing ? ( data[ k ] == 1 ? 2 : 1 ) : 0 );
-
- return( undo );
+ if( rchg ) {
+  const Index first = rchg->rng().first;
+  return( run( rchg->rng().second - first ,
+               [ first ]( Index k ) { return( first + k ); } , rchg ) );
+  }
+ if( schg ) {
+  const auto & nms = schg->nms();
+  return( run( Index( nms.size() ) ,
+               [ & nms ]( Index k ) { return( nms[ k ] ); } , nullptr ) );
+  }
+ return( run( chg->num_items() ,
+              [ chg ]( Index k ) { return( chg->item( k ) ); } , nullptr ) );
 
  }  // end( BinaryKnapsackSolver::apply_to_mirror )
 

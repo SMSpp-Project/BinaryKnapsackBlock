@@ -60,6 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no pass over all the items, but one after every `n` items (un)fixed when
   the data are not integer, which bounds the rounding
 
+- `BinaryKnapsackSolver` reads the items of a Range or a Subset (un)fixing
+  Change in place, telling the two by the address of their `type_info`,
+  with no virtual call for each item
+
 ### Fixed
 
 - the branching of `GreedyRelaxationBinaryKnapsackSolver` with

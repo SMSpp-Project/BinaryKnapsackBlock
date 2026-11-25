@@ -393,6 +393,45 @@ class BinaryKnapsackSolver : public virtual Solver {
  };  // end( class( BinaryKnapsackSolver ) )
 
 /*--------------------------------------------------------------------------*/
+/*----------------- INLINE METHODS OF BinaryKnapsackSolver -----------------*/
+/*--------------------------------------------------------------------------*/
+
+inline void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
+{
+ const unsigned char o = v_fxd[ i ];
+ v_fxd[ i ] = v;
+ if( ( o == v ) || ( ! f_norm_valid ) )
+  return;
+
+ if( ! f_relax_data ) {
+  f_norm_valid = false;
+  return;
+  }
+
+ if( ! f_exact )
+  ++f_fix_steps;
+
+ // under the fixing s, whether the item is (tentatively) taken and whether
+ // it is in the relaxation, as normalize_instance() and refresh_fixings()
+ // have it: a free item is taken if always taken or complemented
+ const unsigned char cls = n_cls[ i ];
+ const auto taken = [ cls ]( unsigned char s ) {
+  return( s ? ( s == 2 ) : ( ( cls == 1 ) || ( cls == 2 ) ) );
+  };
+
+ if( const int d = int( taken( v ) ) - int( taken( o ) ) ) {
+  const double p = f_sense ? v_P[ i ] : - v_P[ i ];
+  if( d > 0 ) { f_base += p; f_Cd -= v_W[ i ]; }
+  else        { f_base -= p; f_Cd += v_W[ i ]; }
+  }
+
+ n_in[ i ] = ( ! v ) && ( cls >= 2 );
+ if( ! n_in[ i ] )          // in the relaxation, f_x[ i ] set by the scan
+  f_x[ i ] = taken( v );
+
+ }  // end( BinaryKnapsackSolver::set_fixing )
+
+/*--------------------------------------------------------------------------*/
 
 }  // end( namespace SMSpp_di_unipi_it )
 
