@@ -42,6 +42,8 @@
 
 #include "BinaryKnapsackSolver.h"
 
+#include "BranchingRule.h"
+
 #include "ChangeSolver.h"
 
 #include "Change.h"
@@ -92,10 +94,15 @@ namespace SMSpp_di_unipi_it
  *   first item; branch() passes to each child the state of its greedy fill,
  *   and the undo of a branching brings back the state of the parent. Any
  *   Modification of the Block, instead, makes the next compute() rebuild
- *   the greedy fill from the data. */
+ *   the greedy fill from the data.
+ *
+ * As a BranchBounder [see BranchingRule.h], with intIncremental == 1 it may
+ * also give a valid bound of each child of a branch() without solving it
+ * [see intBranchBound]. */
 
 class GreedyRelaxationBinaryKnapsackSolver : public BinaryKnapsackSolver ,
-                                             public RelaxationSolver {
+                                             public RelaxationSolver ,
+                                             public BranchBounder {
 
 /*--------------------------------------------------------------------------*/
 /*----------------------- PUBLIC PART OF THE CLASS -------------------------*/
@@ -111,6 +118,7 @@ public:
 
  enum int_par_type_GRBKSlv {
   intIncremental = intLastAlgPar ,  ///< re-optimize along the Changes
+  intBranchBound ,                  ///< the bounds of the children
   intLastGRBKSlvPar                 ///< first allowed new int par for derived
   };
 
@@ -150,7 +158,20 @@ public:
   * - intIncremental [0]: 0 = each compute() solves the relaxation from
   *   scratch, 1 = the greedy fill is kept across the (un)fixing Changes
   *   applied to the Solver [see the general notes of the class]. Changing
-  *   it makes the next compute() start from scratch. */
+  *   it makes the next compute() start from scratch.
+  *
+  * - intBranchBound [0]: with 1 and intIncremental == 1, branch_bounds()
+  *   gives the bounds of the children of each branch() of Martello and Toth
+  *   (1977), which the greedy fill gives at the price of looking for the
+  *   item before and after the critical one c: in the normalized
+  *   maximization sense, with \f$ P \f$ and \f$ C \f$ the profit and the
+  *   residual capacity of the fill without c, \f$ e^- \f$ the efficiency
+  *   of the last item taken before c and \f$ e^+ \f$ that of the first
+  *   free one after it, \f$ P + p_c - ( w_c - C ) e^- \f$ for the child
+  *   that takes c (empty if no item is taken before c) and \f$ P + C e^+
+  *   \f$ for the one that leaves it (\f$ P \f$ if no item comes after c),
+  *   both no less than the continuous relaxation of the child; with 0, or
+  *   with intIncremental == 0, branch_bounds() gives none. */
 
  void set_par( idx_type par , int value ) override {
   if( par == intIncremental ) {
@@ -160,7 +181,15 @@ public:
     }
    }
   else
-   BinaryKnapsackSolver::set_par( par , value );
+   if( par == intBranchBound ) {
+    if( ( value < 0 ) || ( value > 1 ) )
+     throw( std::invalid_argument(
+		    "GreedyRelaxationBinaryKnapsackSolver::set_par: "
+		    "intBranchBound is neither 0 nor 1" ) );
+    f_branch_bound = value;
+    }
+   else
+    BinaryKnapsackSolver::set_par( par , value );
   }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
@@ -174,13 +203,15 @@ public:
  [[nodiscard]] int get_int_par( idx_type par ) const override {
   if( par == intIncremental )
    return( f_incremental );
+  if( par == intBranchBound )
+   return( f_branch_bound );
   return( BinaryKnapsackSolver::get_int_par( par ) );
   }
 
 /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
  [[nodiscard]] int get_dflt_int_par( idx_type par ) const override {
-  if( par == intIncremental )
+  if( ( par == intIncremental ) || ( par == intBranchBound ) )
    return( 0 );
   return( BinaryKnapsackSolver::get_dflt_int_par( par ) );
   }
@@ -191,6 +222,8 @@ public:
   const override {
   if( name == "intIncremental" )
    return( intIncremental );
+  if( name == "intBranchBound" )
+   return( intBranchBound );
   return( BinaryKnapsackSolver::int_par_str2idx( name ) );
   }
 
@@ -199,8 +232,11 @@ public:
  [[nodiscard]] const std::string & int_par_idx2str( idx_type idx )
   const override {
   static const std::string name = "intIncremental";
+  static const std::string bound = "intBranchBound";
   if( idx == intIncremental )
    return( name );
+  if( idx == intBranchBound )
+   return( bound );
   return( BinaryKnapsackSolver::int_par_idx2str( idx ) );
   }
 
@@ -336,6 +372,12 @@ public:
   * the child may be non-empty under other data. */
 
  std::vector< Change * > branch() override;
+
+/*--------------------------------------------------------------------------*/
+ /// the bounds of the children of the last branch() [see intBranchBound],
+ /// in the sense of the Block, none if intBranchBound == 0
+
+ std::vector< double > branch_bounds( void ) override { return( f_bounds ); }
 
 /*--------------------------------------------------------------------------*/
  /// classify the effect of a Modification on an enumeration tree
@@ -535,6 +577,10 @@ private:
 /*--------------------------------------------------------------------------*/
 
  int f_incremental = 0;  ///< the parameter intIncremental
+ int f_branch_bound = 0; ///< the parameter intBranchBound
+
+ /// the bounds of the children of the last branch() [see intBranchBound]
+ std::vector< double > f_bounds;
 
  // the cells of the GlobalInformation [see set_global_information()], with
  // the Collection that holds each, so that the reference stays valid

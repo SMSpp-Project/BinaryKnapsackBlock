@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `intBranchBound` of `GreedyRelaxationBinaryKnapsackSolver`, by which,
+  with `intIncremental` 1, it is a `BranchBounder` of SMS++ whose bounds of
+  the two children of a branching on the critical item are those of
+  Martello and Toth, from the efficiencies of the items before and after it
+
 - `get_fixing_penalties()` of `BinaryKnapsackBlock`, by one forward and
   one backward dynamic programming over the free binary items with the
   current profits and fixings, for integer weights, the continuous items

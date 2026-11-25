@@ -143,6 +143,7 @@ void GreedyRelaxationBinaryKnapsackSolver::get_var_solution(
 
 std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
 {
+ f_bounds.clear();
  if( f_incremental )
   return( inc_branch() );
 
@@ -555,6 +556,32 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
  const double take = v_icomp[ f_ci ] ? 0.0 : 1.0;  // the item in the fill
  const double leave = 1.0 - take;                   // the item out of it
 
+ // the bounds of Martello and Toth of the children, in the normalized
+ // maximization sense [see intBranchBound]: the efficiency of the last item
+ // taken before the critical one, and of the first free one after it
+ double up_take = - Inf< double >();
+ double up_leave = f_iP;
+ const bool bounds = f_branch_bound && ( ! f_to_end ) && f_N;
+ if( bounds ) {
+  for( Index j = f_ssi ; j-- > 0 ; ) {
+   const Index i = v_sorted[ j ];
+   if( ( ! v_skip[ i ] ) && ( v_iw[ i ] > 0 ) ) {
+    up_take = f_iP + v_ip[ f_ci ] -
+              ( v_iw[ f_ci ] - f_iC ) * ( v_ip[ i ] / v_iw[ i ] );
+    break;
+    }
+   }
+  for( Index j = f_ssi + 1 ; j < f_N ; ++j ) {
+   const Index i = v_sorted[ j ];
+   if( ( ! v_skip[ i ] ) && ( v_iw[ i ] > 0 ) ) {
+    up_leave += f_iC * ( v_ip[ i ] / v_iw[ i ] );
+    break;
+    }
+   }
+  }
+ // in the sense of the Block
+ auto sensed = [ this ]( double up ) { return( f_sense ? up : - up ); };
+
  // leaving out the child that takes the critical item, empty under the
  // current data, is a reduction valid for these data only: it is not done
  // when the tree is retained across changes of the data [see
@@ -566,6 +593,8 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
 			   std::vector< double >{ leave , double( f_ssi ) ,
 						  f_iC , f_iP , epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
+  if( bounds )
+   f_bounds = { sensed( up_leave ) };
   return( branches );
   }
 
@@ -582,6 +611,8 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
 			   std::vector< double >{ leave , double( f_ssi ) ,
 						  f_iC , f_iP , epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
+ if( bounds )
+  f_bounds = { sensed( up_take ) , sensed( up_leave ) };
  return( branches );
 
  }  // end( GreedyRelaxationBinaryKnapsackSolver::inc_branch )
