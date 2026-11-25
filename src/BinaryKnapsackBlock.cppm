@@ -16,20 +16,11 @@
  * This file is written by SMS++/cmake/smspp_module_exports.py, which reads
  * the names from the AST of the headers: it is not to be edited by hand.
  *
- * \author Federica Di Pasquale \n
+ * \author Donato Meoli \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Francesca Demelas \n
- *         Laboratoire d'Informatique de Paris Nord \n
- *         Universite' Sorbonne Paris Nord \n
- *
- * \author Antonio Frangioni \n
- *         Dipartimento di Informatica \n
- *         Universita' di Pisa \n
- *
- * \copyright &copy; by Federica Di Pasquale, Antonio Frangioni,
- *                      Francesca Demelas
+ * \copyright &copy; by Donato Meoli
  */
 /*--------------------------------------------------------------------------*/
 /*------------------------- GLOBAL MODULE FRAGMENT -------------------------*/

@@ -33,11 +33,11 @@
  * this is at once the whole solve of GreedyRelaxationBinaryKnapsackSolver
  * and a valid upper bound for any exact derived Solver.
  *
- * \author Antonio Frangioni \n
+ * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Federica Di Pasquale \n
+ * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
@@ -102,7 +102,9 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  BinaryKnapsackSolver() : Solver() , f_sense( true ) , f_N( 0 ) , f_Cap( 0 ) ,
                           f_changed( true ) , f_ord_valid( false ) ,
-                          f_norm_valid( false ) , f_relax_data( true ) ,
+                          f_fix_steps( 0 ) , f_exact( false ) ,
+                          f_norm_valid( false ) ,
+                          f_relax_data( true ) ,
                           f_Cd( 0 ) , f_base( 0 ) {}
 
  ~BinaryKnapsackSolver() override = default;
@@ -233,6 +235,20 @@ class BinaryKnapsackSolver : public virtual Solver {
  void refresh_fixings( void );
 
 /*--------------------------------------------------------------------------*/
+ /// (un)fix an item of the mirror
+ /** Sets #v_fxd[ i ] to v (0 free, 1 fixed to 0, 2 fixed to 1). While
+  * #f_norm_valid, f_x[ i ], f_base, f_Cd and n_in[ i ] change with it as
+  * refresh_fixings() would change them, so that a re-solve under the new
+  * fixings needs no pass over all the items; one is made anyway after more
+  * than f_N items have been (un)fixed this way [see #f_fix_steps], which
+  * bounds the rounding that the updates of f_base and f_Cd pile up, unless
+  * these updates are exact [see #f_exact]. Without the data of the
+  * relaxation [see #f_relax_data], the normalization is just marked as
+  * stale. */
+
+ void set_fixing( Index i , unsigned char v );
+
+/*--------------------------------------------------------------------------*/
  /// (re)build the cached efficiency order of the items
  /** Fills #v_ord with the items sorted by non-increasing efficiency
   * \f$ p_i / w_i \f$ of the normalized instance [see
@@ -240,9 +256,20 @@ class BinaryKnapsackSolver : public virtual Solver {
   * continuous relaxation follows. The order only depends on the profits,
   * the weights and the sense of the Objective, NOT on the fixings, hence it
   * survives a re-solve under different fixings and is only rebuilt when
-  * #f_ord_valid says so. */
+  * #f_ord_valid says so; so is the envelope that max_margin() reads. */
 
  void build_efficiency_order( void );
+
+/*--------------------------------------------------------------------------*/
+ /// the largest margin of an item at the given efficiency
+ /** Returns \f$ \max_j | p_j - \rho w_j | \f$ over the items that can
+  * enter the relaxation (those of positive normalized weight [see
+  * normalize_instance()]), whether or not they are fixed, 0 if there is
+  * none, in \f$ O( \log n ) \f$ time: the maximum is the upper envelope of
+  * the \f$ 2n \f$ lines \f$ \pm ( p_j - \rho w_j ) \f$, which is built
+  * with the efficiency order [see build_efficiency_order()]. */
+
+ double max_margin( double rho ) const;
 
 /*--------------------------------------------------------------------------*/
  /// apply an (un)fixing Change to the internal mirror of the instance
@@ -314,6 +341,14 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  std::vector< int >    v_ord;     ///< ALL the items by efficiency
  bool f_ord_valid;                ///< if v_ord matches profits / weights
+ std::vector< double > v_env_m;   ///< slopes, intercepts and breakpoints
+ std::vector< double > v_env_a;   ///< of the upper envelope that
+ std::vector< double > v_env_x;   ///< max_margin() reads
+ Index f_fix_steps;               ///< items (un)fixed by set_fixing() since
+                                  ///< the last pass over all of them
+ bool f_exact;                    ///< if profits, weights and capacity are
+                                  ///< integer and so small that f_base and
+                                  ///< f_Cd are kept with no rounding
  bool f_norm_valid;               ///< if the normalization matches the
                                   ///< current profits / weights / sense
  bool f_relax_data;               ///< if normalize_instance() fills n_w,
@@ -324,6 +359,9 @@ class BinaryKnapsackSolver : public virtual Solver {
  std::vector< double > n_p;       ///< normalized (complemented) profits
  std::vector< char >   n_in;      ///< 1 if the item enters the relaxation
  std::vector< char >   n_comp;    ///< 1 if the item is complemented
+ std::vector< unsigned char > n_cls;  ///< what a free item is: 0 dropped,
+                                      ///< 1 always taken, 2 complemented,
+                                      ///< 3 a genuine one
 
  std::vector< double > f_x;           ///< full solution over ALL items:
                                       ///< fixed / pre-fixed entries set by
@@ -353,6 +391,45 @@ class BinaryKnapsackSolver : public virtual Solver {
 /*--------------------------------------------------------------------------*/
 
  };  // end( class( BinaryKnapsackSolver ) )
+
+/*--------------------------------------------------------------------------*/
+/*----------------- INLINE METHODS OF BinaryKnapsackSolver -----------------*/
+/*--------------------------------------------------------------------------*/
+
+inline void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
+{
+ const unsigned char o = v_fxd[ i ];
+ v_fxd[ i ] = v;
+ if( ( o == v ) || ( ! f_norm_valid ) )
+  return;
+
+ if( ! f_relax_data ) {
+  f_norm_valid = false;
+  return;
+  }
+
+ if( ! f_exact )
+  ++f_fix_steps;
+
+ // under the fixing s, whether the item is (tentatively) taken and whether
+ // it is in the relaxation, as normalize_instance() and refresh_fixings()
+ // have it: a free item is taken if always taken or complemented
+ const unsigned char cls = n_cls[ i ];
+ const auto taken = [ cls ]( unsigned char s ) {
+  return( s ? ( s == 2 ) : ( ( cls == 1 ) || ( cls == 2 ) ) );
+  };
+
+ if( const int d = int( taken( v ) ) - int( taken( o ) ) ) {
+  const double p = f_sense ? v_P[ i ] : - v_P[ i ];
+  if( d > 0 ) { f_base += p; f_Cd -= v_W[ i ]; }
+  else        { f_base -= p; f_Cd += v_W[ i ]; }
+  }
+
+ n_in[ i ] = ( ! v ) && ( cls >= 2 );
+ if( ! n_in[ i ] )          // in the relaxation, f_x[ i ] set by the scan
+  f_x[ i ] = taken( v );
+
+ }  // end( BinaryKnapsackSolver::set_fixing )
 
 /*--------------------------------------------------------------------------*/
 

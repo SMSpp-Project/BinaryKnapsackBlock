@@ -179,13 +179,13 @@ conduct, and the process for submitting merge requests to us.
 
 ### Current Lead Authors
 
-- **Federica Di Pasquale**  
-  Dipartimento di Informatica  
-  Università di Pisa
-
 - **Francesca Demelas**  
   Laboratoire d'Informatique de Paris Nord  
   Universite' Sorbonne Paris Nord
+
+- **Federica Di Pasquale**  
+  Dipartimento di Informatica  
+  Università di Pisa
 
 - **Donato Meoli**  
   Dipartimento di Informatica  

@@ -41,7 +41,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RECORD is built where its shim compiles, with `-fopenmp-simd` where the
   compiler takes it, and COMBO where the C compiler has the 128-bit integer
 
+- a step of `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1
+  reads the items and the data of the Change in place, by its `num_items()`
+  and `item()`, allocating only its undo, and its branching reads the cells
+  of `GlobalInformation::str_LocalFixingAllowed` and
+  `GlobalInformation::str_Incumbent` through a reference taken at the first
+  branching that finds them, instead of looking them up at every node
+
+- `GreedyRelaxationBinaryKnapsackSolver::apply()` and the undo of a step
+  tell the Range and Subset Changes, and a GroupChange, by the address of
+  their `type_info` before any `dynamic_cast`, which compares the names of
+  the types as strings when the `type_info` are not merged across shared
+  libraries
+
+- the reduced-cost pegging in the branching of
+  `GreedyRelaxationBinaryKnapsackSolver` looks at no item when the gap
+  between the relaxation and the incumbent exceeds the largest margin of an
+  item, which `BinaryKnapsackSolver::max_margin()` gives in logarithmic time
+  from an envelope built with the efficiency order
+
+- `BinaryKnapsackSolver` follows each (un)fixing of an item, and a change
+  of the capacity, in the profit and the capacity left by the fixed items
+  and in the membership of the item in the relaxation, so that
+  `GreedyRelaxationBinaryKnapsackSolver` re-solves under new fixings with
+  no pass over all the items, but one after every `n` items (un)fixed when
+  the data are not integer, which bounds the rounding
+
+- `BinaryKnapsackSolver` reads the items of a Range or a Subset (un)fixing
+  Change in place, telling the two by the address of their `type_info`,
+  with no virtual call for each item
+
 ### Fixed
+
+- the branching of `GreedyRelaxationBinaryKnapsackSolver` with
+  `intIncremental` 0 pegs the items by their reduced costs, reading
+  the incumbent from `GlobalInformation::str_Incumbent` and only while
+  `GlobalInformation::str_LocalFixingAllowed` holds, instead of from a
+  Collection that nobody declares
 
 - the makefile passes the directory of the header of RECORD as a word of its
   own after `-isystem`, which MSYS2 turns into a path of Windows for its

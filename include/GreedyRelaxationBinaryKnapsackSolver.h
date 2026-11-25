@@ -9,11 +9,11 @@
  * re-optimizing it along the Changes of a Branch-and-Bound [see
  * intIncremental].
  *
- * \author Antonio Frangioni \n
+ * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Federica Di Pasquale \n
+ * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
@@ -45,6 +45,8 @@
 #include "ChangeSolver.h"
 
 #include "Change.h"
+
+#include "GlobalInformation.h"
 
 /*--------------------------------------------------------------------------*/
 /*-------------------------- NAMESPACE & USING -----------------------------*/
@@ -308,15 +310,19 @@ public:
  /** The two children fix the critical item to 0 and to 1.
   *
   * With intIncremental == 0, each child also carries, when an incumbent is
-  * available (in the "DoubleProperties" universe of the GlobalInformation
-  * [see GlobalInformation.h]), the reduced-cost (Martello-Toth) pegging
-  * valid in its subtree: with \f$ \rho \f$ the efficiency of the critical
-  * item and \f$ U \f$ the relaxation value, flipping a free integer item
-  * \f$ j \f$ away from its greedy value \f$ \bar{x}_j \f$ cannot yield more
-  * than \f$ U - | p_j - \rho w_j | \f$ (in the normalized maximization
-  * sense), so whenever this does not beat the incumbent \f$ x_j \f$ is fixed
-  * at \f$ \bar{x}_j \f$ throughout the subtree; these fixings travel with
-  * the fixing of the critical item in a GroupChange.
+  * available and local tightenings are sound [see
+  * GlobalInformation::str_Incumbent and
+  * GlobalInformation::str_LocalFixingAllowed], the reduced-cost
+  * (Martello-Toth) pegging valid in its subtree: with \f$ \rho \f$ the
+  * efficiency of the critical item and \f$ U \f$ the relaxation value,
+  * flipping a free integer item \f$ j \f$ away from its greedy value
+  * \f$ \bar{x}_j \f$ cannot yield more than \f$ U - | p_j - \rho w_j | \f$
+  * (in the normalized maximization sense), so whenever this does not beat
+  * the incumbent \f$ x_j \f$ is fixed at \f$ \bar{x}_j \f$ throughout the
+  * subtree; these fixings travel with the fixing of the critical item in a
+  * GroupChange. No item is looked at when \f$ U \f$ exceeds the incumbent
+  * by more than the largest margin [see BinaryKnapsackSolver::max_margin()],
+  * since then no item can be pegged.
   *
   * With intIncremental == 1, the data of each child carry, in their last
   * four positions, the state of the greedy fill of the child (the position
@@ -398,6 +404,20 @@ public:
   * forwarded to the Block. */
 
  Change * apply( Change * chg , bool doUndo = false ) override;
+
+/*--------------------------------------------------------------------------*/
+ /// set the GlobalInformation, forgetting the cells read from the previous
+ /** The cells of GlobalInformation::str_LocalFixingAllowed and
+  * GlobalInformation::str_Incumbent are looked up at the first branch()
+  * that finds them, and read through a reference from then on. */
+
+ void set_global_information( GlobalInformation * gi ) override {
+  RelaxationSolver::set_global_information( gi );
+  f_lfa_cells.reset();
+  f_lfa_cell = nullptr;
+  f_inc_cells.reset();
+  f_inc_cell = nullptr;
+  }
 
 /** @} ---------------------------------------------------------------------*/
 /*--------------------- PROTECTED PART OF THE CLASS ------------------------*/
@@ -491,6 +511,20 @@ private:
  void inc_unfix_item( Index i , double x );
 
 /*--------------------------------------------------------------------------*/
+ /// whether the local reductions are allowed
+ /** The value of GlobalInformation::str_LocalFixingAllowed, true if there is
+  * no such cell. */
+
+ bool local_fixing_allowed( void );
+
+/*--------------------------------------------------------------------------*/
+ /// the incumbent, if there is one
+ /** Writes in \p value the value of GlobalInformation::str_Incumbent, and
+  * returns whether there is such a cell and it is finite. */
+
+ bool incumbent( double & value );
+
+/*--------------------------------------------------------------------------*/
  /// fix item i to x (0 or 1, in the space of the Block)
  /** Updates the capacity left by the fixed items, the profit and residual
   * capacity of the greedy fill and the position from which compute()
@@ -503,6 +537,22 @@ private:
 /*--------------------------------------------------------------------------*/
 
  int f_incremental = 0;  ///< the parameter intIncremental
+
+ // the cells of the GlobalInformation [see set_global_information()], with
+ // the Collection that holds each, so that the reference stays valid
+
+ /// the Collection of GlobalInformation::str_LocalFixingAllowed
+ std::shared_ptr< Collection< std::atomic< bool > > > f_lfa_cells;
+
+ /// the cell of GlobalInformation::str_LocalFixingAllowed, nullptr if not
+ /// found yet
+ std::atomic< bool > * f_lfa_cell = nullptr;
+
+ /// the Collection of GlobalInformation::str_Incumbent
+ std::shared_ptr< Collection< std::atomic< double > > > f_inc_cells;
+
+ /// the cell of GlobalInformation::str_Incumbent, nullptr if not found yet
+ std::atomic< double > * f_inc_cell = nullptr;
 
  // the greedy fill kept across the Changes, with intIncremental == 1
 

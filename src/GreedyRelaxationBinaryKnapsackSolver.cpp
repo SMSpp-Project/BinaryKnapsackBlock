@@ -11,11 +11,11 @@
  * greedy fill kept across the Changes (intIncremental == 1) is implemented
  * here.
  *
- * \author Antonio Frangioni \n
+ * \author Federica Di Pasquale \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
- * \author Federica Di Pasquale \n
+ * \author Antonio Frangioni \n
  *         Dipartimento di Informatica \n
  *         Universita' di Pisa \n
  *
@@ -37,8 +37,11 @@
 /*--------------------------------------------------------------------------*/
 
 #include <algorithm>
+#include <array>
 #include <atomic>
+#include <cmath>
 #include <numeric>
+#include <typeinfo>
 
 #include "GreedyRelaxationBinaryKnapsackSolver.h"
 
@@ -47,6 +50,28 @@
 /*--------------------------------------------------------------------------*/
 
 using namespace SMSpp_di_unipi_it;
+
+/*--------------------------------------------------------------------------*/
+/*---------------------------- LOCAL FUNCTIONS -----------------------------*/
+/*--------------------------------------------------------------------------*/
+
+namespace {
+
+/// p as a T * if the dynamic type of *p is exactly T, else nullptr
+/** The addresses of the two type_info are compared, which does not walk the
+ * class hierarchy as a dynamic_cast does (comparing the names of the types
+ * as strings, when the type_info are not merged across shared libraries);
+ * a nullptr is not a proof that *p is not a T (it may be of a class derived
+ * from T, or have a type_info of another library), so the caller falls back
+ * to a dynamic_cast. */
+
+template< class T , class B >
+T * exact_cast( B * p ) {
+ return( ( p && ( & typeid( * p ) == & typeid( T ) ) )
+         ? static_cast< T * >( p ) : nullptr );
+ }
+
+}  // end( unnamed namespace )
 
 /*--------------------------------------------------------------------------*/
 /*----------------------------- STATIC MEMBERS -----------------------------*/
@@ -76,8 +101,9 @@ int GreedyRelaxationBinaryKnapsackSolver::compute( bool changedvars )
 
  if( ! f_norm_valid )        // profits / weights / sense changed:
   normalize_instance();      //  raw mirror -> normalized core
- else                        // only the fixings (possibly) changed:
-  refresh_fixings();         //  cheap single-pass refresh
+ else                        // only the fixings changed, which
+  if( f_fix_steps > f_N )    //  set_fixing() has followed, but
+   refresh_fixings();        //  not for too long [see set_fixing()]
 
  obj = - Inf< double >();
 
@@ -126,14 +152,11 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
  // throughout this subtree [see the branch() doc]; the pegged items are split
  // by the value they are stuck at
  Block::Subset peg0 , peg1;
- // the incumbent is read from the "DoubleProperties" universe of the
- // GlobalInformation, if any [see GlobalInformation.h]
- bool hasIncumbent = false;
+ // the incumbent is the value of the best solution found by anybody, not
+ // finite while there is none, and the pegging depends on it, so it is only
+ // done while local tightenings are sound [see GlobalInformation.h]
  double cutoff = 0;
- if( f_global_information )
-  if( auto universe = f_global_information->get_from_Universe< double >(
-							"DoubleProperties" ) )
-   hasIncumbent = universe->read( "incumbent" , cutoff );
+ const bool hasIncumbent = local_fixing_allowed() && incumbent( cutoff );
  if( hasIncumbent && ( f_fi.orig >= 0 ) ) {
   // the incumbent in the normalized (maximization) sense; the conservative
   // guard wards off pegging the optimum away by a floating-point whisker
@@ -141,16 +164,20 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
                       1e-9 * ( 1 + std::abs( cutoff ) );
   const Index ci = Index( f_fi.orig );
   const double rho = n_p[ ci ] / n_w[ ci ];   // critical efficiency
-  for( Index j = 0 ; j < f_N ; ++j ) {
-   if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
-    continue;                  // not free, critical, or not integer
-   const double xj = f_x[ j ];                   // 0 or 1 (original space)
-   const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
-   const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
-                            : rho * n_w[ j ] - n_p[ j ];
-   if( obj - margin <= zmax )
-    ( xj ? peg1 : peg0 ).push_back( j );
-   }
+  // a gap above the largest margin of any item pegs nothing, and then no
+  // item is looked at; the slack keeps the rounding of the envelope from
+  // skipping a scan that would peg
+  if( obj - zmax <= max_margin( rho ) + 1e-9 * ( 1 + std::abs( obj ) ) )
+   for( Index j = 0 ; j < f_N ; ++j ) {
+    if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
+     continue;                 // not free, critical, or not integer
+    const double xj = f_x[ j ];                  // 0 or 1 (original space)
+    const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
+    const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
+                             : rho * n_w[ j ] - n_p[ j ];
+    if( obj - margin <= zmax )
+     ( xj ? peg1 : peg0 ).push_back( j );
+    }
   }
 
  // the two children fix the critical item to 0 and to 1; each also carries
@@ -193,20 +220,34 @@ Change * GreedyRelaxationBinaryKnapsackSolver::apply( Change * chg ,
 {
  // a GroupChange (e.g., the composed undo of branching plus separation, see
  // BranchAndXSolver) is applied by decomposing it; the sub-undos are
- // composed back in reverse order
- if( auto grp = dynamic_cast< GroupChange * >( chg ) ) {
+ // composed back in reverse order; the Change of the Block, which a step
+ // of the tree is, is tested first, by its exact type before any
+ // dynamic_cast, since a tree applies a great many of them
+ BinaryKnapsackBlockChange * CHG =
+  exact_cast< BinaryKnapsackBlockRngdChange >( chg );
+ if( ! CHG )
+  CHG = exact_cast< BinaryKnapsackBlockSbstChange >( chg );
+ GroupChange * grp = nullptr;
+ if( ! CHG ) {
+  grp = exact_cast< GroupChange >( chg );
+  if( ! grp ) {
+   CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
+   if( ! CHG )
+    grp = dynamic_cast< GroupChange * >( chg );
+   }
+  }
+ if( ! CHG ) {
+  if( ! grp )
+   throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
+				 "apply: the Change must be a "
+				 "BinaryKnapsackBlockChange or a "
+				 "GroupChange" ) );
   GroupChange * undo = doUndo ? new GroupChange() : nullptr;
   for( auto sub : grp->sub_Changes() )
    if( auto u = apply( sub , doUndo ) ; u && undo )
     undo->add_front( u );
   return( undo );
   }
-
- auto CHG = dynamic_cast< BinaryKnapsackBlockChange * >( chg );
- if( ! CHG )
-  throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
-				"apply: the Change must be a "
-				"BinaryKnapsackBlockChange" ) );
 
  if( ( CHG->type() != BinaryKnapsackBlockChange::eFixX ) &&
      ( CHG->type() != BinaryKnapsackBlockChange::eUnfixX ) )
@@ -412,24 +453,14 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
 
  f_x_valid = false;
 
- // the items of the Change, and its data (copied, so that the Change can
- // be applied again)
+ // the items of the Change, read in place through its polymorphic view,
+ // and its data, the first n of which are the values of the items
  const auto type = chg->type();
- auto sbst = dynamic_cast< BinaryKnapsackBlockSbstChange * >( chg );
- auto rngd = dynamic_cast< BinaryKnapsackBlockRngdChange * >( chg );
- if( ( ! sbst ) && ( ! rngd ) )
+ const Index n = chg->num_items();
+ const auto & data = chg->data();
+ if( data.size() < n )
   throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
-				"inc_apply: the Change is neither a Subset "
-				"nor a Range one" ) );
-
- Block::Subset items;
- if( sbst )
-  items = sbst->nms();
- else
-  for( Index i = rngd->rng().first ; i < rngd->rng().second ; ++i )
-   items.push_back( i );
-
- std::vector< double > data = sbst ? sbst->data() : rngd->data();
+				"inc_apply: fewer data than items" ) );
 
  // the (fixing) Change of a branching carries in its last four positions
  // the state of the child [see branch()], and its (unfixing) undo that of
@@ -441,18 +472,17 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
  // data: a state of before a Modification is not, and the fill is then
  // started again from the first item, out of the fixed items alone, as it
  // is after any Change that does not carry a current state
- const bool stated = ( items.size() + 4 == data.size() );
+ const bool stated = ( n + 4 == data.size() );
  const bool current = stated && ( data.back() == double( f_inc_epoch ) );
  const bool branching = current &&
                         ( type == BinaryKnapsackBlockChange::eFixX );
  const bool restore = current &&
                       ( type == BinaryKnapsackBlockChange::eUnfixX );
- std::vector< double > parent = { double( f_ssi ) , f_iC , f_iP ,
-                                  double( f_inc_epoch ) };
- std::vector< double > state;
+ const std::array< double , 4 > parent = { double( f_ssi ) , f_iC , f_iP ,
+                                           double( f_inc_epoch ) };
+ std::array< double , 4 > state{};
  if( branching || restore )
-  state.assign( data.begin() + items.size() , data.end() );
- data.resize( items.size() );
+  std::copy( data.begin() + n , data.end() , state.begin() );
 
  if( branching ) {
   f_ssi = Index( state[ 0 ] );
@@ -460,29 +490,44 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
   f_iP = state[ 2 ];
   }
 
- // the undo Change, which carries the state of the parent if this is a
- // fixing, so that undoing it brings the parent back
+ // the undo Change, of the same kind, which carries the state of the parent
+ // if this is a fixing, so that undoing it brings the parent back
  Change * undo = nullptr;
  if( doUndo ) {
   const auto utype = ( type == BinaryKnapsackBlockChange::eFixX )
                      ? BinaryKnapsackBlockChange::eUnfixX
                      : BinaryKnapsackBlockChange::eFixX;
-  std::vector< double > udata( data );
+  std::vector< double > udata;
+  udata.reserve( n + 4 );
+  udata.assign( data.begin() , data.begin() + n );
   if( type == BinaryKnapsackBlockChange::eFixX )
    udata.insert( udata.end() , parent.begin() , parent.end() );
-  if( sbst )
-   undo = new BinaryKnapsackBlockSbstChange( utype , std::move( udata ) ,
-					     Block::Subset( items ) );
-  else
+  auto rngd = exact_cast< BinaryKnapsackBlockRngdChange >( chg );
+  auto sbst = rngd ? nullptr : exact_cast< BinaryKnapsackBlockSbstChange >(
+								      chg );
+  if( ( ! rngd ) && ( ! sbst ) ) {
+   rngd = dynamic_cast< BinaryKnapsackBlockRngdChange * >( chg );
+   if( ! rngd )
+    sbst = dynamic_cast< BinaryKnapsackBlockSbstChange * >( chg );
+   }
+  if( rngd )
    undo = new BinaryKnapsackBlockRngdChange( utype , std::move( udata ) ,
 					     Block::Range( rngd->rng() ) );
+  else
+   if( sbst )
+    undo = new BinaryKnapsackBlockSbstChange( utype , std::move( udata ) ,
+					      Block::Subset( sbst->nms() ) );
+   else
+    throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
+				  "inc_apply: the Change is neither a Subset "
+				  "nor a Range one" ) );
   }
 
- for( Index h = 0 ; h < items.size() ; ++h )
+ for( Index h = 0 ; h < n ; ++h )
   if( type == BinaryKnapsackBlockChange::eUnfixX )
-   inc_unfix_item( items[ h ] , data[ h ] );
+   inc_unfix_item( chg->item( h ) , data[ h ] );
   else
-   inc_fix_item( items[ h ] , data[ h ] );
+   inc_fix_item( chg->item( h ) , data[ h ] );
 
  if( restore ) {  // the undo of a branching: the parent comes back
   f_ssi = Index( state[ 0 ] );
@@ -519,14 +564,7 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
  // current data, is a reduction valid for these data only: it is not done
  // when the tree is retained across changes of the data [see
  // GlobalInformation::str_LocalFixingAllowed]
- bool reduce = true;
- if( f_global_information )
-  if( auto flags = f_global_information->get_from_Universe<
-                    std::atomic< bool > >(
-                     GlobalInformation::str_AtomicFlags ) )
-   flags->read( GlobalInformation::str_LocalFixingAllowed , reduce );
-
- if( reduce && ( f_free_cap - v_iw[ f_ci ] < 0 ) ) {  // only the one out
+ if( local_fixing_allowed() && ( f_free_cap - v_iw[ f_ci ] < 0 ) ) {
   std::vector< Change * > branches( 1 );
   branches[ 0 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
@@ -552,6 +590,44 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
  return( branches );
 
  }  // end( GreedyRelaxationBinaryKnapsackSolver::inc_branch )
+
+/*--------------------------------------------------------------------------*/
+
+bool GreedyRelaxationBinaryKnapsackSolver::local_fixing_allowed( void )
+{
+ if( ( ! f_lfa_cell ) && f_global_information ) {
+  auto cells = f_global_information->get_from_Universe<
+                std::atomic< bool > >( GlobalInformation::str_AtomicFlags );
+  if( cells && cells->contains( GlobalInformation::str_LocalFixingAllowed ) ) {
+   f_lfa_cell = &( ( *cells )[ GlobalInformation::str_LocalFixingAllowed ] );
+   f_lfa_cells = std::move( cells );
+   }
+  }
+
+ return( f_lfa_cell ? f_lfa_cell->load() : true );
+
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::local_fixing_allowed )
+
+/*--------------------------------------------------------------------------*/
+
+bool GreedyRelaxationBinaryKnapsackSolver::incumbent( double & value )
+{
+ if( ( ! f_inc_cell ) && f_global_information ) {
+  auto cells = f_global_information->get_from_Universe<
+                std::atomic< double > >(
+                 GlobalInformation::str_AtomicScalars );
+  if( cells && cells->contains( GlobalInformation::str_Incumbent ) ) {
+   f_inc_cell = &( ( *cells )[ GlobalInformation::str_Incumbent ] );
+   f_inc_cells = std::move( cells );
+   }
+  }
+
+ if( ! f_inc_cell )
+  return( false );
+ value = f_inc_cell->load();
+ return( std::isfinite( value ) );
+
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::incumbent )
 
 /*--------------------------------------------------------------------------*/
 
