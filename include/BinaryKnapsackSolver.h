@@ -102,7 +102,8 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  BinaryKnapsackSolver() : Solver() , f_sense( true ) , f_N( 0 ) , f_Cap( 0 ) ,
                           f_changed( true ) , f_ord_valid( false ) ,
-                          f_fix_steps( 0 ) , f_norm_valid( false ) ,
+                          f_fix_steps( 0 ) , f_exact( false ) ,
+                          f_norm_valid( false ) ,
                           f_relax_data( true ) ,
                           f_Cd( 0 ) , f_base( 0 ) {}
 
@@ -240,9 +241,10 @@ class BinaryKnapsackSolver : public virtual Solver {
   * refresh_fixings() would change them, so that a re-solve under the new
   * fixings needs no pass over all the items; one is made anyway after more
   * than f_N items have been (un)fixed this way [see #f_fix_steps], which
-  * bounds the rounding that the updates of f_base and f_Cd pile up. Without
-  * the data of the relaxation [see #f_relax_data], the normalization is
-  * just marked as stale. */
+  * bounds the rounding that the updates of f_base and f_Cd pile up, unless
+  * these updates are exact [see #f_exact]. Without the data of the
+  * relaxation [see #f_relax_data], the normalization is just marked as
+  * stale. */
 
  void set_fixing( Index i , unsigned char v );
 
@@ -344,6 +346,9 @@ class BinaryKnapsackSolver : public virtual Solver {
  std::vector< double > v_env_x;   ///< max_margin() reads
  Index f_fix_steps;               ///< items (un)fixed by set_fixing() since
                                   ///< the last pass over all of them
+ bool f_exact;                    ///< if profits, weights and capacity are
+                                  ///< integer and so small that f_base and
+                                  ///< f_Cd are kept with no rounding
  bool f_norm_valid;               ///< if the normalization matches the
                                   ///< current profits / weights / sense
  bool f_relax_data;               ///< if normalize_instance() fills n_w,
@@ -354,6 +359,9 @@ class BinaryKnapsackSolver : public virtual Solver {
  std::vector< double > n_p;       ///< normalized (complemented) profits
  std::vector< char >   n_in;      ///< 1 if the item enters the relaxation
  std::vector< char >   n_comp;    ///< 1 if the item is complemented
+ std::vector< unsigned char > n_cls;  ///< what a free item is: 0 dropped,
+                                      ///< 1 always taken, 2 complemented,
+                                      ///< 3 a genuine one
 
  std::vector< double > f_x;           ///< full solution over ALL items:
                                       ///< fixed / pre-fixed entries set by

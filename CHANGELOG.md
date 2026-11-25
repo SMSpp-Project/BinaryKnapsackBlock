@@ -57,7 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of the capacity, in the profit and the capacity left by the fixed items
   and in the membership of the item in the relaxation, so that
   `GreedyRelaxationBinaryKnapsackSolver` re-solves under new fixings with
-  no pass over all the items, but one after every `n` items (un)fixed
+  no pass over all the items, but one after every `n` items (un)fixed when
+  the data are not integer, which bounds the rounding
 
 ### Fixed
 

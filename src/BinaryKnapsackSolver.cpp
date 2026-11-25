@@ -28,6 +28,7 @@
 /*--------------------------------------------------------------------------*/
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
 
 #include "BinaryKnapsackSolver.h"
@@ -112,8 +113,12 @@ bool BinaryKnapsackSolver::update_instance( void )
   switch( tmod->type() ) {
 
    case( BinaryKnapsackBlockMod::eChgCapacity ):
-    if( f_norm_valid )       // f_Cd is f_Cap less the taken weight
-     f_Cd += BKB->get_Capacity() - f_Cap;
+    if( f_norm_valid ) {     // f_Cd is f_Cap less the taken weight
+     const double cap = BKB->get_Capacity();
+     if( ( cap != std::floor( cap ) ) || ( std::abs( cap ) > 0x1p52 ) )
+      f_exact = false;
+     f_Cd += cap - f_Cap;
+     }
     f_Cap = BKB->get_Capacity();
     break;
 
@@ -201,7 +206,13 @@ void BinaryKnapsackSolver::normalize_instance( void )
   n_p.resize( f_N );
   n_comp.resize( f_N );
   n_in.assign( f_N , 0 );
+  n_cls.resize( f_N );
   }
+
+ // the sums of f_base and f_Cd are exact when all the data are integer and
+ // the absolute values add up to less than 2^52
+ double tot = std::abs( f_Cap );
+ bool integer = ( f_Cap == std::floor( f_Cap ) );
 
  for( Index i = 0 ; i < f_N ; ++i ) {
 
@@ -216,6 +227,10 @@ void BinaryKnapsackSolver::normalize_instance( void )
    n_w[ i ] = cmp ? -w : w;
    n_p[ i ] = cmp ? -p : p;
    n_comp[ i ] = cmp;
+   n_cls[ i ] = ( ( w >= 0 ) && ( p <= 0 ) ) ? 0 :
+                ( ( ( w <= 0 ) && ( p >= 0 ) ) ? 1 : ( cmp ? 2 : 3 ) );
+   integer = integer && ( p == std::floor( p ) ) && ( w == std::floor( w ) );
+   tot += std::abs( p ) + std::abs( w );
    }
 
   // fixed variables: honour the fixing, fold into base profit / capacity
@@ -259,6 +274,7 @@ void BinaryKnapsackSolver::normalize_instance( void )
   }
  f_norm_valid = true;
  f_fix_steps = 0;
+ f_exact = f_relax_data && integer && ( tot < 0x1p52 );
 
  }  // end( BinaryKnapsackSolver::normalize_instance )
 
@@ -314,23 +330,24 @@ void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
   return;
   }
 
- ++f_fix_steps;
+ if( ! f_exact )
+  ++f_fix_steps;
 
- const double p = f_sense ? v_P[ i ] : - v_P[ i ];
- const double w = v_W[ i ];
-
- // under the fixing s, whether the item is in the relaxation and whether it
- // is (tentatively) taken, as normalize_instance() and refresh_fixings() do
- const bool dropped = ( w >= 0 ) && ( p <= 0 );
- const bool always = ( ! dropped ) && ( w <= 0 ) && ( p >= 0 );
- const auto taken = [ & ]( unsigned char s ) {
-  return( s ? ( s == 2 ) : ( ( ! dropped ) && ( ( w <= 0 ) || ( p < 0 ) ) ) );
+ // under the fixing s, whether the item is (tentatively) taken and whether
+ // it is in the relaxation, as normalize_instance() and refresh_fixings()
+ // have it: a free item is taken if always taken or complemented
+ const unsigned char cls = n_cls[ i ];
+ const auto taken = [ cls ]( unsigned char s ) {
+  return( s ? ( s == 2 ) : ( ( cls == 1 ) || ( cls == 2 ) ) );
   };
 
- if( taken( o ) ) { f_base -= p; f_Cd += w; }
- if( taken( v ) ) { f_base += p; f_Cd -= w; }
+ if( const int d = int( taken( v ) ) - int( taken( o ) ) ) {
+  const double p = f_sense ? v_P[ i ] : - v_P[ i ];
+  if( d > 0 ) { f_base += p; f_Cd -= v_W[ i ]; }
+  else        { f_base -= p; f_Cd += v_W[ i ]; }
+  }
 
- n_in[ i ] = ( ! v ) && ( ! dropped ) && ( ! always );
+ n_in[ i ] = ( ! v ) && ( cls >= 2 );
  if( ! n_in[ i ] )          // in the relaxation, f_x[ i ] set by the scan
   f_x[ i ] = taken( v );
 
