@@ -102,7 +102,8 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  BinaryKnapsackSolver() : Solver() , f_sense( true ) , f_N( 0 ) , f_Cap( 0 ) ,
                           f_changed( true ) , f_ord_valid( false ) ,
-                          f_norm_valid( false ) , f_relax_data( true ) ,
+                          f_fix_steps( 0 ) , f_norm_valid( false ) ,
+                          f_relax_data( true ) ,
                           f_Cd( 0 ) , f_base( 0 ) {}
 
  ~BinaryKnapsackSolver() override = default;
@@ -233,6 +234,19 @@ class BinaryKnapsackSolver : public virtual Solver {
  void refresh_fixings( void );
 
 /*--------------------------------------------------------------------------*/
+ /// (un)fix an item of the mirror
+ /** Sets #v_fxd[ i ] to v (0 free, 1 fixed to 0, 2 fixed to 1). While
+  * #f_norm_valid, f_x[ i ], f_base, f_Cd and n_in[ i ] change with it as
+  * refresh_fixings() would change them, so that a re-solve under the new
+  * fixings needs no pass over all the items; one is made anyway after more
+  * than f_N items have been (un)fixed this way [see #f_fix_steps], which
+  * bounds the rounding that the updates of f_base and f_Cd pile up. Without
+  * the data of the relaxation [see #f_relax_data], the normalization is
+  * just marked as stale. */
+
+ void set_fixing( Index i , unsigned char v );
+
+/*--------------------------------------------------------------------------*/
  /// (re)build the cached efficiency order of the items
  /** Fills #v_ord with the items sorted by non-increasing efficiency
   * \f$ p_i / w_i \f$ of the normalized instance [see
@@ -328,6 +342,8 @@ class BinaryKnapsackSolver : public virtual Solver {
  std::vector< double > v_env_m;   ///< slopes, intercepts and breakpoints
  std::vector< double > v_env_a;   ///< of the upper envelope that
  std::vector< double > v_env_x;   ///< max_margin() reads
+ Index f_fix_steps;               ///< items (un)fixed by set_fixing() since
+                                  ///< the last pass over all of them
  bool f_norm_valid;               ///< if the normalization matches the
                                   ///< current profits / weights / sense
  bool f_relax_data;               ///< if normalize_instance() fills n_w,

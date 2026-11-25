@@ -101,8 +101,9 @@ int GreedyRelaxationBinaryKnapsackSolver::compute( bool changedvars )
 
  if( ! f_norm_valid )        // profits / weights / sense changed:
   normalize_instance();      //  raw mirror -> normalized core
- else                        // only the fixings (possibly) changed:
-  refresh_fixings();         //  cheap single-pass refresh
+ else                        // only the fixings changed, which
+  if( f_fix_steps > f_N )    //  set_fixing() has followed, but
+   refresh_fixings();        //  not for too long [see set_fixing()]
 
  obj = - Inf< double >();
 

@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   item, which `BinaryKnapsackSolver::max_margin()` gives in logarithmic time
   from an envelope built with the efficiency order
 
+- `BinaryKnapsackSolver` follows each (un)fixing of an item, and a change
+  of the capacity, in the profit and the capacity left by the fixed items
+  and in the membership of the item in the relaxation, so that
+  `GreedyRelaxationBinaryKnapsackSolver` re-solves under new fixings with
+  no pass over all the items, but one after every `n` items (un)fixed
+
 ### Fixed
 
 - the branching of `GreedyRelaxationBinaryKnapsackSolver` with

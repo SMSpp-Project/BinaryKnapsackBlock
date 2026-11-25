@@ -112,6 +112,8 @@ bool BinaryKnapsackSolver::update_instance( void )
   switch( tmod->type() ) {
 
    case( BinaryKnapsackBlockMod::eChgCapacity ):
+    if( f_norm_valid )       // f_Cd is f_Cap less the taken weight
+     f_Cd += BKB->get_Capacity() - f_Cap;
     f_Cap = BKB->get_Capacity();
     break;
 
@@ -138,7 +140,7 @@ bool BinaryKnapsackSolver::update_instance( void )
         v_I[ i ] = BKB->get_Integrality( i ); break;
        case( BinaryKnapsackBlockMod::eFixX ):
        case( BinaryKnapsackBlockMod::eUnfixX ):
-        v_fxd[ i ] = BKB->get_fxd()[ i ]; break;
+        set_fixing( i , BKB->get_fxd()[ i ] ); break;
        default: break;
        }
 
@@ -157,7 +159,7 @@ bool BinaryKnapsackSolver::update_instance( void )
         v_I[ i ] = BKB->get_Integrality( i ); break;
        case( BinaryKnapsackBlockMod::eFixX ):
        case( BinaryKnapsackBlockMod::eUnfixX ):
-        v_fxd[ i ] = BKB->get_fxd()[ i ]; break;
+        set_fixing( i , BKB->get_fxd()[ i ] ); break;
        default: break;
        }
    }
@@ -256,6 +258,7 @@ void BinaryKnapsackSolver::normalize_instance( void )
      cc_orig.push_back( i ); cc_comp.push_back( 0 ); }
   }
  f_norm_valid = true;
+ f_fix_steps = 0;
 
  }  // end( BinaryKnapsackSolver::normalize_instance )
 
@@ -292,7 +295,46 @@ void BinaryKnapsackSolver::refresh_fixings( void )
 
   n_in[ i ] = 1;            // in the relaxation, f_x[ i ] set by the scan
   }
+
+ f_fix_steps = 0;
+
  }  // end( BinaryKnapsackSolver::refresh_fixings )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
+{
+ const unsigned char o = v_fxd[ i ];
+ v_fxd[ i ] = v;
+ if( ( o == v ) || ( ! f_norm_valid ) )
+  return;
+
+ if( ! f_relax_data ) {
+  f_norm_valid = false;
+  return;
+  }
+
+ ++f_fix_steps;
+
+ const double p = f_sense ? v_P[ i ] : - v_P[ i ];
+ const double w = v_W[ i ];
+
+ // under the fixing s, whether the item is in the relaxation and whether it
+ // is (tentatively) taken, as normalize_instance() and refresh_fixings() do
+ const bool dropped = ( w >= 0 ) && ( p <= 0 );
+ const bool always = ( ! dropped ) && ( w <= 0 ) && ( p >= 0 );
+ const auto taken = [ & ]( unsigned char s ) {
+  return( s ? ( s == 2 ) : ( ( ! dropped ) && ( ( w <= 0 ) || ( p < 0 ) ) ) );
+  };
+
+ if( taken( o ) ) { f_base -= p; f_Cd += w; }
+ if( taken( v ) ) { f_base += p; f_Cd -= w; }
+
+ n_in[ i ] = ( ! v ) && ( ! dropped ) && ( ! always );
+ if( ! n_in[ i ] )          // in the relaxation, f_x[ i ] set by the scan
+  f_x[ i ] = taken( v );
+
+ }  // end( BinaryKnapsackSolver::set_fixing )
 
 /*--------------------------------------------------------------------------*/
 
@@ -334,7 +376,7 @@ Change * BinaryKnapsackSolver::apply_to_mirror(
   }
 
  for( Index k = 0 ; k < n ; ++k )
-  v_fxd[ chg->item( k ) ] = fixing ? ( data[ k ] == 1 ? 2 : 1 ) : 0;
+  set_fixing( chg->item( k ) , fixing ? ( data[ k ] == 1 ? 2 : 1 ) : 0 );
 
  return( undo );
 
