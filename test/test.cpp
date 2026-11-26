@@ -354,6 +354,14 @@ void solve_all( BinaryKnapsackBlock * b , std::vector< Slv > & slv ,
   const double lb = sl.s->get_lb();
   const double ub = sl.s->get_ub();
 
+  // a compute() with nothing changed in between gives the same answer, as
+  // when a branch-and-bound evaluates the same node twice
+  const std::string again = who + ": a second compute()";
+  if( check( sl.s->compute( false ) == Solver::kOK , again + " fails" ) ) {
+   const double v2 = sl.s->get_var_value();
+   check( close( v2 , value ) , again + " is worth " + str( v2 ) );
+   }
+
   if( sl.exact ) {
    check( close( value , opt ) , who + ": value " + str( value ) );
    check( close( lb , opt ) && close( ub , opt ) , who + ": bounds " +
