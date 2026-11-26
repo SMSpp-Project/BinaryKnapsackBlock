@@ -511,12 +511,13 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply_items(
  // the state of the child [see branch()], and its (unfixing) undo that of
  // the parent: the position from which compute() resumes, the residual
  // capacity and the profit, and the epoch of the data they were computed
- // on; the whole state is set, so that the Change can be applied after any
- // other Change, not only after the compute() of the parent (say, by a
- // worker re-applying the path to a node), but only if it is of the current
- // data: a state of before a Modification is not, and the fill is then
- // started again from the first item, out of the fixed items alone, as it
- // is after any Change that does not carry a current state
+ // on; the whole state is set, after the items have been (un)fixed with no
+ // change to the fill, so that the Change can be applied after any other
+ // Change, not only after the compute() of the parent (say, by a worker
+ // re-applying the path to a node), but only if it is of the current data:
+ // a state of before a Modification is not, and the fill is then started
+ // again from the first item, out of the fixed items alone, as it is after
+ // any Change that does not carry a current state
  const bool fixing = ( type == BinaryKnapsackBlockChange::eFixX );
  const bool current = ( n + 4 == data.size() ) &&
                       ( data.back() == double( f_inc_epoch ) );
@@ -525,25 +526,17 @@ Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply_items(
  // if this is a fixing, so that undoing it brings the parent back
  Change * undo = doUndo ? inc_undo( chg , n , fixing ) : nullptr;
 
- if( current && fixing ) {   // a branching: the child comes
-  f_ssi = Index( data[ n ] );
-  f_iC = data[ n + 1 ];
-  f_iP = data[ n + 2 ];
-  }
-
  if( fixing )
   for( Index h = 0 ; h < n ; ++h )
-   inc_fix_item( item( h ) , data[ h ] );
+   inc_fix_item( item( h ) , data[ h ] , ! current );
  else
   for( Index h = 0 ; h < n ; ++h )
    inc_unfix_item( item( h ) , data[ h ] );
 
- if( current ) {
-  if( ! fixing ) {           // the undo of a branching: the parent comes
-   f_ssi = Index( data[ n ] );
-   f_iC = data[ n + 1 ];
-   f_iP = data[ n + 2 ];
-   }
+ if( current ) {             // the child of a branching, or the parent
+  f_ssi = Index( data[ n ] );
+  f_iC = data[ n + 1 ];
+  f_iP = data[ n + 2 ];
   }
  else {                      // no state of the current data: fill again
   f_ssi = 0;
@@ -620,12 +613,29 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::inc_branch(
   return( branches );
   }
 
+ // the child that takes the critical item, which does not fit, gives back
+ // the items before it, from the last, until the capacity is enough, and
+ // resumes from the last one given back [see inc_fix_item()]
+ Index ssi = f_ssi;
+ double iC = f_iC - v_iw[ f_ci ];
+ double iP = f_iP + v_ip[ f_ci ];
+ if( iC < 0 )
+  for( int j = int( v_sorted_pos[ f_ci ] ) ; j >= 0 ; --j ) {
+   const Index z = v_sorted[ j ];
+   if( v_skip[ z ] || ( z == f_ci ) )
+    continue;
+   iP -= v_ip[ z ];
+   iC += v_iw[ z ];
+   if( iC >= 0 ) {
+    ssi = j;
+    break;
+    }
+   }
+
  std::vector< Change * > branches( 2 );
  branches[ 0 ] = new BinaryKnapsackBlockRngdChange(
 			   BinaryKnapsackBlockChange::eFixX ,
-			   std::vector< double >{ take , double( f_ssi ) ,
-						  f_iC - v_iw[ f_ci ] ,
-						  f_iP + v_ip[ f_ci ] ,
+			   std::vector< double >{ take , double( ssi ) , iC , iP ,
 						  epoch } ,
 			   std::make_pair( f_ci , f_ci + 1 ) );
  branches[ 1 ] = new BinaryKnapsackBlockRngdChange(
@@ -700,7 +710,8 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_unfix_item( Index i ,
 /*--------------------------------------------------------------------------*/
 
 void GreedyRelaxationBinaryKnapsackSolver::inc_fix_item( Index i ,
-							 double x )
+							 double x ,
+							 bool fill )
 {
  if( ( x != 0 ) && ( x != 1 ) )
   throw( std::invalid_argument( "GreedyRelaxationBinaryKnapsackSolver::"
@@ -719,6 +730,8 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_fix_item( Index i ,
  f_fix_P += value * v_ip[ i ];
  v_skip[ i ] = true;
  f_ci = i;
+ if( ! fill )
+  return;
  const Index pos = v_sorted_pos[ i ];
 
  // takes out of the greedy fill the free items from position a to b

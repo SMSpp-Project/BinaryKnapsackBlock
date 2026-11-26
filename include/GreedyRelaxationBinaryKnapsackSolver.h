@@ -322,11 +322,15 @@ public:
   * subtree; these fixings travel with the fixing of the critical item in a
   * GroupChange. No item is looked at when \f$ U \f$ exceeds the incumbent
   * by more than the largest margin [see BinaryKnapsackSolver::max_margin()],
-  * since then no item can be pegged.
+  * since then no item can be pegged, nor any item of a block of
+  * BinaryKnapsackSolver::MarginBlock consecutive items when \f$ U \f$
+  * exceeds it by more than the largest margin of the block.
   *
   * With intIncremental == 1, the data of each child carry, in their last
-  * four positions, the state of the greedy fill of the child (the position
-  * from which compute() resumes, the residual capacity and the profit) and
+  * four positions, the state of the greedy fill of the child once the item
+  * is fixed (the position from which compute() resumes, the residual
+  * capacity and the profit, the items before the critical one that do not
+  * fit with it being out of the fill of the child that takes it) and
   * the epoch of the data it was computed on, so that apply() sets it
   * without recomputing it, whatever Change came before (say, a parallel
   * exploration re-applying the path to a node), as long as the data have
@@ -540,11 +544,12 @@ private:
 
 /*--------------------------------------------------------------------------*/
  /// fix item i to x (0 or 1, in the space of the Block)
- /** Updates the capacity left by the fixed items, the profit and residual
-  * capacity of the greedy fill and the position from which compute()
-  * resumes, as the fixing requires. */
+ /** Updates the capacity left by the fixed items and, if \p fill, the
+  * profit and residual capacity of the greedy fill and the position from
+  * which compute() resumes, as the fixing requires; with \p fill false
+  * these are left to the caller, who knows them [see inc_apply()]. */
 
- void inc_fix_item( Index i , double x );
+ void inc_fix_item( Index i , double x , bool fill = true );
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE FIELDS -------------------------------*/

@@ -77,6 +77,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as for all the items, reaches the gap, and reads the value of an item in
   the relaxation from its position in the efficiency order
 
+- with `intIncremental` 1 the branching Change of the child of
+  `GreedyRelaxationBinaryKnapsackSolver` that takes the critical item
+  carries the state of the greedy fill once the items before it that do
+  not fit with it are out, which `branch()` computes, so that applying it
+  again along the tree looks at no item
+
 - `BinaryKnapsackSolver::update_instance()` takes no list and makes no call
   when no Modification is queued, and `GreedyRelaxationBinaryKnapsackSolver`
   with `intIncremental` 1 reads the items of a Range or a Subset (un)fixing
