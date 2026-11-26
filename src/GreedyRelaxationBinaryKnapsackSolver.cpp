@@ -420,8 +420,12 @@ int GreedyRelaxationBinaryKnapsackSolver::inc_compute( void )
   f_iP += v_ip[ i ];
   }
 
- if( f_to_end )
+ // with every free item in the fill none is left to resume from, so that
+ // a compute() with no Change in between adds none of them again
+ if( f_to_end ) {
   f_ci = f_N ? v_sorted.back() : 0;
+  f_ssi = f_N;
+  }
 
  obj = f_iP + ( ( f_ci_val == 0 ) || ( f_ci_val == 1 ) ? 0
 		: v_ip[ f_ci ] * f_ci_val );

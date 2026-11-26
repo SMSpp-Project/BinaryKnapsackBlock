@@ -73,6 +73,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1 gives
+  the same relaxation when `compute()` is called again with no `Change`
+  in between, as a branch-and-bound that evaluates a node twice does; when
+  every free item fitted, the second call added them to the fill again
+
 - the branching of `GreedyRelaxationBinaryKnapsackSolver` with
   `intIncremental` 0 pegs the items by their reduced costs, reading
   the incumbent from `GlobalInformation::str_Incumbent` and only while
