@@ -71,6 +71,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Change in place, telling the two by the address of their `type_info`,
   with no virtual call for each item
 
+- the continuous relaxation of `GreedyRelaxationBinaryKnapsackSolver` with
+  `intIncremental` 0 resumes the greedy fill from the first item, in the
+  efficiency order, that has entered or left the relaxation since the last
+  solve, the critical item being found by a binary search on the part of
+  the fill before it, and the solution is written item by item only when
+  it is read
+
+- `BinaryKnapsackSolver::set_fixing()` queues the item, and
+  `follow_fixings()`, called before the solve, changes the profit and the
+  capacity left by the fixed items and the membership in the relaxation of
+  each queued item whose fixing differs from the one they reflect, so that
+  an item (un)fixed and then put back, as a move between two nodes of a
+  tree does with those of the common ancestor, costs no update
+
+- the reduced-cost pegging of `GreedyRelaxationBinaryKnapsackSolver` looks
+  only at the blocks of `BinaryKnapsackSolver::MarginBlock` consecutive
+  items whose largest margin, which `max_margin()` gives for each of them
+  as for all the items, reaches the gap, and reads the value of an item in
+  the relaxation from its position in the efficiency order
+
+- with `intIncremental` 1 the branching Change of the child of
+  `GreedyRelaxationBinaryKnapsackSolver` that takes the critical item
+  carries the state of the greedy fill once the items before it that do
+  not fit with it are out, which `branch()` computes, so that applying it
+  again along the tree looks at no item
+
+- `GreedyRelaxationBinaryKnapsackSolver::apply()` tells a Range (un)fixing
+  Change with no undo asked, the step of a move along a tree, before any
+  other, and applies it inline, by `BinaryKnapsackSolver::fix_range()` or
+  by the greedy fill, whose functions are inline, the Change of a branching
+  of one item with the state of the current data being applied by
+  `inc_step()` with nothing else looked at
+
+- `BinaryKnapsackSolver::update_instance()` takes no list and makes no call
+  when no Modification is queued, and `GreedyRelaxationBinaryKnapsackSolver`
+  with `intIncremental` 1 reads the items of a Range or a Subset (un)fixing
+  Change in place, building the undo Change only when it is asked for
+
 ### Fixed
 
 - `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1 gives

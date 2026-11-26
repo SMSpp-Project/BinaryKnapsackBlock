@@ -59,6 +59,8 @@
 /*------------------------------ INCLUDES ----------------------------------*/
 /*--------------------------------------------------------------------------*/
 
+#include <algorithm>
+
 #include "BinaryKnapsackBlock.h"
 
 /*--------------------------------------------------------------------------*/
@@ -95,6 +97,9 @@ class BinaryKnapsackSolver : public virtual Solver {
 /*--------------------------------------------------------------------------*/
 
  using Index = Block::Index;
+
+ /// how many consecutive items a group of max_margin() has
+ static constexpr Index MarginBlock = 64;
 
 /*--------------------------------------------------------------------------*/
 /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
@@ -237,16 +242,27 @@ class BinaryKnapsackSolver : public virtual Solver {
 /*--------------------------------------------------------------------------*/
  /// (un)fix an item of the mirror
  /** Sets #v_fxd[ i ] to v (0 free, 1 fixed to 0, 2 fixed to 1). While
-  * #f_norm_valid, f_x[ i ], f_base, f_Cd and n_in[ i ] change with it as
-  * refresh_fixings() would change them, so that a re-solve under the new
-  * fixings needs no pass over all the items; one is made anyway after more
-  * than f_N items have been (un)fixed this way [see #f_fix_steps], which
-  * bounds the rounding that the updates of f_base and f_Cd pile up, unless
-  * these updates are exact [see #f_exact]. Without the data of the
-  * relaxation [see #f_relax_data], the normalization is just marked as
-  * stale. */
+  * #f_norm_valid, the item is queued, and follow_fixings() changes f_x[ i ],
+  * f_base, f_Cd and n_in[ i ] as refresh_fixings() would change them, so
+  * that a re-solve under the new fixings needs no pass over all the items,
+  * and an item (un)fixed and then put back as it was, as a move along a
+  * tree does with the items of the common ancestor, costs nothing there.
+  * Without the data of the relaxation [see #f_relax_data], the
+  * normalization is just marked as stale. */
 
  void set_fixing( Index i , unsigned char v );
+
+/*--------------------------------------------------------------------------*/
+ /// follow the (un)fixings queued by set_fixing()
+ /** Changes f_x[ i ], f_base, f_Cd and n_in[ i ] of each item i queued by
+  * set_fixing() whose fixing differs from the one they reflect; a pass over
+  * all the items is made anyway [see refresh_fixings()] after more than f_N
+  * items have been (un)fixed this way [see #f_fix_steps], which bounds the
+  * rounding that the updates of f_base and f_Cd pile up, unless these
+  * updates are exact [see #f_exact]. To be called while #f_norm_valid,
+  * before f_x, f_base, f_Cd or n_in are read. */
+
+ void follow_fixings( void );
 
 /*--------------------------------------------------------------------------*/
  /// (re)build the cached efficiency order of the items
@@ -261,15 +277,17 @@ class BinaryKnapsackSolver : public virtual Solver {
  void build_efficiency_order( void );
 
 /*--------------------------------------------------------------------------*/
- /// the largest margin of an item at the given efficiency
- /** Returns \f$ \max_j | p_j - \rho w_j | \f$ over the items that can
-  * enter the relaxation (those of positive normalized weight [see
-  * normalize_instance()]), whether or not they are fixed, 0 if there is
-  * none, in \f$ O( \log n ) \f$ time: the maximum is the upper envelope of
-  * the \f$ 2n \f$ lines \f$ \pm ( p_j - \rho w_j ) \f$, which is built
-  * with the efficiency order [see build_efficiency_order()]. */
+ /// the largest margin of an item of a group at the given efficiency
+ /** Returns \f$ \max_j | p_j - \rho w_j | \f$ over the items of the group
+  * \p g that can enter the relaxation (those of positive normalized weight
+  * [see normalize_instance()]), whether or not they are fixed, 0 if there
+  * is none, in \f$ O( \log n ) \f$ time: the maximum is the upper envelope
+  * of the lines \f$ \pm ( p_j - \rho w_j ) \f$, which is built with the
+  * efficiency order [see build_efficiency_order()]. The group 0 is that of
+  * all the items, the group \f$ 1 + b \f$ that of the items of indices
+  * from \f$ b \f$ MarginBlock to \f$ ( b + 1 ) \f$ MarginBlock excluded. */
 
- double max_margin( double rho ) const;
+ double max_margin( double rho , Index g = 0 ) const;
 
 /*--------------------------------------------------------------------------*/
  /// apply an (un)fixing Change to the internal mirror of the instance
@@ -290,16 +308,52 @@ class BinaryKnapsackSolver : public virtual Solver {
  Change * apply_to_mirror( const BinaryKnapsackBlockChange * chg ,
                            bool doUndo = false );
 
+/*--------------------------------------------------------------------------*/
+ /// apply an (un)fixing Range Change to the mirror, with no undo
+ /** What apply_to_mirror() does with \p doUndo false, inline: a move along
+  * a tree applies a great many of them. */
+
+ void fix_range( const BinaryKnapsackBlockRngdChange & chg ) {
+  const bool fixing = ( chg.type() == BinaryKnapsackBlockChange::eFixX );
+  const auto & data = chg.data();
+  const auto [ first , last ] = chg.rng();
+  for( Index i = first ; i < last ; ++i )
+   set_fixing( i , fixing ? ( data[ i - first ] == 1 ? 2 : 1 ) : 0 );
+  }
+
  /// solve the continuous (Dantzig) relaxation of the normalized core
  /** Greedy fractional fill of f_Cd over the union of the integer and the
   * continuous core in non-increasing efficiency order: items before the
   * critical one are taken entirely, the critical one fractionally. Writes
-  * the complete solution in f_x (in the original space, through the
-  * orig / comp maps) and the critical item in @p fi ; returns the optimal
-  * value of the relaxation, f_base included, in the maximisation sense.
-  * Must be called after normalize_instance(), with f_Cd >= 0. */
+  * the critical item in @p fi and returns the optimal value of the
+  * relaxation, f_base included, in the maximisation sense; the solution
+  * of the items in the relaxation is written in f_x by fractional_x().
+  * The fill resumes from the first position of the efficiency order whose
+  * item has entered or left the relaxation since the last call, the
+  * critical item being found by a binary search on the part of the fill
+  * before it, so that a node of a tree that differs from the last one by
+  * a few fixings costs far less than \f$ O( n ) \f$. Must be called
+  * after normalize_instance(), with f_Cd >= 0. */
 
  double fractional_relaxation( FracInfo & fi );
+
+/*--------------------------------------------------------------------------*/
+ /// write in f_x the items of the last fractional_relaxation()
+ /** fractional_relaxation() leaves the entries of f_x of the items in the
+  * relaxation as they were, which this writes, in \f$ O( n ) \f$. */
+
+ void fractional_x( void );
+
+/*--------------------------------------------------------------------------*/
+ /// the value of the item i, in the relaxation, of the last fill
+ /** The entry of f_x of the item i that fractional_x() writes, in the
+  * original space, for an item in the relaxation (n_in[ i ] != 0). */
+
+ double fractional_x( Index i ) const {
+  const Index k = v_ord_pos[ i ];
+  const double y = k < f_fr_crit ? 1 : ( k == f_fr_crit ? f_fr_y : 0 );
+  return( n_comp[ i ] ? 1 - y : y );
+  }
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PROTECTED FIELDS ----------------------------*/
@@ -315,6 +369,10 @@ class BinaryKnapsackSolver : public virtual Solver {
  std::vector< char > v_I;             ///< 1 if the variable is integer
  std::vector< unsigned char > v_fxd;  ///< 0 = free, 1 = fixed to 0,
                                       ///< 2 = fixed to 1
+ std::vector< unsigned char > v_fxd_in;  ///< the fixings that f_x, f_base,
+					 ///< f_Cd and n_in reflect
+ std::vector< Index > v_fix_queue;       ///< the items set_fixing() has queued
+ std::vector< char > v_fix_queued;       ///< 1 if the item is in v_fix_queue
 
  /* normalized core (free items only, positive data, maximisation sense) - -*/
 
@@ -339,26 +397,44 @@ class BinaryKnapsackSolver : public virtual Solver {
  // across (un)fixing changes, which is what makes re-solving the relaxation
  // along an enumeration tree O( n ) per node rather than O( n log n )
 
- std::vector< int >    v_ord;     ///< ALL the items by efficiency
- bool f_ord_valid;                ///< if v_ord matches profits / weights
- std::vector< double > v_env_m;   ///< slopes, intercepts and breakpoints
- std::vector< double > v_env_a;   ///< of the upper envelope that
- std::vector< double > v_env_x;   ///< max_margin() reads
- Index f_fix_steps;               ///< items (un)fixed by set_fixing() since
-                                  ///< the last pass over all of them
- bool f_exact;                    ///< if profits, weights and capacity are
-                                  ///< integer and so small that f_base and
-                                  ///< f_Cd are kept with no rounding
- bool f_norm_valid;               ///< if the normalization matches the
-                                  ///< current profits / weights / sense
- bool f_relax_data;               ///< if normalize_instance() fills n_w,
-                                  ///< n_p, n_comp and n_in (the relaxation
-                                  ///< data), false in the Solvers not using
-                                  ///< fractional_relaxation()
- std::vector< double > n_w;       ///< normalized (complemented) weights
- std::vector< double > n_p;       ///< normalized (complemented) profits
- std::vector< char >   n_in;      ///< 1 if the item enters the relaxation
- std::vector< char >   n_comp;    ///< 1 if the item is complemented
+ std::vector< int > v_ord;              ///< ALL the items by efficiency
+ bool f_ord_valid;                      ///< if v_ord matches profits / weights
+ std::vector< double > v_env_m;         ///< slopes, intercepts and breakpoints
+ std::vector< double > v_env_a;         ///< of the upper envelope that
+ std::vector< double > v_env_x;         ///< max_margin() reads, one after
+					///< the other for each group of items
+ std::vector< std::size_t > v_env_beg;  ///< where the lines and the
+ std::vector< std::size_t > v_env_xbeg;  ///< breakpoints of each group of
+					 ///< items start, and end
+ std::vector< Index > v_ord_pos;  ///< the position of each item in v_ord
+
+ // the greedy fill of the last fractional_relaxation(), from which the next
+ // one resumes: v_fr_w[ k ] and v_fr_p[ k ] are the weight and the profit
+ // of the items of the relaxation in the first k positions of v_ord, right
+ // for k <= f_fr_valid, which set_fixing() lowers to the position of an
+ // item entering or leaving the relaxation
+
+ std::vector< double > v_fr_w;  ///< prefix sums of the weights
+ std::vector< double > v_fr_p;  ///< prefix sums of the profits
+ Index f_fr_valid = 0;          ///< how many of them are right
+ Index f_fr_crit = 0;           ///< the position of the critical item of
+				///< the last fill, f_N if none
+ double f_fr_y = 1;             ///< and its fraction
+ Index f_fix_steps;             ///< items (un)fixed by set_fixing() since
+				///< the last pass over all of them
+ bool f_exact;                  ///< if profits, weights and capacity are
+				///< integer and so small that f_base and
+				///< f_Cd are kept with no rounding
+ bool f_norm_valid;             ///< if the normalization matches the
+				///< current profits / weights / sense
+ bool f_relax_data;             ///< if normalize_instance() fills n_w,
+				///< n_p, n_comp and n_in (the relaxation
+				///< data), false in the Solvers not using
+				///< fractional_relaxation()
+ std::vector< double > n_w;     ///< normalized (complemented) weights
+ std::vector< double > n_p;     ///< normalized (complemented) profits
+ std::vector< char > n_in;      ///< 1 if the item enters the relaxation
+ std::vector< char > n_comp;    ///< 1 if the item is complemented
  std::vector< unsigned char > n_cls;  ///< what a free item is: 0 dropped,
                                       ///< 1 always taken, 2 complemented,
                                       ///< 3 a genuine one
@@ -383,6 +459,19 @@ class BinaryKnapsackSolver : public virtual Solver {
  void load( void );
 
 /*--------------------------------------------------------------------------*/
+ /// the part of update_instance() for a nonempty queue
+ /** Called with f_mod_lock held, which it releases. */
+
+ bool drain_Modification( void );
+
+/*--------------------------------------------------------------------------*/
+ /// empty the queue of set_fixing(), all the fixings being reflected
+ /** Called when f_x, f_base, f_Cd and n_in have just been written out of
+  * #v_fxd as a whole [see normalize_instance() and refresh_fixings()]. */
+
+ void drop_fixing_queue( void );
+
+/*--------------------------------------------------------------------------*/
 /*---------------------------- PRIVATE FIELDS ------------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -394,6 +483,25 @@ class BinaryKnapsackSolver : public virtual Solver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------- INLINE METHODS OF BinaryKnapsackSolver -----------------*/
+/*--------------------------------------------------------------------------*/
+
+inline bool BinaryKnapsackSolver::update_instance( void )
+{
+ // try to acquire lock, spin on failure
+ while( f_mod_lock.test_and_set( std::memory_order_acquire ) )
+  ;
+
+ // nothing queued and nothing reloaded, which is the case of nearly every
+ // call [see GreedyRelaxationBinaryKnapsackSolver::apply()]
+ if( ( ! f_changed ) && v_mod.empty() ) {
+  f_mod_lock.clear( std::memory_order_release );  // release lock
+  return( false );
+  }
+
+ return( drain_Modification() );
+
+ }  // end( BinaryKnapsackSolver::update_instance )
+
 /*--------------------------------------------------------------------------*/
 
 inline void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
@@ -408,28 +516,59 @@ inline void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
   return;
   }
 
- if( ! f_exact )
-  ++f_fix_steps;
-
- // under the fixing s, whether the item is (tentatively) taken and whether
- // it is in the relaxation, as normalize_instance() and refresh_fixings()
- // have it: a free item is taken if always taken or complemented
- const unsigned char cls = n_cls[ i ];
- const auto taken = [ cls ]( unsigned char s ) {
-  return( s ? ( s == 2 ) : ( ( cls == 1 ) || ( cls == 2 ) ) );
-  };
-
- if( const int d = int( taken( v ) ) - int( taken( o ) ) ) {
-  const double p = f_sense ? v_P[ i ] : - v_P[ i ];
-  if( d > 0 ) { f_base += p; f_Cd -= v_W[ i ]; }
-  else        { f_base -= p; f_Cd += v_W[ i ]; }
+ if( ! v_fix_queued[ i ] ) {  // followed by follow_fixings()
+  v_fix_queued[ i ] = 1;
+  v_fix_queue.push_back( i );
   }
 
- n_in[ i ] = ( ! v ) && ( cls >= 2 );
- if( ! n_in[ i ] )          // in the relaxation, f_x[ i ] set by the scan
-  f_x[ i ] = taken( v );
-
  }  // end( BinaryKnapsackSolver::set_fixing )
+
+/*--------------------------------------------------------------------------*/
+
+inline void BinaryKnapsackSolver::follow_fixings( void )
+{
+ for( const Index i : v_fix_queue ) {
+  v_fix_queued[ i ] = 0;
+  const unsigned char o = v_fxd_in[ i ];
+  const unsigned char v = v_fxd[ i ];
+  if( o == v )  // put back as it was
+   continue;
+  v_fxd_in[ i ] = v;
+
+  if( ! f_exact )
+   ++f_fix_steps;
+
+  // under the fixing s, whether the item is (tentatively) taken and
+  // whether it is in the relaxation, as normalize_instance() and
+  // refresh_fixings() have it: a free item is taken if always taken or
+  // complemented
+  const unsigned char cls = n_cls[ i ];
+  const auto taken = [ cls ]( unsigned char s ) {
+   return( s ? ( s == 2 ) : ( ( cls == 1 ) || ( cls == 2 ) ) );
+   };
+
+  if( const int d = int( taken( v ) ) - int( taken( o ) ) ) {
+   const double p = f_sense ? v_P[ i ] : -v_P[ i ];
+   if( d > 0 ) {
+    f_base += p;
+    f_Cd -= v_W[ i ];
+    }
+   else {
+    f_base -= p;
+    f_Cd += v_W[ i ];
+    }
+   }
+
+  const char in = ( ! v ) && ( cls >= 2 );
+  if( ( in != n_in[ i ] ) && f_ord_valid )  // the fill changes from it on
+   f_fr_valid = std::min( f_fr_valid , v_ord_pos[ i ] );
+  n_in[ i ] = in;
+  if( ! in )  // in the relaxation, f_x[ i ] set by the scan
+   f_x[ i ] = taken( v );
+  }
+ v_fix_queue.clear();
+
+ }  // end( BinaryKnapsackSolver::follow_fixings )
 
 /*--------------------------------------------------------------------------*/
 

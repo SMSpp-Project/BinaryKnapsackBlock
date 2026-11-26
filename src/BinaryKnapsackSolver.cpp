@@ -82,14 +82,11 @@ void BinaryKnapsackSolver::add_Modification( sp_Mod & mod )
 /*--------------------------- PROTECTED METHODS ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-bool BinaryKnapsackSolver::update_instance( void )
+bool BinaryKnapsackSolver::drain_Modification( void )
 {
- // drain the queue into a temporary list - - - - - - - - - - - - - - - - - -
+ // drain the queue into a temporary list, the lock being held - - - - - - -
 
  Lst_sp_Mod v_mod_tmp;
-
- // try to acquire lock, spin on failure
- while( f_mod_lock.test_and_set( std::memory_order_acquire ) );
 
  v_mod_tmp.splice( v_mod_tmp.end() , v_mod );
 
@@ -173,7 +170,7 @@ bool BinaryKnapsackSolver::update_instance( void )
 
  return( changed );
 
- }  // end( BinaryKnapsackSolver::update_instance )
+ }  // end( BinaryKnapsackSolver::drain_Modification )
 
 /*--------------------------------------------------------------------------*/
 
@@ -275,6 +272,8 @@ void BinaryKnapsackSolver::normalize_instance( void )
   }
  f_norm_valid = true;
  f_fix_steps = 0;
+ f_fr_valid = 0;  // n_in is written anew
+ drop_fixing_queue();
  f_exact = f_relax_data && integer && ( tot < 0x1p52 );
 
  }  // end( BinaryKnapsackSolver::normalize_instance )
@@ -314,6 +313,8 @@ void BinaryKnapsackSolver::refresh_fixings( void )
   }
 
  f_fix_steps = 0;
+ f_fr_valid = 0;  // n_in is written anew
+ drop_fixing_queue();
 
  }  // end( BinaryKnapsackSolver::refresh_fixings )
 
@@ -417,39 +418,62 @@ void BinaryKnapsackSolver::build_efficiency_order( void )
    return( a < b );
   return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
   } );
+ v_ord_pos.resize( f_N );
+ for( Index k = 0 ; k < f_N ; ++k )
+  v_ord_pos[ v_ord[ k ] ] = k;
+ v_fr_w.assign( f_N + 1 , 0 );
+ v_fr_p.assign( f_N + 1 , 0 );
+ f_fr_valid = 0;
 
  // the upper envelope of the lines a + m rho = +-( p_i - rho w_i ) of the
- // items that can enter the relaxation, which come first in v_ord: the
- // lines by increasing slope, of equal slope the highest only, a line being
- // dropped when the next one overtakes the one before it no later than it
+ // items that can enter the relaxation, those of positive weight: the lines
+ // by increasing slope, of equal slope the highest only, a line being
+ // dropped when the next one overtakes the one before it no later than it;
+ // one of all the items, the group 0, and one of the items of each block of
+ // MarginBlock consecutive indices, the group 1 + i / MarginBlock of item i
+ v_env_m.clear();
+ v_env_a.clear();
+ v_env_x.clear();
+ v_env_beg.assign( 1 , 0 );
+ v_env_xbeg.assign( 1 , 0 );
  std::vector< std::pair< double , double > > lines;
  lines.reserve( 2 * f_N );
- for( int i : v_ord ) {
-  if( n_w[ i ] <= 0 )
-   break;
-  lines.emplace_back( - n_w[ i ] , n_p[ i ] );
-  lines.emplace_back( n_w[ i ] , - n_p[ i ] );
-  }
- std::sort( lines.begin() , lines.end() );
- v_env_m.clear();  v_env_a.clear();  v_env_x.clear();
- const auto cross = [ this ]( std::size_t k , double m , double a ) {
-  return( ( v_env_a[ k ] - a ) / ( m - v_env_m[ k ] ) );
-  };
- for( std::size_t k = 0 ; k < lines.size() ; ++k ) {
-  const auto [ m , a ] = lines[ k ];
-  if( ( k + 1 < lines.size() ) && ( lines[ k + 1 ].first == m ) )
-   continue;                       // a higher line of the same slope next
-  while( ! v_env_m.empty() ) {
-   const double x = cross( v_env_m.size() - 1 , m , a );
-   if( v_env_x.empty() || ( x > v_env_x.back() ) ) {
-    v_env_x.push_back( x );
-    break;
+ const auto envelope = [ & ]( Index first , Index last ) {
+  lines.clear();
+  for( Index i = first ; i < last ; ++i )
+   if( n_w[ i ] > 0 ) {
+    lines.emplace_back( -n_w[ i ] , n_p[ i ] );
+    lines.emplace_back( n_w[ i ] , -n_p[ i ] );
     }
-   v_env_m.pop_back();  v_env_a.pop_back();  v_env_x.pop_back();
+  std::sort( lines.begin() , lines.end() );
+  const std::size_t b = v_env_m.size();
+  const std::size_t xb = v_env_x.size();
+  const auto cross = [ this ]( std::size_t k , double m , double a ) {
+   return( ( v_env_a[ k ] - a ) / ( m - v_env_m[ k ] ) );
+   };
+  for( std::size_t k = 0 ; k < lines.size() ; ++k ) {
+   const auto [ m , a ] = lines[ k ];
+   if( ( k + 1 < lines.size() ) && ( lines[ k + 1 ].first == m ) )
+    continue;  // a higher line of the same slope next
+   while( v_env_m.size() > b ) {
+    const double x = cross( v_env_m.size() - 1 , m , a );
+    if( ( v_env_x.size() == xb ) || ( x > v_env_x.back() ) ) {
+     v_env_x.push_back( x );
+     break;
+     }
+    v_env_m.pop_back();
+    v_env_a.pop_back();
+    v_env_x.pop_back();
+    }
+   v_env_m.push_back( m );
+   v_env_a.push_back( a );
    }
-  v_env_m.push_back( m );
-  v_env_a.push_back( a );
-  }
+  v_env_beg.push_back( v_env_m.size() );
+  v_env_xbeg.push_back( v_env_x.size() );
+  };
+ envelope( 0 , f_N );
+ for( Index first = 0 ; first < f_N ; first += MarginBlock )
+  envelope( first , std::min( first + MarginBlock , f_N ) );
 
  f_ord_valid = true;
 
@@ -457,15 +481,17 @@ void BinaryKnapsackSolver::build_efficiency_order( void )
 
 /*--------------------------------------------------------------------------*/
 
-double BinaryKnapsackSolver::max_margin( double rho ) const
+double BinaryKnapsackSolver::max_margin( double rho , Index g ) const
 {
- if( v_env_m.empty() )
+ const auto b = v_env_beg[ g ];
+ if( b == v_env_beg[ g + 1 ] )
   return( 0 );
 
  // the line of the envelope at rho is the first one whose right breakpoint
  // is not on the left of rho
- const auto k = std::lower_bound( v_env_x.begin() , v_env_x.end() , rho ) -
-                v_env_x.begin();
+ const auto xb = v_env_x.begin() + v_env_xbeg[ g ];
+ const auto xe = v_env_x.begin() + v_env_xbeg[ g + 1 ];
+ const auto k = b + ( std::lower_bound( xb , xe , rho ) - xb );
  return( v_env_a[ k ] + v_env_m[ k ] * rho );
 
  }  // end( BinaryKnapsackSolver::max_margin )
@@ -478,44 +504,80 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
  // the greedy fill works on the items entering the relaxation (see n_in) in
  // cached efficiency order, which only has to be (re)computed when profits,
  // weights or the objective sense change (see update_instance() / load()),
- // NOT when the fixings do: re-solves under different fixings are O( n )
+ // NOT when the fixings do
  if( ! f_ord_valid )
   build_efficiency_order();
 
  fi = FracInfo{ -1 , 1 , false , false , 0 , 0 };
 
- double obj = f_base;
- double rem = f_Cd;
- double yval = 1;              // 1 before the critical item, then 0
-
- for( int i : v_ord ) {
-  if( ! n_in[ i ] )            // not in the relaxation (fixed or trivial)
-   continue;
-
-  const double w = n_w[ i ];
-  double y = yval;
-
-  if( ( yval == 1 ) && ( w > rem ) ) {           // the critical item
-   y = rem / w;
-   fi = FracInfo{ i , n_comp[ i ] ? 1 - y : y , ! v_I[ i ] ,
-                  ( bool ) n_comp[ i ] , n_p[ i ] , y };
-   yval = 0;
+ // the part of the fill that the fixings since the last call have left as
+ // it was, whose weights grow with the position: the critical item is in
+ // it if a prefix sum there exceeds the capacity, and it is the item just
+ // before the first such sum
+ const auto first = v_fr_w.begin() + 1;
+ Index k = Index( std::upper_bound( first , first + f_fr_valid , f_Cd ) -
+		  v_fr_w.begin() );
+ if( k <= f_fr_valid )
+  --k;
+ else {  // the fill goes on from where it is right
+  double sw = v_fr_w[ f_fr_valid ];
+  double sp = v_fr_p[ f_fr_valid ];
+  for( k = f_fr_valid ; k < f_N ; ++k ) {
+   const int i = v_ord[ k ];
+   if( n_in[ i ] ) {  // not fixed nor trivial
+    if( sw + n_w[ i ] > f_Cd )
+     break;  // the critical item
+    sw += n_w[ i ];
+    sp += n_p[ i ];
+    }
+   v_fr_w[ k + 1 ] = sw;
+   v_fr_p[ k + 1 ] = sp;
    }
-
-  if( y == 1 )
-   { rem -= w; obj += n_p[ i ]; }
-  else if( y > 0 )
-   { rem = 0; obj += y * n_p[ i ]; }
-
-  f_x[ i ] = n_comp[ i ] ? 1 - y : y;
+  f_fr_valid = k;
   }
 
- return( obj );
+ f_fr_crit = k;
+ if( k == f_N ) {  // every item fits
+  f_fr_y = 1;
+  return( f_base + v_fr_p[ k ] );
+  }
+
+ const int i = v_ord[ k ];
+ const double y = ( f_Cd - v_fr_w[ k ] ) / n_w[ i ];
+ f_fr_y = y;
+ fi = FracInfo{ i ,          n_comp[ i ] ? 1 - y : y ,
+		! v_I[ i ] , ( bool )n_comp[ i ] ,
+		n_p[ i ] ,   y };
+ return( f_base + v_fr_p[ k ] + y * n_p[ i ] );
 
  }  // end( BinaryKnapsackSolver::fractional_relaxation )
 
 /*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackSolver::fractional_x( void )
+{
+ for( Index k = 0 ; k < f_N ; ++k ) {
+  const int i = v_ord[ k ];
+  if( n_in[ i ] )  // in the relaxation (not fixed nor trivial)
+   f_x[ i ] = fractional_x( i );
+  }
+
+ }  // end( BinaryKnapsackSolver::fractional_x )
+
+/*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE METHODS ------------------------------*/
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackSolver::drop_fixing_queue( void )
+{
+ for( const Index i : v_fix_queue )
+  v_fix_queued[ i ] = 0;
+ v_fix_queue.clear();
+ v_fix_queued.resize( f_N , 0 );
+ v_fxd_in = v_fxd;
+
+ }  // end( BinaryKnapsackSolver::drop_fixing_queue )
+
 /*--------------------------------------------------------------------------*/
 
 void BinaryKnapsackSolver::load( void )
@@ -523,6 +585,8 @@ void BinaryKnapsackSolver::load( void )
  f_changed = true;
  f_ord_valid = false;
  f_norm_valid = false;
+ v_fix_queue.clear();
+ v_fix_queued.clear();
 
  if( ! f_Block ) {
   f_N = 0;
