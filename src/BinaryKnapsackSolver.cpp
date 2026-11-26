@@ -82,14 +82,11 @@ void BinaryKnapsackSolver::add_Modification( sp_Mod & mod )
 /*--------------------------- PROTECTED METHODS ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
-bool BinaryKnapsackSolver::update_instance( void )
+bool BinaryKnapsackSolver::drain_Modification( void )
 {
- // drain the queue into a temporary list - - - - - - - - - - - - - - - - - -
+ // drain the queue into a temporary list, the lock being held - - - - - - -
 
  Lst_sp_Mod v_mod_tmp;
-
- // try to acquire lock, spin on failure
- while( f_mod_lock.test_and_set( std::memory_order_acquire ) );
 
  v_mod_tmp.splice( v_mod_tmp.end() , v_mod );
 
@@ -173,7 +170,7 @@ bool BinaryKnapsackSolver::update_instance( void )
 
  return( changed );
 
- }  // end( BinaryKnapsackSolver::update_instance )
+ }  // end( BinaryKnapsackSolver::drain_Modification )
 
 /*--------------------------------------------------------------------------*/
 
@@ -275,6 +272,7 @@ void BinaryKnapsackSolver::normalize_instance( void )
   }
  f_norm_valid = true;
  f_fix_steps = 0;
+ f_fr_valid = 0;          // n_in is written anew
  f_exact = f_relax_data && integer && ( tot < 0x1p52 );
 
  }  // end( BinaryKnapsackSolver::normalize_instance )
@@ -314,6 +312,7 @@ void BinaryKnapsackSolver::refresh_fixings( void )
   }
 
  f_fix_steps = 0;
+ f_fr_valid = 0;          // n_in is written anew
 
  }  // end( BinaryKnapsackSolver::refresh_fixings )
 
@@ -417,6 +416,12 @@ void BinaryKnapsackSolver::build_efficiency_order( void )
    return( a < b );
   return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
   } );
+ v_ord_pos.resize( f_N );
+ for( Index k = 0 ; k < f_N ; ++k )
+  v_ord_pos[ v_ord[ k ] ] = k;
+ v_fr_w.assign( f_N + 1 , 0 );
+ v_fr_p.assign( f_N + 1 , 0 );
+ f_fr_valid = 0;
 
  // the upper envelope of the lines a + m rho = +-( p_i - rho w_i ) of the
  // items that can enter the relaxation, which come first in v_ord: the
@@ -478,41 +483,66 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
  // the greedy fill works on the items entering the relaxation (see n_in) in
  // cached efficiency order, which only has to be (re)computed when profits,
  // weights or the objective sense change (see update_instance() / load()),
- // NOT when the fixings do: re-solves under different fixings are O( n )
+ // NOT when the fixings do
  if( ! f_ord_valid )
   build_efficiency_order();
 
  fi = FracInfo{ -1 , 1 , false , false , 0 , 0 };
 
- double obj = f_base;
- double rem = f_Cd;
- double yval = 1;              // 1 before the critical item, then 0
+ // the part of the fill that the fixings since the last call have left as
+ // it was, whose weights grow with the position: the critical item is in
+ // it if a prefix sum there exceeds the capacity, and it is the item just
+ // before the first such sum
+ const auto first = v_fr_w.begin() + 1;
+ Index k = Index( std::upper_bound( first , first + f_fr_valid , f_Cd ) -
+                  v_fr_w.begin() );
+ if( k <= f_fr_valid )
+  --k;
+ else {                     // the fill goes on from where it is right
+  double sw = v_fr_w[ f_fr_valid ];
+  double sp = v_fr_p[ f_fr_valid ];
+  for( k = f_fr_valid ; k < f_N ; ++k ) {
+   const int i = v_ord[ k ];
+   if( n_in[ i ] ) {        // not fixed nor trivial
+    if( sw + n_w[ i ] > f_Cd )
+     break;                 // the critical item
+    sw += n_w[ i ];
+    sp += n_p[ i ];
+    }
+   v_fr_w[ k + 1 ] = sw;
+   v_fr_p[ k + 1 ] = sp;
+   }
+  f_fr_valid = k;
+  }
 
- for( int i : v_ord ) {
+ f_fr_crit = k;
+ if( k == f_N ) {           // every item fits
+  f_fr_y = 1;
+  return( f_base + v_fr_p[ k ] );
+  }
+
+ const int i = v_ord[ k ];
+ const double y = ( f_Cd - v_fr_w[ k ] ) / n_w[ i ];
+ f_fr_y = y;
+ fi = FracInfo{ i , n_comp[ i ] ? 1 - y : y , ! v_I[ i ] ,
+                ( bool ) n_comp[ i ] , n_p[ i ] , y };
+ return( f_base + v_fr_p[ k ] + y * n_p[ i ] );
+
+ }  // end( BinaryKnapsackSolver::fractional_relaxation )
+
+/*--------------------------------------------------------------------------*/
+
+void BinaryKnapsackSolver::fractional_x( void )
+{
+ for( Index k = 0 ; k < f_N ; ++k ) {
+  const int i = v_ord[ k ];
   if( ! n_in[ i ] )            // not in the relaxation (fixed or trivial)
    continue;
-
-  const double w = n_w[ i ];
-  double y = yval;
-
-  if( ( yval == 1 ) && ( w > rem ) ) {           // the critical item
-   y = rem / w;
-   fi = FracInfo{ i , n_comp[ i ] ? 1 - y : y , ! v_I[ i ] ,
-                  ( bool ) n_comp[ i ] , n_p[ i ] , y };
-   yval = 0;
-   }
-
-  if( y == 1 )
-   { rem -= w; obj += n_p[ i ]; }
-  else if( y > 0 )
-   { rem = 0; obj += y * n_p[ i ]; }
-
+  const double y = k < f_fr_crit ? 1 : ( k == f_fr_crit ? f_fr_y : 0 );
   f_x[ i ] = n_comp[ i ] ? 1 - y : y;
   }
 
- return( obj );
-
- }  // end( BinaryKnapsackSolver::fractional_relaxation )
+ }  // end( BinaryKnapsackSolver::fractional_x )
 
 /*--------------------------------------------------------------------------*/
 /*--------------------------- PRIVATE METHODS ------------------------------*/

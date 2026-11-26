@@ -454,10 +454,9 @@ protected:
 
 /*--------------------------------------------------------------------------*/
  /// write in f_x the greedy solution of the last compute()
- /** With intIncremental == 1 the greedy fill does not keep the solution
-  * item by item, and this writes it in f_x, the critical item at its
-  * fractional value; with intIncremental == 0 f_x is written by compute(),
-  * and this does nothing. */
+ /** The greedy fill does not keep the solution item by item, and this
+  * writes it in f_x, the critical item at its fractional value, once after
+  * each compute() [see fractional_x() with intIncremental == 0]. */
 
  void sync_x( void );
 
@@ -497,6 +496,21 @@ private:
  /// apply an (un)fixing Change to the greedy fill [see apply()]
 
  Change * inc_apply( BinaryKnapsackBlockChange * chg , bool doUndo );
+
+/*--------------------------------------------------------------------------*/
+ /// the body of inc_apply() on the n items of chg, the h-th being item( h )
+
+ template< class Item >
+ Change * inc_apply_items( BinaryKnapsackBlockChange * chg , Index n ,
+                           Item item , bool doUndo );
+
+/*--------------------------------------------------------------------------*/
+ /// the undo of the (un)fixing chg of n items, built before it is applied
+ /** An unfixing of the same items if \p fixing, carrying the state of the
+  * greedy fill before chg, a fixing to the same values otherwise. */
+
+ Change * inc_undo( BinaryKnapsackBlockChange * chg , Index n ,
+                    bool fixing );
 
 /*--------------------------------------------------------------------------*/
  /// branch on the critical item, passing the state of each child

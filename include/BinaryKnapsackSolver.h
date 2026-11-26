@@ -59,6 +59,8 @@
 /*------------------------------ INCLUDES ----------------------------------*/
 /*--------------------------------------------------------------------------*/
 
+#include <algorithm>
+
 #include "BinaryKnapsackBlock.h"
 
 /*--------------------------------------------------------------------------*/
@@ -294,12 +296,24 @@ class BinaryKnapsackSolver : public virtual Solver {
  /** Greedy fractional fill of f_Cd over the union of the integer and the
   * continuous core in non-increasing efficiency order: items before the
   * critical one are taken entirely, the critical one fractionally. Writes
-  * the complete solution in f_x (in the original space, through the
-  * orig / comp maps) and the critical item in @p fi ; returns the optimal
-  * value of the relaxation, f_base included, in the maximisation sense.
-  * Must be called after normalize_instance(), with f_Cd >= 0. */
+  * the critical item in @p fi and returns the optimal value of the
+  * relaxation, f_base included, in the maximisation sense; the solution
+  * of the items in the relaxation is written in f_x by fractional_x().
+  * The fill resumes from the first position of the efficiency order whose
+  * item has entered or left the relaxation since the last call, the
+  * critical item being found by a binary search on the part of the fill
+  * before it, so that a node of a tree that differs from the last one by
+  * a few fixings costs far less than \f$ O( n ) \f$. Must be called
+  * after normalize_instance(), with f_Cd >= 0. */
 
  double fractional_relaxation( FracInfo & fi );
+
+/*--------------------------------------------------------------------------*/
+ /// write in f_x the items of the last fractional_relaxation()
+ /** fractional_relaxation() leaves the entries of f_x of the items in the
+  * relaxation as they were, which this writes, in \f$ O( n ) \f$. */
+
+ void fractional_x( void );
 
 /*--------------------------------------------------------------------------*/
 /*---------------------------- PROTECTED FIELDS ----------------------------*/
@@ -344,6 +358,20 @@ class BinaryKnapsackSolver : public virtual Solver {
  std::vector< double > v_env_m;   ///< slopes, intercepts and breakpoints
  std::vector< double > v_env_a;   ///< of the upper envelope that
  std::vector< double > v_env_x;   ///< max_margin() reads
+ std::vector< Index > v_ord_pos;  ///< the position of each item in v_ord
+
+ // the greedy fill of the last fractional_relaxation(), from which the next
+ // one resumes: v_fr_w[ k ] and v_fr_p[ k ] are the weight and the profit
+ // of the items of the relaxation in the first k positions of v_ord, right
+ // for k <= f_fr_valid, which set_fixing() lowers to the position of an
+ // item entering or leaving the relaxation
+
+ std::vector< double > v_fr_w;    ///< prefix sums of the weights
+ std::vector< double > v_fr_p;    ///< prefix sums of the profits
+ Index f_fr_valid = 0;            ///< how many of them are right
+ Index f_fr_crit = 0;             ///< the position of the critical item of
+                                  ///< the last fill, f_N if none
+ double f_fr_y = 1;               ///< and its fraction
  Index f_fix_steps;               ///< items (un)fixed by set_fixing() since
                                   ///< the last pass over all of them
  bool f_exact;                    ///< if profits, weights and capacity are
@@ -383,6 +411,12 @@ class BinaryKnapsackSolver : public virtual Solver {
  void load( void );
 
 /*--------------------------------------------------------------------------*/
+ /// the part of update_instance() for a nonempty queue
+ /** Called with f_mod_lock held, which it releases. */
+
+ bool drain_Modification( void );
+
+/*--------------------------------------------------------------------------*/
 /*---------------------------- PRIVATE FIELDS ------------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -394,6 +428,24 @@ class BinaryKnapsackSolver : public virtual Solver {
 
 /*--------------------------------------------------------------------------*/
 /*----------------- INLINE METHODS OF BinaryKnapsackSolver -----------------*/
+/*--------------------------------------------------------------------------*/
+
+inline bool BinaryKnapsackSolver::update_instance( void )
+{
+ // try to acquire lock, spin on failure
+ while( f_mod_lock.test_and_set( std::memory_order_acquire ) );
+
+ // nothing queued and nothing reloaded, which is the case of nearly every
+ // call [see GreedyRelaxationBinaryKnapsackSolver::apply()]
+ if( ( ! f_changed ) && v_mod.empty() ) {
+  f_mod_lock.clear( std::memory_order_release );  // release lock
+  return( false );
+  }
+
+ return( drain_Modification() );
+
+ }  // end( BinaryKnapsackSolver::update_instance )
+
 /*--------------------------------------------------------------------------*/
 
 inline void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
@@ -425,8 +477,11 @@ inline void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
   else        { f_base -= p; f_Cd += v_W[ i ]; }
   }
 
- n_in[ i ] = ( ! v ) && ( cls >= 2 );
- if( ! n_in[ i ] )          // in the relaxation, f_x[ i ] set by the scan
+ const char in = ( ! v ) && ( cls >= 2 );
+ if( ( in != n_in[ i ] ) && f_ord_valid )   // the fill changes from it on
+  f_fr_valid = std::min( f_fr_valid , v_ord_pos[ i ] );
+ n_in[ i ] = in;
+ if( ! in )                 // in the relaxation, f_x[ i ] set by the scan
   f_x[ i ] = taken( v );
 
  }  // end( BinaryKnapsackSolver::set_fixing )

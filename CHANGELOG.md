@@ -64,6 +64,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Change in place, telling the two by the address of their `type_info`,
   with no virtual call for each item
 
+- the continuous relaxation of `GreedyRelaxationBinaryKnapsackSolver` with
+  `intIncremental` 0 resumes the greedy fill from the first item, in the
+  efficiency order, that has entered or left the relaxation since the last
+  solve, the critical item being found by a binary search on the part of
+  the fill before it, and the solution is written item by item only when
+  it is read
+
+- `BinaryKnapsackSolver::update_instance()` takes no list and makes no call
+  when no Modification is queued, and `GreedyRelaxationBinaryKnapsackSolver`
+  with `intIncremental` 1 reads the items of a Range or a Subset (un)fixing
+  Change in place, building the undo Change only when it is asked for
+
 ### Fixed
 
 - `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1 gives
