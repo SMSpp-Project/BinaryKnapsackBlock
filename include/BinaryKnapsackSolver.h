@@ -308,6 +308,19 @@ class BinaryKnapsackSolver : public virtual Solver {
  Change * apply_to_mirror( const BinaryKnapsackBlockChange * chg ,
                            bool doUndo = false );
 
+/*--------------------------------------------------------------------------*/
+ /// apply an (un)fixing Range Change to the mirror, with no undo
+ /** What apply_to_mirror() does with \p doUndo false, inline: a move along
+  * a tree applies a great many of them. */
+
+ void fix_range( const BinaryKnapsackBlockRngdChange & chg ) {
+  const bool fixing = ( chg.type() == BinaryKnapsackBlockChange::eFixX );
+  const auto & data = chg.data();
+  const auto [ first , last ] = chg.rng();
+  for( Index i = first ; i < last ; ++i )
+   set_fixing( i , fixing ? ( data[ i - first ] == 1 ? 2 : 1 ) : 0 );
+  }
+
  /// solve the continuous (Dantzig) relaxation of the normalized core
  /** Greedy fractional fill of f_Cd over the union of the integer and the
   * continuous core in non-increasing efficiency order: items before the

@@ -230,6 +230,20 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
 Change * GreedyRelaxationBinaryKnapsackSolver::apply( Change * chg ,
 						      bool doUndo )
 {
+ // the step of a tree, a Range (un)fixing with no undo asked, which is what
+ // a move between two nodes applies at nearly every step, is told by its
+ // exact type and applied with no further test
+ if( ! doUndo )
+  if( const auto rngd = exact_cast< BinaryKnapsackBlockRngdChange >( chg ) )
+   if( ( rngd->type() == BinaryKnapsackBlockChange::eFixX ) ||
+       ( rngd->type() == BinaryKnapsackBlockChange::eUnfixX ) ) {
+    if( f_incremental )
+     return( inc_apply( rngd , false ) );
+    f_x_valid = false;        // the fixed items change [see sync_x()]
+    fix_range( *rngd );
+    return( nullptr );
+    }
+
  // a GroupChange (e.g., the composed undo of branching plus separation, see
  // BranchAndXSolver) is applied by decomposing it; the sub-undos are
  // composed back in reverse order; the Change of the Block, which a step
@@ -467,7 +481,7 @@ int GreedyRelaxationBinaryKnapsackSolver::inc_compute( void )
 
 /*--------------------------------------------------------------------------*/
 
-Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
+inline Change * GreedyRelaxationBinaryKnapsackSolver::inc_apply(
 				  BinaryKnapsackBlockChange * chg ,
 				  bool doUndo )
 {
@@ -693,7 +707,7 @@ bool GreedyRelaxationBinaryKnapsackSolver::incumbent( double & value )
 
 /*--------------------------------------------------------------------------*/
 
-void GreedyRelaxationBinaryKnapsackSolver::inc_unfix_item( Index i ,
+inline void GreedyRelaxationBinaryKnapsackSolver::inc_unfix_item( Index i ,
 							   double x )
 {
  const double value = v_icomp[ i ] ? 1 - x : x;  // in the space of the fill
@@ -715,7 +729,7 @@ void GreedyRelaxationBinaryKnapsackSolver::inc_unfix_item( Index i ,
 
 /*--------------------------------------------------------------------------*/
 
-void GreedyRelaxationBinaryKnapsackSolver::inc_fix_item( Index i ,
+inline void GreedyRelaxationBinaryKnapsackSolver::inc_fix_item( Index i ,
 							 double x ,
 							 bool fill )
 {

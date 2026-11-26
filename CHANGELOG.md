@@ -90,6 +90,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not fit with it are out, which `branch()` computes, so that applying it
   again along the tree looks at no item
 
+- `GreedyRelaxationBinaryKnapsackSolver::apply()` tells a Range (un)fixing
+  Change with no undo asked, the step of a move along a tree, before any
+  other, and applies it inline, by `BinaryKnapsackSolver::fix_range()` or
+  by the greedy fill, whose functions are inline
+
 - `BinaryKnapsackSolver::update_instance()` takes no list and makes no call
   when no Modification is queued, and `GreedyRelaxationBinaryKnapsackSolver`
   with `intIncremental` 1 reads the items of a Range or a Subset (un)fixing
