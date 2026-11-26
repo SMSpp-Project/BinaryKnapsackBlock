@@ -98,6 +98,9 @@ class BinaryKnapsackSolver : public virtual Solver {
 
  using Index = Block::Index;
 
+ /// how many consecutive items a group of max_margin() has
+ static constexpr Index MarginBlock = 64;
+
 /*--------------------------------------------------------------------------*/
 /*--------------------- CONSTRUCTOR AND DESTRUCTOR -------------------------*/
 /*--------------------------------------------------------------------------*/
@@ -263,15 +266,17 @@ class BinaryKnapsackSolver : public virtual Solver {
  void build_efficiency_order( void );
 
 /*--------------------------------------------------------------------------*/
- /// the largest margin of an item at the given efficiency
- /** Returns \f$ \max_j | p_j - \rho w_j | \f$ over the items that can
-  * enter the relaxation (those of positive normalized weight [see
-  * normalize_instance()]), whether or not they are fixed, 0 if there is
-  * none, in \f$ O( \log n ) \f$ time: the maximum is the upper envelope of
-  * the \f$ 2n \f$ lines \f$ \pm ( p_j - \rho w_j ) \f$, which is built
-  * with the efficiency order [see build_efficiency_order()]. */
+ /// the largest margin of an item of a group at the given efficiency
+ /** Returns \f$ \max_j | p_j - \rho w_j | \f$ over the items of the group
+  * \p g that can enter the relaxation (those of positive normalized weight
+  * [see normalize_instance()]), whether or not they are fixed, 0 if there
+  * is none, in \f$ O( \log n ) \f$ time: the maximum is the upper envelope
+  * of the lines \f$ \pm ( p_j - \rho w_j ) \f$, which is built with the
+  * efficiency order [see build_efficiency_order()]. The group 0 is that of
+  * all the items, the group \f$ 1 + b \f$ that of the items of indices
+  * from \f$ b \f$ MarginBlock to \f$ ( b + 1 ) \f$ MarginBlock excluded. */
 
- double max_margin( double rho ) const;
+ double max_margin( double rho , Index g = 0 ) const;
 
 /*--------------------------------------------------------------------------*/
  /// apply an (un)fixing Change to the internal mirror of the instance
@@ -316,6 +321,17 @@ class BinaryKnapsackSolver : public virtual Solver {
  void fractional_x( void );
 
 /*--------------------------------------------------------------------------*/
+ /// the value of the item i, in the relaxation, of the last fill
+ /** The entry of f_x of the item i that fractional_x() writes, in the
+  * original space, for an item in the relaxation (n_in[ i ] != 0). */
+
+ double fractional_x( Index i ) const {
+  const Index k = v_ord_pos[ i ];
+  const double y = k < f_fr_crit ? 1 : ( k == f_fr_crit ? f_fr_y : 0 );
+  return( n_comp[ i ] ? 1 - y : y );
+  }
+
+/*--------------------------------------------------------------------------*/
 /*---------------------------- PROTECTED FIELDS ----------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -357,7 +373,11 @@ class BinaryKnapsackSolver : public virtual Solver {
  bool f_ord_valid;                ///< if v_ord matches profits / weights
  std::vector< double > v_env_m;   ///< slopes, intercepts and breakpoints
  std::vector< double > v_env_a;   ///< of the upper envelope that
- std::vector< double > v_env_x;   ///< max_margin() reads
+ std::vector< double > v_env_x;   ///< max_margin() reads, one after
+                                  ///< the other for each group of items
+ std::vector< std::size_t > v_env_beg;   ///< where the lines and the
+ std::vector< std::size_t > v_env_xbeg;  ///< breakpoints of each group of
+                                         ///< items start, and end
  std::vector< Index > v_ord_pos;  ///< the position of each item in v_ord
 
  // the greedy fill of the last fractional_relaxation(), from which the next

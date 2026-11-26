@@ -166,19 +166,26 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
   const Index ci = Index( f_fi.orig );
   const double rho = n_p[ ci ] / n_w[ ci ];   // critical efficiency
   // a gap above the largest margin of any item pegs nothing, and then no
-  // item is looked at; the slack keeps the rounding of the envelope from
-  // skipping a scan that would peg
-  if( obj - zmax <= max_margin( rho ) + 1e-9 * ( 1 + std::abs( obj ) ) ) {
-   sync_x();
-   for( Index j = 0 ; j < f_N ; ++j ) {
-    if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
-     continue;                 // not free, critical, or not integer
-    const double xj = f_x[ j ];                  // 0 or 1 (original space)
-    const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
-    const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
-                             : rho * n_w[ j ] - n_p[ j ];
-    if( obj - margin <= zmax )
-     ( xj ? peg1 : peg0 ).push_back( j );
+  // item is looked at, nor any in a block of items whose largest margin is
+  // below it; the slack keeps the rounding of the envelope from skipping a
+  // scan that would peg
+  const double gap = obj - zmax;
+  const double slack = 1e-9 * ( 1 + std::abs( obj ) );
+  if( gap <= max_margin( rho ) + slack ) {
+   for( Index g = 0 ; g * MarginBlock < f_N ; ++g ) {
+    if( gap > max_margin( rho , g + 1 ) + slack )
+     continue;
+    const Index last = std::min( ( g + 1 ) * MarginBlock , f_N );
+    for( Index j = g * MarginBlock ; j < last ; ++j ) {
+     if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
+      continue;                // not free, critical, or not integer
+     const double xj = fractional_x( j );        // 0 or 1 (original space)
+     const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
+     const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
+                              : rho * n_w[ j ] - n_p[ j ];
+     if( obj - margin <= zmax )
+      ( xj ? peg1 : peg0 ).push_back( j );
+     }
     }
    }
   }

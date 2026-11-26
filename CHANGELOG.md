@@ -71,6 +71,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the fill before it, and the solution is written item by item only when
   it is read
 
+- the reduced-cost pegging of `GreedyRelaxationBinaryKnapsackSolver` looks
+  only at the blocks of `BinaryKnapsackSolver::MarginBlock` consecutive
+  items whose largest margin, which `max_margin()` gives for each of them
+  as for all the items, reaches the gap, and reads the value of an item in
+  the relaxation from its position in the efficiency order
+
 - `BinaryKnapsackSolver::update_instance()` takes no list and makes no call
   when no Modification is queued, and `GreedyRelaxationBinaryKnapsackSolver`
   with `intIncremental` 1 reads the items of a Range or a Subset (un)fixing
