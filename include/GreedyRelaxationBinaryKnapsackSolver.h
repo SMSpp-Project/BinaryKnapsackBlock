@@ -514,15 +514,15 @@ private:
 
  template< class Item >
  Change * inc_apply_items( BinaryKnapsackBlockChange * chg , Index n ,
-                           Item item , bool doUndo );
+			   Item item ,
+			   bool doUndo );
 
 /*--------------------------------------------------------------------------*/
  /// the undo of the (un)fixing chg of n items, built before it is applied
  /** An unfixing of the same items if \p fixing, carrying the state of the
   * greedy fill before chg, a fixing to the same values otherwise. */
 
- Change * inc_undo( BinaryKnapsackBlockChange * chg , Index n ,
-                    bool fixing );
+ Change * inc_undo( BinaryKnapsackBlockChange * chg , Index n , bool fixing );
 
 /*--------------------------------------------------------------------------*/
  /// branch on the critical item, passing the state of each child

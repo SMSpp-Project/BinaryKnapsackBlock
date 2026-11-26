@@ -272,7 +272,7 @@ void BinaryKnapsackSolver::normalize_instance( void )
   }
  f_norm_valid = true;
  f_fix_steps = 0;
- f_fr_valid = 0;          // n_in is written anew
+ f_fr_valid = 0;  // n_in is written anew
  drop_fixing_queue();
  f_exact = f_relax_data && integer && ( tot < 0x1p52 );
 
@@ -313,7 +313,7 @@ void BinaryKnapsackSolver::refresh_fixings( void )
   }
 
  f_fix_steps = 0;
- f_fr_valid = 0;          // n_in is written anew
+ f_fr_valid = 0;  // n_in is written anew
  drop_fixing_queue();
 
  }  // end( BinaryKnapsackSolver::refresh_fixings )
@@ -431,16 +431,19 @@ void BinaryKnapsackSolver::build_efficiency_order( void )
  // dropped when the next one overtakes the one before it no later than it;
  // one of all the items, the group 0, and one of the items of each block of
  // MarginBlock consecutive indices, the group 1 + i / MarginBlock of item i
- v_env_m.clear();  v_env_a.clear();  v_env_x.clear();
- v_env_beg.assign( 1 , 0 );  v_env_xbeg.assign( 1 , 0 );
+ v_env_m.clear();
+ v_env_a.clear();
+ v_env_x.clear();
+ v_env_beg.assign( 1 , 0 );
+ v_env_xbeg.assign( 1 , 0 );
  std::vector< std::pair< double , double > > lines;
  lines.reserve( 2 * f_N );
  const auto envelope = [ & ]( Index first , Index last ) {
   lines.clear();
   for( Index i = first ; i < last ; ++i )
    if( n_w[ i ] > 0 ) {
-    lines.emplace_back( - n_w[ i ] , n_p[ i ] );
-    lines.emplace_back( n_w[ i ] , - n_p[ i ] );
+    lines.emplace_back( -n_w[ i ] , n_p[ i ] );
+    lines.emplace_back( n_w[ i ] , -n_p[ i ] );
     }
   std::sort( lines.begin() , lines.end() );
   const std::size_t b = v_env_m.size();
@@ -451,14 +454,16 @@ void BinaryKnapsackSolver::build_efficiency_order( void )
   for( std::size_t k = 0 ; k < lines.size() ; ++k ) {
    const auto [ m , a ] = lines[ k ];
    if( ( k + 1 < lines.size() ) && ( lines[ k + 1 ].first == m ) )
-    continue;                      // a higher line of the same slope next
+    continue;  // a higher line of the same slope next
    while( v_env_m.size() > b ) {
     const double x = cross( v_env_m.size() - 1 , m , a );
     if( ( v_env_x.size() == xb ) || ( x > v_env_x.back() ) ) {
      v_env_x.push_back( x );
      break;
      }
-    v_env_m.pop_back();  v_env_a.pop_back();  v_env_x.pop_back();
+    v_env_m.pop_back();
+    v_env_a.pop_back();
+    v_env_x.pop_back();
     }
    v_env_m.push_back( m );
    v_env_a.push_back( a );
@@ -511,17 +516,17 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
  // before the first such sum
  const auto first = v_fr_w.begin() + 1;
  Index k = Index( std::upper_bound( first , first + f_fr_valid , f_Cd ) -
-                  v_fr_w.begin() );
+		  v_fr_w.begin() );
  if( k <= f_fr_valid )
   --k;
- else {                     // the fill goes on from where it is right
+ else {  // the fill goes on from where it is right
   double sw = v_fr_w[ f_fr_valid ];
   double sp = v_fr_p[ f_fr_valid ];
   for( k = f_fr_valid ; k < f_N ; ++k ) {
    const int i = v_ord[ k ];
-   if( n_in[ i ] ) {        // not fixed nor trivial
+   if( n_in[ i ] ) {  // not fixed nor trivial
     if( sw + n_w[ i ] > f_Cd )
-     break;                 // the critical item
+     break;  // the critical item
     sw += n_w[ i ];
     sp += n_p[ i ];
     }
@@ -532,7 +537,7 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
   }
 
  f_fr_crit = k;
- if( k == f_N ) {           // every item fits
+ if( k == f_N ) {  // every item fits
   f_fr_y = 1;
   return( f_base + v_fr_p[ k ] );
   }
@@ -540,8 +545,9 @@ double BinaryKnapsackSolver::fractional_relaxation( FracInfo & fi )
  const int i = v_ord[ k ];
  const double y = ( f_Cd - v_fr_w[ k ] ) / n_w[ i ];
  f_fr_y = y;
- fi = FracInfo{ i , n_comp[ i ] ? 1 - y : y , ! v_I[ i ] ,
-                ( bool ) n_comp[ i ] , n_p[ i ] , y };
+ fi = FracInfo{ i ,          n_comp[ i ] ? 1 - y : y ,
+		! v_I[ i ] , ( bool )n_comp[ i ] ,
+		n_p[ i ] ,   y };
  return( f_base + v_fr_p[ k ] + y * n_p[ i ] );
 
  }  // end( BinaryKnapsackSolver::fractional_relaxation )
@@ -552,7 +558,7 @@ void BinaryKnapsackSolver::fractional_x( void )
 {
  for( Index k = 0 ; k < f_N ; ++k ) {
   const int i = v_ord[ k ];
-  if( n_in[ i ] )              // in the relaxation (not fixed nor trivial)
+  if( n_in[ i ] )  // in the relaxation (not fixed nor trivial)
    f_x[ i ] = fractional_x( i );
   }
 
