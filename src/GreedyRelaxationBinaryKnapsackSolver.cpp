@@ -238,7 +238,7 @@ Change * GreedyRelaxationBinaryKnapsackSolver::apply( Change * chg ,
    if( ( rngd->type() == BinaryKnapsackBlockChange::eFixX ) ||
        ( rngd->type() == BinaryKnapsackBlockChange::eUnfixX ) ) {
     if( f_incremental )
-     return( inc_apply( rngd , false ) );
+     return( inc_step( rngd ) );
     f_x_valid = false;        // the fixed items change [see sync_x()]
     fix_range( *rngd );
     return( nullptr );
@@ -478,6 +478,34 @@ int GreedyRelaxationBinaryKnapsackSolver::inc_compute( void )
  return( kOK );
 
  }  // end( GreedyRelaxationBinaryKnapsackSolver::inc_compute )
+
+/*--------------------------------------------------------------------------*/
+
+inline Change * GreedyRelaxationBinaryKnapsackSolver::inc_step(
+				  BinaryKnapsackBlockRngdChange * chg )
+{
+ // a Change of one item carrying the state of the current data, as those
+ // of a branching do [see inc_branch()], on the fill of the current data:
+ // the item is (un)fixed with no change to the fill, and the state is set
+ if( update_instance() )     // inc_apply() starts the fill again
+  f_inc_valid = false;
+ const auto & data = chg->data();
+ const auto [ first , last ] = chg->rng();
+ if( ( ! f_inc_valid ) || ( last != first + 1 ) || ( data.size() != 5 ) ||
+     ( data.back() != double( f_inc_epoch ) ) )
+  return( inc_apply( chg , false ) );
+
+ f_x_valid = false;
+ if( chg->type() == BinaryKnapsackBlockChange::eFixX )
+  inc_fix_item( first , data[ 0 ] , false );
+ else
+  inc_unfix_item( first , data[ 0 ] );
+ f_ssi = Index( data[ 1 ] );
+ f_iC = data[ 2 ];
+ f_iP = data[ 3 ];
+ return( nullptr );
+
+ }  // end( GreedyRelaxationBinaryKnapsackSolver::inc_step )
 
 /*--------------------------------------------------------------------------*/
 

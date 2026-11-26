@@ -502,6 +502,14 @@ private:
  Change * inc_apply( BinaryKnapsackBlockChange * chg , bool doUndo );
 
 /*--------------------------------------------------------------------------*/
+ /// inc_apply() of a Range Change with no undo, the step of a move
+ /** The Change of a branching, of one item and with the state of the
+  * current data, is applied with nothing else looked at; any other is
+  * passed to inc_apply(). */
+
+ Change * inc_step( BinaryKnapsackBlockRngdChange * chg );
+
+/*--------------------------------------------------------------------------*/
  /// the body of inc_apply() on the n items of chg, the h-th being item( h )
 
  template< class Item >
