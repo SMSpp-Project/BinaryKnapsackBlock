@@ -101,8 +101,9 @@ int GreedyRelaxationBinaryKnapsackSolver::compute( bool changedvars )
 
  if( ! f_norm_valid )        // profits / weights / sense changed:
   normalize_instance();      //  raw mirror -> normalized core
- else                        // only the fixings (possibly) changed:
-  refresh_fixings();         //  cheap single-pass refresh
+ else                        // only the fixings changed, which
+  if( f_fix_steps > f_N )    //  set_fixing() has followed, but
+   refresh_fixings();        //  not for too long [see set_fixing()]
 
  obj = - Inf< double >();
 
@@ -164,16 +165,20 @@ std::vector< Change * > GreedyRelaxationBinaryKnapsackSolver::branch( void )
                       1e-9 * ( 1 + std::abs( cutoff ) );
   const Index ci = Index( f_fi.orig );
   const double rho = n_p[ ci ] / n_w[ ci ];   // critical efficiency
-  for( Index j = 0 ; j < f_N ; ++j ) {
-   if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
-    continue;                  // not free, critical, or not integer
-   const double xj = f_x[ j ];                   // 0 or 1 (original space)
-   const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
-   const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
-                            : rho * n_w[ j ] - n_p[ j ];
-   if( obj - margin <= zmax )
-    ( xj ? peg1 : peg0 ).push_back( j );
-   }
+  // a gap above the largest margin of any item pegs nothing, and then no
+  // item is looked at; the slack keeps the rounding of the envelope from
+  // skipping a scan that would peg
+  if( obj - zmax <= max_margin( rho ) + 1e-9 * ( 1 + std::abs( obj ) ) )
+   for( Index j = 0 ; j < f_N ; ++j ) {
+    if( ( ! n_in[ j ] ) || ( j == ci ) || ( ! v_I[ j ] ) )
+     continue;                 // not free, critical, or not integer
+    const double xj = f_x[ j ];                  // 0 or 1 (original space)
+    const char yj = n_comp[ j ] ? char( 1 - xj ) : char( xj );
+    const double margin = yj ? n_p[ j ] - rho * n_w[ j ]
+                             : rho * n_w[ j ] - n_p[ j ];
+    if( obj - margin <= zmax )
+     ( xj ? peg1 : peg0 ).push_back( j );
+    }
   }
 
  // the two children fix the critical item to 0 and to 1; each also carries
@@ -416,8 +421,12 @@ int GreedyRelaxationBinaryKnapsackSolver::inc_compute( void )
   f_iP += v_ip[ i ];
   }
 
- if( f_to_end )
+ // with every free item in the fill none is left to resume from, so that
+ // a compute() with no Change in between adds none of them again
+ if( f_to_end ) {
   f_ci = f_N ? v_sorted.back() : 0;
+  f_ssi = f_N;
+  }
 
  obj = f_iP + ( ( f_ci_val == 0 ) || ( f_ci_val == 1 ) ? 0
 		: v_ip[ f_ci ] * f_ci_val );

@@ -28,7 +28,9 @@
 /*--------------------------------------------------------------------------*/
 
 #include <algorithm>
+#include <cmath>
 #include <numeric>
+#include <typeinfo>
 
 #include "BinaryKnapsackSolver.h"
 
@@ -112,6 +114,12 @@ bool BinaryKnapsackSolver::update_instance( void )
   switch( tmod->type() ) {
 
    case( BinaryKnapsackBlockMod::eChgCapacity ):
+    if( f_norm_valid ) {     // f_Cd is f_Cap less the taken weight
+     const double cap = BKB->get_Capacity();
+     if( ( cap != std::floor( cap ) ) || ( std::abs( cap ) > 0x1p52 ) )
+      f_exact = false;
+     f_Cd += cap - f_Cap;
+     }
     f_Cap = BKB->get_Capacity();
     break;
 
@@ -138,7 +146,7 @@ bool BinaryKnapsackSolver::update_instance( void )
         v_I[ i ] = BKB->get_Integrality( i ); break;
        case( BinaryKnapsackBlockMod::eFixX ):
        case( BinaryKnapsackBlockMod::eUnfixX ):
-        v_fxd[ i ] = BKB->get_fxd()[ i ]; break;
+        set_fixing( i , BKB->get_fxd()[ i ] ); break;
        default: break;
        }
 
@@ -157,7 +165,7 @@ bool BinaryKnapsackSolver::update_instance( void )
         v_I[ i ] = BKB->get_Integrality( i ); break;
        case( BinaryKnapsackBlockMod::eFixX ):
        case( BinaryKnapsackBlockMod::eUnfixX ):
-        v_fxd[ i ] = BKB->get_fxd()[ i ]; break;
+        set_fixing( i , BKB->get_fxd()[ i ] ); break;
        default: break;
        }
    }
@@ -199,7 +207,13 @@ void BinaryKnapsackSolver::normalize_instance( void )
   n_p.resize( f_N );
   n_comp.resize( f_N );
   n_in.assign( f_N , 0 );
+  n_cls.resize( f_N );
   }
+
+ // the sums of f_base and f_Cd are exact when all the data are integer and
+ // the absolute values add up to less than 2^52
+ double tot = std::abs( f_Cap );
+ bool integer = ( f_Cap == std::floor( f_Cap ) );
 
  for( Index i = 0 ; i < f_N ; ++i ) {
 
@@ -214,6 +228,10 @@ void BinaryKnapsackSolver::normalize_instance( void )
    n_w[ i ] = cmp ? -w : w;
    n_p[ i ] = cmp ? -p : p;
    n_comp[ i ] = cmp;
+   n_cls[ i ] = ( ( w >= 0 ) && ( p <= 0 ) ) ? 0 :
+                ( ( ( w <= 0 ) && ( p >= 0 ) ) ? 1 : ( cmp ? 2 : 3 ) );
+   integer = integer && ( p == std::floor( p ) ) && ( w == std::floor( w ) );
+   tot += std::abs( p ) + std::abs( w );
    }
 
   // fixed variables: honour the fixing, fold into base profit / capacity
@@ -256,6 +274,8 @@ void BinaryKnapsackSolver::normalize_instance( void )
      cc_orig.push_back( i ); cc_comp.push_back( 0 ); }
   }
  f_norm_valid = true;
+ f_fix_steps = 0;
+ f_exact = f_relax_data && integer && ( tot < 0x1p52 );
 
  }  // end( BinaryKnapsackSolver::normalize_instance )
 
@@ -292,7 +312,11 @@ void BinaryKnapsackSolver::refresh_fixings( void )
 
   n_in[ i ] = 1;            // in the relaxation, f_x[ i ] set by the scan
   }
+
+ f_fix_steps = 0;
+
  }  // end( BinaryKnapsackSolver::refresh_fixings )
+
 
 /*--------------------------------------------------------------------------*/
 
@@ -305,38 +329,68 @@ Change * BinaryKnapsackSolver::apply_to_mirror(
                                 "the Change must be an (un)fixing one" ) );
 
  const bool fixing = ( chg->type() == BinaryKnapsackBlockChange::eFixX );
- const Index n = chg->num_items();
  const auto & data = chg->data();
 
- Change * undo = nullptr;
- if( doUndo ) {
-  // the undo under the LIFO discipline: un-fixing the same items, or
-  // re-fixing them to the values captured at call time; the items of a
-  // range are a range for the undo too
-  std::vector< double > old_data;
-  old_data.reserve( n );
-  for( Index k = 0 ; k < n ; ++k )
-   old_data.push_back( v_fxd[ chg->item( k ) ] == 2 ? 1 : 0 );
-  const int type = fixing ? BinaryKnapsackBlockChange::eUnfixX
-                          : BinaryKnapsackBlockChange::eFixX;
-  if( auto rchg = dynamic_cast< const BinaryKnapsackBlockRngdChange * >(
-                                                                     chg ) )
-   undo = new BinaryKnapsackBlockRngdChange( type , std::move( old_data ) ,
-                                             rchg->rng() );
-  else {
-   Block::Subset nms;
-   nms.reserve( n );
+ // the items of a Range or of a Subset are read in place, with no virtual
+ // call per item, those of any other Change through item()
+ const auto run = [ & ]( Index n , auto item ,
+                         const BinaryKnapsackBlockRngdChange * rchg ) {
+  Change * undo = nullptr;
+  if( doUndo ) {
+   // the undo under the LIFO discipline: un-fixing the same items, or
+   // re-fixing them to the values captured at call time; the items of a
+   // range are a range for the undo too
+   std::vector< double > old_data;
+   old_data.reserve( n );
    for( Index k = 0 ; k < n ; ++k )
-    nms.push_back( chg->item( k ) );
-   undo = new BinaryKnapsackBlockSbstChange( type , std::move( old_data ) ,
-                                             std::move( nms ) );
+    old_data.push_back( v_fxd[ item( k ) ] == 2 ? 1 : 0 );
+   const int type = fixing ? BinaryKnapsackBlockChange::eUnfixX
+                           : BinaryKnapsackBlockChange::eFixX;
+   if( rchg )
+    undo = new BinaryKnapsackBlockRngdChange( type , std::move( old_data ) ,
+                                              rchg->rng() );
+   else {
+    Block::Subset nms;
+    nms.reserve( n );
+    for( Index k = 0 ; k < n ; ++k )
+     nms.push_back( item( k ) );
+    undo = new BinaryKnapsackBlockSbstChange( type , std::move( old_data ) ,
+                                              std::move( nms ) );
+    }
    }
+
+  for( Index k = 0 ; k < n ; ++k )
+   set_fixing( item( k ) , fixing ? ( data[ k ] == 1 ? 2 : 1 ) : 0 );
+
+  return( undo );
+  };
+
+ // the type is told first by the address of its type_info, which is
+ // cheaper than a dynamic_cast [see GreedyRelaxationBinaryKnapsackSolver]
+ auto rchg = ( & typeid( * chg ) == & typeid( BinaryKnapsackBlockRngdChange ) )
+             ? static_cast< const BinaryKnapsackBlockRngdChange * >( chg )
+             : nullptr;
+ auto schg = ( & typeid( * chg ) == & typeid( BinaryKnapsackBlockSbstChange ) )
+             ? static_cast< const BinaryKnapsackBlockSbstChange * >( chg )
+             : nullptr;
+ if( ( ! rchg ) && ( ! schg ) ) {
+  rchg = dynamic_cast< const BinaryKnapsackBlockRngdChange * >( chg );
+  if( ! rchg )
+   schg = dynamic_cast< const BinaryKnapsackBlockSbstChange * >( chg );
   }
 
- for( Index k = 0 ; k < n ; ++k )
-  v_fxd[ chg->item( k ) ] = fixing ? ( data[ k ] == 1 ? 2 : 1 ) : 0;
-
- return( undo );
+ if( rchg ) {
+  const Index first = rchg->rng().first;
+  return( run( rchg->rng().second - first ,
+               [ first ]( Index k ) { return( first + k ); } , rchg ) );
+  }
+ if( schg ) {
+  const auto & nms = schg->nms();
+  return( run( Index( nms.size() ) ,
+               [ & nms ]( Index k ) { return( nms[ k ] ); } , nullptr ) );
+  }
+ return( run( chg->num_items() ,
+              [ chg ]( Index k ) { return( chg->item( k ) ); } , nullptr ) );
 
  }  // end( BinaryKnapsackSolver::apply_to_mirror )
 
@@ -364,9 +418,57 @@ void BinaryKnapsackSolver::build_efficiency_order( void )
   return( n_p[ a ] * n_w[ b ] > n_p[ b ] * n_w[ a ] );
   } );
 
+ // the upper envelope of the lines a + m rho = +-( p_i - rho w_i ) of the
+ // items that can enter the relaxation, which come first in v_ord: the
+ // lines by increasing slope, of equal slope the highest only, a line being
+ // dropped when the next one overtakes the one before it no later than it
+ std::vector< std::pair< double , double > > lines;
+ lines.reserve( 2 * f_N );
+ for( int i : v_ord ) {
+  if( n_w[ i ] <= 0 )
+   break;
+  lines.emplace_back( - n_w[ i ] , n_p[ i ] );
+  lines.emplace_back( n_w[ i ] , - n_p[ i ] );
+  }
+ std::sort( lines.begin() , lines.end() );
+ v_env_m.clear();  v_env_a.clear();  v_env_x.clear();
+ const auto cross = [ this ]( std::size_t k , double m , double a ) {
+  return( ( v_env_a[ k ] - a ) / ( m - v_env_m[ k ] ) );
+  };
+ for( std::size_t k = 0 ; k < lines.size() ; ++k ) {
+  const auto [ m , a ] = lines[ k ];
+  if( ( k + 1 < lines.size() ) && ( lines[ k + 1 ].first == m ) )
+   continue;                       // a higher line of the same slope next
+  while( ! v_env_m.empty() ) {
+   const double x = cross( v_env_m.size() - 1 , m , a );
+   if( v_env_x.empty() || ( x > v_env_x.back() ) ) {
+    v_env_x.push_back( x );
+    break;
+    }
+   v_env_m.pop_back();  v_env_a.pop_back();  v_env_x.pop_back();
+   }
+  v_env_m.push_back( m );
+  v_env_a.push_back( a );
+  }
+
  f_ord_valid = true;
 
  }  // end( BinaryKnapsackSolver::build_efficiency_order )
+
+/*--------------------------------------------------------------------------*/
+
+double BinaryKnapsackSolver::max_margin( double rho ) const
+{
+ if( v_env_m.empty() )
+  return( 0 );
+
+ // the line of the envelope at rho is the first one whose right breakpoint
+ // is not on the left of rho
+ const auto k = std::lower_bound( v_env_x.begin() , v_env_x.end() , rho ) -
+                v_env_x.begin();
+ return( v_env_a[ k ] + v_env_m[ k ] * rho );
+
+ }  // end( BinaryKnapsackSolver::max_margin )
 
 /*--------------------------------------------------------------------------*/
 

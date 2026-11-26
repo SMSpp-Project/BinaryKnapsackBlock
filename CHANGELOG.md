@@ -59,7 +59,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the types as strings when the `type_info` are not merged across shared
   libraries
 
+- the reduced-cost pegging in the branching of
+  `GreedyRelaxationBinaryKnapsackSolver` looks at no item when the gap
+  between the relaxation and the incumbent exceeds the largest margin of an
+  item, which `BinaryKnapsackSolver::max_margin()` gives in logarithmic time
+  from an envelope built with the efficiency order
+
+- `BinaryKnapsackSolver` follows each (un)fixing of an item, and a change
+  of the capacity, in the profit and the capacity left by the fixed items
+  and in the membership of the item in the relaxation, so that
+  `GreedyRelaxationBinaryKnapsackSolver` re-solves under new fixings with
+  no pass over all the items, but one after every `n` items (un)fixed when
+  the data are not integer, which bounds the rounding
+
+- `BinaryKnapsackSolver` reads the items of a Range or a Subset (un)fixing
+  Change in place, telling the two by the address of their `type_info`,
+  with no virtual call for each item
+
 ### Fixed
+
+- `GreedyRelaxationBinaryKnapsackSolver` with `intIncremental` 1 gives
+  the same relaxation when `compute()` is called again with no `Change`
+  in between, as a branch-and-bound that evaluates a node twice does; when
+  every free item fitted, the second call added them to the fill again
 
 - the branching of `GreedyRelaxationBinaryKnapsackSolver` with
   `intIncremental` 0 pegs the items by their reduced costs, reading
