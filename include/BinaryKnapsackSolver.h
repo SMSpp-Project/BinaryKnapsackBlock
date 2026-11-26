@@ -242,16 +242,27 @@ class BinaryKnapsackSolver : public virtual Solver {
 /*--------------------------------------------------------------------------*/
  /// (un)fix an item of the mirror
  /** Sets #v_fxd[ i ] to v (0 free, 1 fixed to 0, 2 fixed to 1). While
-  * #f_norm_valid, f_x[ i ], f_base, f_Cd and n_in[ i ] change with it as
-  * refresh_fixings() would change them, so that a re-solve under the new
-  * fixings needs no pass over all the items; one is made anyway after more
-  * than f_N items have been (un)fixed this way [see #f_fix_steps], which
-  * bounds the rounding that the updates of f_base and f_Cd pile up, unless
-  * these updates are exact [see #f_exact]. Without the data of the
-  * relaxation [see #f_relax_data], the normalization is just marked as
-  * stale. */
+  * #f_norm_valid, the item is queued, and follow_fixings() changes f_x[ i ],
+  * f_base, f_Cd and n_in[ i ] as refresh_fixings() would change them, so
+  * that a re-solve under the new fixings needs no pass over all the items,
+  * and an item (un)fixed and then put back as it was, as a move along a
+  * tree does with the items of the common ancestor, costs nothing there.
+  * Without the data of the relaxation [see #f_relax_data], the
+  * normalization is just marked as stale. */
 
  void set_fixing( Index i , unsigned char v );
+
+/*--------------------------------------------------------------------------*/
+ /// follow the (un)fixings queued by set_fixing()
+ /** Changes f_x[ i ], f_base, f_Cd and n_in[ i ] of each item i queued by
+  * set_fixing() whose fixing differs from the one they reflect; a pass over
+  * all the items is made anyway [see refresh_fixings()] after more than f_N
+  * items have been (un)fixed this way [see #f_fix_steps], which bounds the
+  * rounding that the updates of f_base and f_Cd pile up, unless these
+  * updates are exact [see #f_exact]. To be called while #f_norm_valid,
+  * before f_x, f_base, f_Cd or n_in are read. */
+
+ void follow_fixings( void );
 
 /*--------------------------------------------------------------------------*/
  /// (re)build the cached efficiency order of the items
@@ -345,6 +356,10 @@ class BinaryKnapsackSolver : public virtual Solver {
  std::vector< char > v_I;             ///< 1 if the variable is integer
  std::vector< unsigned char > v_fxd;  ///< 0 = free, 1 = fixed to 0,
                                       ///< 2 = fixed to 1
+ std::vector< unsigned char > v_fxd_in;  ///< the fixings that f_x, f_base,
+                                         ///< f_Cd and n_in reflect
+ std::vector< Index > v_fix_queue;  ///< the items set_fixing() has queued
+ std::vector< char > v_fix_queued;  ///< 1 if the item is in v_fix_queue
 
  /* normalized core (free items only, positive data, maximisation sense) - -*/
 
@@ -437,6 +452,13 @@ class BinaryKnapsackSolver : public virtual Solver {
  bool drain_Modification( void );
 
 /*--------------------------------------------------------------------------*/
+ /// empty the queue of set_fixing(), all the fixings being reflected
+ /** Called when f_x, f_base, f_Cd and n_in have just been written out of
+  * #v_fxd as a whole [see normalize_instance() and refresh_fixings()]. */
+
+ void drop_fixing_queue( void );
+
+/*--------------------------------------------------------------------------*/
 /*---------------------------- PRIVATE FIELDS ------------------------------*/
 /*--------------------------------------------------------------------------*/
 
@@ -480,31 +502,53 @@ inline void BinaryKnapsackSolver::set_fixing( Index i , unsigned char v )
   return;
   }
 
- if( ! f_exact )
-  ++f_fix_steps;
-
- // under the fixing s, whether the item is (tentatively) taken and whether
- // it is in the relaxation, as normalize_instance() and refresh_fixings()
- // have it: a free item is taken if always taken or complemented
- const unsigned char cls = n_cls[ i ];
- const auto taken = [ cls ]( unsigned char s ) {
-  return( s ? ( s == 2 ) : ( ( cls == 1 ) || ( cls == 2 ) ) );
-  };
-
- if( const int d = int( taken( v ) ) - int( taken( o ) ) ) {
-  const double p = f_sense ? v_P[ i ] : - v_P[ i ];
-  if( d > 0 ) { f_base += p; f_Cd -= v_W[ i ]; }
-  else        { f_base -= p; f_Cd += v_W[ i ]; }
+ if( ! v_fix_queued[ i ] ) {  // followed by follow_fixings()
+  v_fix_queued[ i ] = 1;
+  v_fix_queue.push_back( i );
   }
 
- const char in = ( ! v ) && ( cls >= 2 );
- if( ( in != n_in[ i ] ) && f_ord_valid )   // the fill changes from it on
-  f_fr_valid = std::min( f_fr_valid , v_ord_pos[ i ] );
- n_in[ i ] = in;
- if( ! in )                 // in the relaxation, f_x[ i ] set by the scan
-  f_x[ i ] = taken( v );
-
  }  // end( BinaryKnapsackSolver::set_fixing )
+
+/*--------------------------------------------------------------------------*/
+
+inline void BinaryKnapsackSolver::follow_fixings( void )
+{
+ for( const Index i : v_fix_queue ) {
+  v_fix_queued[ i ] = 0;
+  const unsigned char o = v_fxd_in[ i ];
+  const unsigned char v = v_fxd[ i ];
+  if( o == v )               // put back as it was
+   continue;
+  v_fxd_in[ i ] = v;
+
+  if( ! f_exact )
+   ++f_fix_steps;
+
+  // under the fixing s, whether the item is (tentatively) taken and
+  // whether it is in the relaxation, as normalize_instance() and
+  // refresh_fixings() have it: a free item is taken if always taken or
+  // complemented
+  const unsigned char cls = n_cls[ i ];
+  const auto taken = [ cls ]( unsigned char s ) {
+   return( s ? ( s == 2 ) : ( ( cls == 1 ) || ( cls == 2 ) ) );
+   };
+
+  if( const int d = int( taken( v ) ) - int( taken( o ) ) ) {
+   const double p = f_sense ? v_P[ i ] : - v_P[ i ];
+   if( d > 0 ) { f_base += p; f_Cd -= v_W[ i ]; }
+   else        { f_base -= p; f_Cd += v_W[ i ]; }
+   }
+
+  const char in = ( ! v ) && ( cls >= 2 );
+  if( ( in != n_in[ i ] ) && f_ord_valid )  // the fill changes from it on
+   f_fr_valid = std::min( f_fr_valid , v_ord_pos[ i ] );
+  n_in[ i ] = in;
+  if( ! in )                // in the relaxation, f_x[ i ] set by the scan
+   f_x[ i ] = taken( v );
+  }
+ v_fix_queue.clear();
+
+ }  // end( BinaryKnapsackSolver::follow_fixings )
 
 /*--------------------------------------------------------------------------*/
 

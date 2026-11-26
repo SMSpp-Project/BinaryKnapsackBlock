@@ -101,9 +101,11 @@ int GreedyRelaxationBinaryKnapsackSolver::compute( bool changedvars )
 
  if( ! f_norm_valid )        // profits / weights / sense changed:
   normalize_instance();      //  raw mirror -> normalized core
- else                        // only the fixings changed, which
-  if( f_fix_steps > f_N )    //  set_fixing() has followed, but
-   refresh_fixings();        //  not for too long [see set_fixing()]
+ else {                      // only the fixings changed, which
+  follow_fixings();          //  set_fixing() has queued, followed
+  if( f_fix_steps > f_N )    //  but not for too long [see
+   refresh_fixings();        //  follow_fixings()]
+  }
 
  obj = - Inf< double >();
 
@@ -266,6 +268,7 @@ Change * GreedyRelaxationBinaryKnapsackSolver::apply( Change * chg ,
  if( f_incremental )
   return( inc_apply( CHG , doUndo ) );
 
+ f_x_valid = false;          // the fixed items change [see sync_x()]
  return( apply_to_mirror( CHG , doUndo ) );
 
  }  // end( GreedyRelaxationBinaryKnapsackSolver::apply )
@@ -280,7 +283,10 @@ void GreedyRelaxationBinaryKnapsackSolver::sync_x( void )
   return;
 
  if( ! f_incremental ) {     // the fill of fractional_relaxation()
-  fractional_x();
+  if( f_norm_valid && f_ord_valid ) {
+   follow_fixings();
+   fractional_x();
+   }
   f_x_valid = true;
   return;
   }

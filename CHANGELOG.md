@@ -71,6 +71,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the fill before it, and the solution is written item by item only when
   it is read
 
+- `BinaryKnapsackSolver::set_fixing()` queues the item, and
+  `follow_fixings()`, called before the solve, changes the profit and the
+  capacity left by the fixed items and the membership in the relaxation of
+  each queued item whose fixing differs from the one they reflect, so that
+  an item (un)fixed and then put back, as a move between two nodes of a
+  tree does with those of the common ancestor, costs no update
+
 - the reduced-cost pegging of `GreedyRelaxationBinaryKnapsackSolver` looks
   only at the blocks of `BinaryKnapsackSolver::MarginBlock` consecutive
   items whose largest margin, which `max_margin()` gives for each of them

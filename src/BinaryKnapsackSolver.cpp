@@ -273,6 +273,7 @@ void BinaryKnapsackSolver::normalize_instance( void )
  f_norm_valid = true;
  f_fix_steps = 0;
  f_fr_valid = 0;          // n_in is written anew
+ drop_fixing_queue();
  f_exact = f_relax_data && integer && ( tot < 0x1p52 );
 
  }  // end( BinaryKnapsackSolver::normalize_instance )
@@ -313,6 +314,7 @@ void BinaryKnapsackSolver::refresh_fixings( void )
 
  f_fix_steps = 0;
  f_fr_valid = 0;          // n_in is written anew
+ drop_fixing_queue();
 
  }  // end( BinaryKnapsackSolver::refresh_fixings )
 
@@ -560,11 +562,25 @@ void BinaryKnapsackSolver::fractional_x( void )
 /*--------------------------- PRIVATE METHODS ------------------------------*/
 /*--------------------------------------------------------------------------*/
 
+void BinaryKnapsackSolver::drop_fixing_queue( void )
+{
+ for( const Index i : v_fix_queue )
+  v_fix_queued[ i ] = 0;
+ v_fix_queue.clear();
+ v_fix_queued.resize( f_N , 0 );
+ v_fxd_in = v_fxd;
+
+ }  // end( BinaryKnapsackSolver::drop_fixing_queue )
+
+/*--------------------------------------------------------------------------*/
+
 void BinaryKnapsackSolver::load( void )
 {
  f_changed = true;
  f_ord_valid = false;
  f_norm_valid = false;
+ v_fix_queue.clear();
+ v_fix_queued.clear();
 
  if( ! f_Block ) {
   f_N = 0;
