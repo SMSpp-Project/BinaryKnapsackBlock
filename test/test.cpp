@@ -356,11 +356,11 @@ void solve_all( BinaryKnapsackBlock * b , std::vector< Slv > & slv ,
 
   // a compute() with nothing changed in between gives the same answer, as
   // when a branch-and-bound evaluates the same node twice
-  if( check( sl.s->compute( false ) == Solver::kOK , who + ": a second "
-             "compute() fails" ) )
-   check( close( sl.s->get_var_value() , value ) , who + ": a second "
-          "compute() is worth " + str( sl.s->get_var_value() ) + ", not " +
-          str( value ) );
+  const std::string again = who + ": a second compute()";
+  if( check( sl.s->compute( false ) == Solver::kOK , again + " fails" ) ) {
+   const double v2 = sl.s->get_var_value();
+   check( close( v2 , value ) , again + " is worth " + str( v2 ) );
+   }
 
   if( sl.exact ) {
    check( close( value , opt ) , who + ": value " + str( value ) );
