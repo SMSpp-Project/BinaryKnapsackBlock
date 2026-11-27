@@ -81,8 +81,8 @@ namespace SMSpp_di_unipi_it
  * relaxation of the latter. Derived classes implement compute() on top of
  * these; see the file-level comment. The inheritance from Solver is virtual
  * so that a derived Solver can also implement other Solver-extending
- * interfaces (e.g., the ChangeSolver / RelaxationSolver concepts of the
- * BranchAndBoundSolver module) without duplicating the Solver sub-object. */
+ * interfaces (e.g., the ChangeSolver / RelaxationSolver ones of
+ * ChangeSolver.h) without duplicating the Solver sub-object. */
 
 class BinaryKnapsackSolver : public virtual Solver {
 

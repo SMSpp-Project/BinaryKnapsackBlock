@@ -344,43 +344,6 @@ public:
  std::vector< Change * > branch() override;
 
 /*--------------------------------------------------------------------------*/
- /// classify the effect of a Modification on an enumeration tree
- /** The knapsack-specific classification below is not active: classify()
-  * is not redefined, and the default of ChangeSolver [see
-  * ChangeSolver::classify()] applies. Once enabled, it would classify as
-  * follows [see RelaxationSolver::classify()]: profit changes only touch
-  * the objective, weight and capacity changes only touch the feasible
-  * region, while (un)fixings, integrality and sense changes reshape the
-  * branching space (they invalidate the structure of the enumeration tree,
-  * not merely its bounds) and so, together with anything structural
-  * (NBModification, GroupModification, that update_instance() would not
-  * unpack either), conservatively invalidate everything. Non-physical
-  * Modification (the abstract-representation mirror of the physical ones)
-  * are classified eModNothing, consistently with update_instance() ignoring
-  * them: this Solver only listens to the physical representation. */
-
- /*
- [[nodiscard]] int classify( const sp_Mod & mod ) override {
-  const auto tmod = dynamic_cast< BinaryKnapsackBlockMod * >( mod.get() );
-  if( ! tmod ) {
-   if( std::dynamic_pointer_cast< NBModification >( mod ) ||
-       std::dynamic_pointer_cast< GroupModification >( mod ) )
-    return( eModEverything );
-   return( eModNothing );    // abstract-representation mirror: ignored
-   }
-  switch( tmod->type() ) {
-   case( BinaryKnapsackBlockMod::eChgProfit ):
-    return( eModObjective );
-   case( BinaryKnapsackBlockMod::eChgWeight ):
-   case( BinaryKnapsackBlockMod::eChgCapacity ):
-    return( eModFeasibility );
-   default:    // incl. (un)fixings, integrality and sense changes
-    return( eModEverything );
-   }
-  }
- */
-
-/*--------------------------------------------------------------------------*/
  /// physically construct the true (rounded greedy) Solution
 
  Solution * get_true_solution( Configuration * solc = nullptr ) override {
